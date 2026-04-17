@@ -1,10 +1,23 @@
-# Gulmohar by Ankita
+# Inventory Management System
 
 A boutique management web application for inventory, billing, refunds/exchanges, expenses, and admin analytics.
 
+## Quick Deploy Checklist
+
+```
+1. git clone git@github.com:Sujay-Nakhare-Git/inventory-management.git
+2. cd inventory-management
+3. python -m venv venv && source venv/bin/activate
+4. pip install -r requirements.txt
+5. python app.py
+→ Open http://127.0.0.1:5000
+```
+
+Admin password: `Suj@y123`
+
 ## Overview
 
-Gulmohar by Ankita helps manage day-to-day boutique operations in one place:
+Inventory Management System helps manage day-to-day boutique operations in one place:
 
 - Inventory and category management
 - Billing and bill history
