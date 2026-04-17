@@ -146,7 +146,7 @@ def log_update(title, description, update_type="general"):
     db.commit()
 
 
-ADMIN_PASSWORD_HASH = hashlib.sha256(b"Suj@y123").hexdigest()
+ADMIN_PASSWORD_HASH = "d1215baec4cf39b5c9cc710527fbbfcb3d4290caaf9b0f095d32198c9d5e28aa"
 
 
 def admin_authenticated():

@@ -13,7 +13,6 @@ A boutique management web application for inventory, billing, refunds/exchanges,
 → Open http://127.0.0.1:5000
 ```
 
-Admin password: `Suj@y123`
 
 ## Overview
 
@@ -93,10 +92,6 @@ Open in browser:
 - App uses SQLite for persistent storage.
 - Database file: `boutique.db`
 - Tables are auto-created on first run.
-
-## Default Admin Access
-
-- Admin password: `Suj@y123`
 
 ## Deploy for Free (PythonAnywhere)
 
