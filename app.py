@@ -1,11 +1,13 @@
 import os
+import io
+import csv
 import sqlite3
 import hashlib
 import hmac
 from datetime import datetime
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    flash, jsonify, g, session
+    flash, jsonify, g, session, Response
 )
 
 app = Flask(__name__)
@@ -943,5 +945,99 @@ def profit_loss():
         inventory_retail=inventory_retail,
         period=period,
     )
+
+
+# ── Export: Expenses CSV ─────────────────────────────────────────────────
+@app.route("/export/expenses")
+def export_expenses():
+    if not admin_authenticated():
+        flash("Please unlock Admin to export data.", "error")
+        return redirect(url_for("admin", next=url_for("expenses")))
+
+    db = get_db()
+    date = request.args.get("date", "").strip()
+    category = request.args.get("category", "").strip()
+
+    query = "SELECT * FROM expenses WHERE 1=1"
+    params = []
+    if date:
+        query += " AND created_at LIKE ?"
+        params.append(f"{date}%")
+    if category:
+        query += " AND category = ?"
+        params.append(category)
+    query += " ORDER BY created_at DESC"
+
+    rows = db.execute(query, params).fetchall()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["ID", "Title", "Description", "Category", "Amount (₹)", "Date"])
+    for r in rows:
+        writer.writerow([r["id"], r["title"], r["description"] or "",
+                         r["category"], r["amount"], r["created_at"]])
+
+    filename = f"expenses_{date or 'all'}.csv"
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+# ── Export: Sales CSV ────────────────────────────────────────────────────
+@app.route("/export/sales")
+def export_sales():
+    if not admin_authenticated():
+        flash("Please unlock Admin to export data.", "error")
+        return redirect(url_for("admin", next=url_for("bills_list")))
+
+    db = get_db()
+    date = request.args.get("date", "").strip()
+
+    query = (
+        "SELECT b.id, b.customer_name, b.customer_phone, b.subtotal, "
+        "b.discount_percent, b.discount_amount, b.tax_percent, b.tax_amount, "
+        "b.total, b.payment_method, b.created_at "
+        "FROM bills b WHERE 1=1"
+    )
+    params = []
+    if date:
+        query += " AND b.created_at LIKE ?"
+        params.append(f"{date}%")
+    query += " ORDER BY b.created_at DESC"
+
+    bills = db.execute(query, params).fetchall()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Bill #", "Customer", "Phone", "Subtotal (₹)",
+                     "Discount %", "Discount (₹)", "Tax %", "Tax (₹)",
+                     "Total (₹)", "Payment Method", "Date", "Items"])
+
+    for b in bills:
+        items = db.execute(
+            "SELECT product_name, quantity, unit_price, total_price "
+            "FROM bill_items WHERE bill_id = ?", (b["id"],)
+        ).fetchall()
+        items_str = "; ".join(
+            f"{it['product_name']} x{it['quantity']} @₹{it['unit_price']}"
+            for it in items
+        )
+        writer.writerow([
+            b["id"], b["customer_name"] or "Walk-in", b["customer_phone"] or "",
+            b["subtotal"], b["discount_percent"], b["discount_amount"],
+            b["tax_percent"], b["tax_amount"], b["total"],
+            b["payment_method"], b["created_at"], items_str,
+        ])
+
+    filename = f"sales_{date or 'all'}.csv"
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

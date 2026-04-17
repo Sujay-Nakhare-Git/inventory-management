@@ -4,7 +4,10 @@
 {% block content %}
 <div class="page-header">
     <h2>Bills History</h2>
-    <a href="{{ url_for('billing') }}" class="btn btn-primary">+ New Bill</a>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a href="{{ url_for('export_sales') }}" class="btn btn-outline">📥 Export CSV</a>
+        <a href="{{ url_for('billing') }}" class="btn btn-primary">+ New Bill</a>
+    </div>
 </div>
 
 <div class="card">
