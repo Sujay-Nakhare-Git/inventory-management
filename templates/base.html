@@ -8,6 +8,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
+    <button class="hamburger" id="hamburgerBtn" onclick="document.querySelector('.sidebar').classList.toggle('open'); this.classList.toggle('active')">
+        <span></span><span></span><span></span>
+    </button>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="document.querySelector('.sidebar').classList.remove('open'); document.getElementById('hamburgerBtn').classList.remove('active')"></div>
     <nav class="sidebar">
         <div class="brand">
             <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Gulmohar by Ankita" class="brand-logo">
