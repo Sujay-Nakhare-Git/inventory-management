@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Profit & Loss — Login — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="pl-login-wrapper">
+    <div class="pl-login-card">
+        <div class="pl-login-icon">🔒</div>
+        <h2>Profit & Loss</h2>
+        <p>This section is password protected. Enter the password to continue.</p>
+        <form method="POST" action="{{ url_for('profit_loss') }}">
+            <div class="form-group">
+                <input type="password" name="password" class="input" placeholder="Enter password" required autofocus>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Unlock</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

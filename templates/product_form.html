@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit" if product else "Add" }} Product — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>{{ "Edit" if product else "Add New" }} Product</h2>
+    <a href="{{ url_for('inventory') }}" class="btn btn-outline">← Back to Inventory</a>
+</div>
+
+<div class="card form-card">
+    <form method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="name">Product Name *</label>
+                <input type="text" id="name" name="name" class="input" required value="{{ product.name if product else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="sku">SKU</label>
+                <input type="text" id="sku" name="sku" class="input" value="{{ product.sku if product and product.sku else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="category_id">Category</label>
+                <select id="category_id" name="category_id" class="input">
+                    <option value="">Select Category</option>
+                    {% for c in categories %}
+                    <option value="{{ c.id }}" {% if product and product.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="size">Size</label>
+                <input type="text" id="size" name="size" class="input" placeholder="e.g. S, M, L, XL, Free Size" value="{{ product.size if product and product.size else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="color">Color</label>
+                <input type="text" id="color" name="color" class="input" value="{{ product.color if product and product.color else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="cost_price">Cost Price (₹) *</label>
+                <input type="number" id="cost_price" name="cost_price" class="input" step="0.01" min="0" required value="{{ product.cost_price if product else '0' }}">
+            </div>
+            <div class="form-group">
+                <label for="selling_price">Selling Price (₹) *</label>
+                <input type="number" id="selling_price" name="selling_price" class="input" step="0.01" min="0" required value="{{ product.selling_price if product else '0' }}">
+            </div>
+            <div class="form-group">
+                <label for="quantity">Quantity *</label>
+                <input type="number" id="quantity" name="quantity" class="input" min="0" required value="{{ product.quantity if product else '0' }}">
+            </div>
+            <div class="form-group">
+                <label for="low_stock_threshold">Low Stock Threshold</label>
+                <input type="number" id="low_stock_threshold" name="low_stock_threshold" class="input" min="0" value="{{ product.low_stock_threshold if product else '5' }}">
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{{ "Update" if product else "Add" }} Product</button>
+            <a href="{{ url_for('inventory') }}" class="btn btn-outline">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Refund / Exchange — Bill #{{ bill.id }} — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Refund / Exchange — Bill #{{ bill.id }}</h2>
+    <a href="{{ url_for('bill_detail', bill_id=bill.id) }}" class="btn btn-outline">← Back to Bill</a>
+</div>
+
+<div class="card">
+    <div class="invoice-customer">
+        <h4>Bill Details</h4>
+        <p><strong>Customer:</strong> {{ bill.customer_name or 'Walk-in' }}
+           {% if bill.customer_phone %} | <strong>Phone:</strong> {{ bill.customer_phone }}{% endif %}</p>
+        <p><strong>Total:</strong> ₹{{ "%.2f"|format(bill.total) }} | <strong>Date:</strong> {{ bill.created_at }}</p>
+    </div>
+</div>
+
+<form method="POST" action="{{ url_for('process_refund') }}">
+    <input type="hidden" name="bill_id" value="{{ bill.id }}">
+
+    <div class="card">
+        <h3 class="card-title">Select Items for Refund / Exchange</h3>
+        <div class="refund-items">
+            {% for item in items %}
+            <div class="refund-item-row" id="row_{{ item.id }}">
+                <div class="refund-item-info">
+                    <strong>{{ item.product_name }}</strong>
+                    <span class="product-meta">Qty: {{ item.quantity }} × ₹{{ "%.2f"|format(item.unit_price) }} = ₹{{ "%.2f"|format(item.total_price) }}</span>
+                </div>
+
+                <div class="refund-item-controls">
+                    <div class="form-group">
+                        <label>Action</label>
+                        <select name="action_{{ item.id }}" class="input" onchange="toggleExchange({{ item.id }}, this.value)">
+                            <option value="keep">Keep (No Change)</option>
+                            <option value="refund">Refund</option>
+                            <option value="exchange">Exchange</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Qty to Return</label>
+                        <input type="number" name="qty_{{ item.id }}" class="input input-sm" value="{{ item.quantity }}" min="1" max="{{ item.quantity }}">
+                    </div>
+
+                    <div class="form-group exchange-select" id="exchange_{{ item.id }}" style="display:none;">
+                        <label>Exchange For</label>
+                        <select name="exchange_{{ item.id }}" class="input">
+                            <option value="">Select product...</option>
+                            {% for p in products %}
+                            <option value="{{ p.id }}">{{ p.name }} — ₹{{ "%.2f"|format(p.selling_price) }} (Stock: {{ p.quantity }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card form-card">
+        <div class="form-group">
+            <label for="reason">Reason for Refund / Exchange</label>
+            <textarea id="reason" name="reason" class="input" rows="3" placeholder="e.g. Wrong size, defective, customer changed mind..."></textarea>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Process Refund / Exchange</button>
+            <a href="{{ url_for('bill_detail', bill_id=bill.id) }}" class="btn btn-outline">Cancel</a>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleExchange(itemId, action) {
+    const el = document.getElementById('exchange_' + itemId);
+    el.style.display = action === 'exchange' ? 'flex' : 'none';
+}
+</script>
+{% endblock %}

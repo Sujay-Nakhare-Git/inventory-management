@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}Profit & Loss — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Profit & Loss Statement</h2>
+    <div>
+        <a href="{{ url_for('admin') }}" class="btn btn-outline">← Back to Admin</a>
+        <a href="{{ url_for('admin_logout') }}" class="btn btn-outline">🔒 Lock Admin</a>
+    </div>
+</div>
+
+<div class="period-tabs">
+    <a href="{{ url_for('profit_loss', period='today') }}" class="btn {% if period == 'today' %}btn-primary{% else %}btn-outline{% endif %}">Today</a>
+    <a href="{{ url_for('profit_loss', period='month') }}" class="btn {% if period == 'month' %}btn-primary{% else %}btn-outline{% endif %}">This Month</a>
+    <a href="{{ url_for('profit_loss', period='all') }}" class="btn {% if period == 'all' %}btn-primary{% else %}btn-outline{% endif %}">All Time</a>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card stat-green">
+        <div class="stat-value">₹{{ "%.2f"|format(revenue) }}</div>
+        <div class="stat-label">Total Revenue</div>
+    </div>
+    <div class="stat-card stat-gold">
+        <div class="stat-value">₹{{ "%.2f"|format(cogs) }}</div>
+        <div class="stat-label">Cost of Goods Sold</div>
+    </div>
+    <div class="stat-card stat-coral">
+        <div class="stat-value">₹{{ "%.2f"|format(gross_profit) }}</div>
+        <div class="stat-label">Gross Profit</div>
+    </div>
+    <div class="stat-card stat-red">
+        <div class="stat-value">₹{{ "%.2f"|format(total_expenses) }}</div>
+        <div class="stat-label">Total Expenses</div>
+    </div>
+    <div class="stat-card {% if net_profit >= 0 %}stat-green{% else %}stat-red{% endif %}">
+        <div class="stat-value">₹{{ "%.2f"|format(net_profit) }}</div>
+        <div class="stat-label">
+            {% if net_profit >= 0 %}✅ Net Profit{% else %}❌ Net Loss{% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- P&L Breakdown -->
+<div class="pl-grid">
+    <div class="card">
+        <h3 class="card-title">📊 P&L Summary</h3>
+        <div class="pl-table">
+            <div class="pl-row">
+                <span>Revenue (Sales)</span>
+                <span class="pl-positive">₹{{ "%.2f"|format(revenue) }}</span>
+            </div>
+            <div class="pl-row">
+                <span>Less: Cost of Goods Sold</span>
+                <span class="pl-negative">-₹{{ "%.2f"|format(cogs) }}</span>
+            </div>
+            <div class="pl-row pl-subtotal">
+                <span><strong>Gross Profit</strong></span>
+                <span><strong>₹{{ "%.2f"|format(gross_profit) }}</strong></span>
+            </div>
+            <div class="pl-row">
+                <span>Less: Operating Expenses</span>
+                <span class="pl-negative">-₹{{ "%.2f"|format(total_expenses) }}</span>
+            </div>
+            <div class="pl-row pl-total {% if net_profit >= 0 %}pl-profit{% else %}pl-loss{% endif %}">
+                <span><strong>Net {{ "Profit" if net_profit >= 0 else "Loss" }}</strong></span>
+                <span><strong>₹{{ "%.2f"|format(net_profit|abs) }}</strong></span>
+            </div>
+        </div>
+        {% if revenue > 0 %}
+        <div class="pl-margins">
+            <span>Gross Margin: <strong>{{ "%.1f"|format(gross_profit / revenue * 100) }}%</strong></span>
+            <span>Net Margin: <strong>{{ "%.1f"|format(net_profit / revenue * 100) }}%</strong></span>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h3 class="card-title">💰 Inventory Value</h3>
+        <div class="pl-table">
+            <div class="pl-row">
+                <span>At Cost Price</span>
+                <span>₹{{ "%.2f"|format(inventory_cost) }}</span>
+            </div>
+            <div class="pl-row">
+                <span>At Retail Price</span>
+                <span>₹{{ "%.2f"|format(inventory_retail) }}</span>
+            </div>
+            <div class="pl-row pl-subtotal">
+                <span><strong>Potential Profit</strong></span>
+                <span class="pl-positive"><strong>₹{{ "%.2f"|format(inventory_retail - inventory_cost) }}</strong></span>
+            </div>
+        </div>
+
+        {% if expense_breakdown %}
+        <h3 class="card-title" style="margin-top: 1.5rem;">📋 Expenses by Category</h3>
+        <div class="pl-table">
+            {% for eb in expense_breakdown %}
+            <div class="pl-row">
+                <span>{{ eb.category }}</span>
+                <span>₹{{ "%.2f"|format(eb.total) }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if recent_bills %}
+<div class="card">
+    <h3 class="card-title">🧾 Recent Sales ({{ period|capitalize }})</h3>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Bill #</th>
+                    <th>Customer</th>
+                    <th>Total</th>
+                    <th>Payment</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in recent_bills %}
+                <tr>
+                    <td><strong>#{{ b.id }}</strong></td>
+                    <td>{{ b.customer_name or 'Walk-in' }}</td>
+                    <td>₹{{ "%.2f"|format(b.total) }}</td>
+                    <td><span class="badge badge-info">{{ b.payment_method }}</span></td>
+                    <td>{{ b.created_at }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if recent_expenses %}
+<div class="card">
+    <h3 class="card-title">💸 Recent Expenses ({{ period|capitalize }})</h3>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Amount</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in recent_expenses %}
+                <tr>
+                    <td><strong>{{ e.title }}</strong></td>
+                    <td><span class="badge badge-info">{{ e.category }}</span></td>
+                    <td>₹{{ "%.2f"|format(e.amount) }}</td>
+                    <td>{{ e.created_at }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

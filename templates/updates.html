@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Updates — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Updates & Activity Log</h2>
+</div>
+
+<div class="card form-card">
+    <h3 class="card-title">Add Manual Update</h3>
+    <form method="POST" action="{{ url_for('add_update') }}">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="title">Title *</label>
+                <input type="text" id="title" name="title" class="input" required placeholder="e.g. New collection arrived">
+            </div>
+            <div class="form-group">
+                <label for="type">Type</label>
+                <select id="type" name="type" class="input">
+                    <option value="general">General</option>
+                    <option value="inventory">Inventory</option>
+                    <option value="billing">Billing</option>
+                    <option value="announcement">Announcement</option>
+                </select>
+            </div>
+            <div class="form-group" style="grid-column: 1/-1;">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" class="input" rows="3" placeholder="Optional details..."></textarea>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Add Update</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h3 class="card-title">Activity Timeline</h3>
+    <div class="updates-list">
+        {% for u in updates %}
+        <div class="update-item">
+            <span class="update-badge update-{{ u.type }}">{{ u.type }}</span>
+            <div class="update-content">
+                <strong>{{ u.title }}</strong>
+                {% if u.description %}<p>{{ u.description }}</p>{% endif %}
+            </div>
+            <span class="update-time">{{ u.created_at }}</span>
+        </div>
+        {% else %}
+        <p class="empty-state">No updates yet.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

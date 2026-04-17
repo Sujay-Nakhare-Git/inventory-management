@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}Daily Summary — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Daily Summary</h2>
+    <div>
+        <form method="GET" action="{{ url_for('daily_summary') }}" class="filter-bar" style="display:inline-flex; margin-right: 0.5rem; vertical-align: middle;">
+            <input type="date" name="date" value="{{ selected_date }}" class="input">
+            <button type="submit" class="btn btn-primary">View</button>
+            <a href="{{ url_for('daily_summary', date=today_date) }}" class="btn btn-outline">Today</a>
+        </form>
+        <span class="badge badge-info">{{ today }}</span>
+        <a href="{{ url_for('admin') }}" class="btn btn-outline">← Back to Admin</a>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card stat-green">
+        <div class="stat-value">₹{{ "%.2f"|format(sales_total) }}</div>
+        <div class="stat-label">Today's Sales</div>
+    </div>
+    <div class="stat-card stat-gold">
+        <div class="stat-value">{{ bill_count }}</div>
+        <div class="stat-label">Bills Created</div>
+    </div>
+    <div class="stat-card stat-red">
+        <div class="stat-value">₹{{ "%.2f"|format(expense_total) }}</div>
+        <div class="stat-label">Today's Expenses</div>
+    </div>
+    <div class="stat-card stat-blue">
+        <div class="stat-value">₹{{ "%.2f"|format(refund_total) }}</div>
+        <div class="stat-label">Refunds Today</div>
+    </div>
+    <div class="stat-card {% if net_after_expenses >= 0 %}stat-green{% else %}stat-red{% endif %}">
+        <div class="stat-value">₹{{ "%.2f"|format(net_after_expenses) }}</div>
+        <div class="stat-label">Net After Costs</div>
+    </div>
+</div>
+
+<div class="pl-grid">
+    <div class="card">
+        <h3 class="card-title">📊 Financial Breakdown (Today)</h3>
+        <div class="pl-table">
+            <div class="pl-row">
+                <span>Sales Revenue</span>
+                <span class="pl-positive">₹{{ "%.2f"|format(sales_total) }}</span>
+            </div>
+            <div class="pl-row">
+                <span>Cost of Goods Sold</span>
+                <span class="pl-negative">-₹{{ "%.2f"|format(cogs_total) }}</span>
+            </div>
+            <div class="pl-row pl-subtotal">
+                <span><strong>Gross Profit</strong></span>
+                <span><strong>₹{{ "%.2f"|format(gross_profit) }}</strong></span>
+            </div>
+            <div class="pl-row">
+                <span>Expenses</span>
+                <span class="pl-negative">-₹{{ "%.2f"|format(expense_total) }}</span>
+            </div>
+            <div class="pl-row">
+                <span>Refunds</span>
+                <span class="pl-negative">-₹{{ "%.2f"|format(refund_total) }}</span>
+            </div>
+            <div class="pl-row pl-total {% if net_after_expenses >= 0 %}pl-profit{% else %}pl-loss{% endif %}">
+                <span><strong>Net (After All Costs)</strong></span>
+                <span><strong>₹{{ "%.2f"|format(net_after_expenses) }}</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 class="card-title">💳 Payment Method Split</h3>
+        {% if payment_split %}
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Method</th>
+                        <th>Bills</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in payment_split %}
+                    <tr>
+                        <td>{{ row.payment_method }}</td>
+                        <td>{{ row.bill_count }}</td>
+                        <td>₹{{ "%.2f"|format(row.total) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="empty-state">No sales recorded today.</p>
+        {% endif %}
+
+        <h3 class="card-title" style="margin-top:1.5rem;">🏆 Top Sold Products</h3>
+        {% if top_products %}
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Qty Sold</th>
+                        <th>Revenue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in top_products %}
+                    <tr>
+                        <td>{{ p.product_name }}</td>
+                        <td>{{ p.qty }}</td>
+                        <td>₹{{ "%.2f"|format(p.revenue) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="empty-state">No products sold today.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <h3 class="card-title">🧾 Recent Bills (Today)</h3>
+    {% if recent_bills %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Bill #</th>
+                    <th>Customer</th>
+                    <th>Total</th>
+                    <th>Payment</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in recent_bills %}
+                <tr>
+                    <td><strong>#{{ b.id }}</strong></td>
+                    <td>{{ b.customer_name or 'Walk-in' }}</td>
+                    <td>₹{{ "%.2f"|format(b.total) }}</td>
+                    <td><span class="badge badge-info">{{ b.payment_method }}</span></td>
+                    <td>{{ b.created_at }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty-state">No bills created today.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3 class="card-title">💸 Recent Expenses (Today)</h3>
+    {% if recent_expenses %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Amount</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in recent_expenses %}
+                <tr>
+                    <td>{{ e.title }}</td>
+                    <td><span class="badge badge-info">{{ e.category }}</span></td>
+                    <td>₹{{ "%.2f"|format(e.amount) }}</td>
+                    <td>{{ e.created_at }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty-state">No expenses added today.</p>
+    {% endif %}
+</div>
+{% endblock %}

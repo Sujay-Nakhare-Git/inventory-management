@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Inventory — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Inventory</h2>
+    <a href="{{ url_for('add_product') }}" class="btn btn-primary">+ Add Product</a>
+</div>
+
+<div class="card">
+    <form class="filter-bar" method="GET" action="{{ url_for('inventory') }}">
+        <input type="text" name="search" placeholder="Search by name or SKU..." value="{{ search }}" class="input">
+        <select name="category" class="input">
+            <option value="">All Categories</option>
+            {% for c in categories %}
+            <option value="{{ c.id }}" {% if selected_category == c.id|string %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary">Filter</button>
+        <a href="{{ url_for('inventory') }}" class="btn btn-outline">Clear</a>
+    </form>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>SKU</th>
+                    <th>Category</th>
+                    <th>Size</th>
+                    <th>Color</th>
+                    <th>Cost (₹)</th>
+                    <th>Price (₹)</th>
+                    <th>Qty</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in products %}
+                <tr>
+                    <td><strong>{{ p.name }}</strong></td>
+                    <td>{{ p.sku or '—' }}</td>
+                    <td>{{ p.category_name or '—' }}</td>
+                    <td>{{ p.size or '—' }}</td>
+                    <td>{{ p.color or '—' }}</td>
+                    <td>{{ "%.2f"|format(p.cost_price) }}</td>
+                    <td>{{ "%.2f"|format(p.selling_price) }}</td>
+                    <td>
+                        {% if p.quantity <= p.low_stock_threshold %}
+                        <span class="badge badge-danger">{{ p.quantity }}</span>
+                        {% else %}
+                        <span class="badge badge-success">{{ p.quantity }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="actions">
+                        <a href="{{ url_for('edit_product', product_id=p.id) }}" class="btn btn-sm">Edit</a>
+                        <form method="POST" action="{{ url_for('delete_product', product_id=p.id) }}" style="display:inline" onsubmit="return confirm('Delete this product?')">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="9" class="empty-state">No products found. Add your first product!</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

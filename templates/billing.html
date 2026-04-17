@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}New Bill — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Create New Bill</h2>
+</div>
+
+<div class="billing-layout">
+    <div class="card billing-products">
+        <h3 class="card-title">Select Products</h3>
+        <input type="text" id="productSearch" class="input" placeholder="Search products..." style="margin-bottom: 1rem;">
+        <div class="product-list" id="productList">
+            {% for p in products %}
+            <div class="product-item" data-id="{{ p.id }}" data-name="{{ p.name }}" data-price="{{ p.selling_price }}" data-stock="{{ p.quantity }}" data-search="{{ p.name|lower }} {{ p.sku|lower if p.sku else '' }} {{ p.category_name|lower if p.category_name else '' }}">
+                <div class="product-info">
+                    <strong>{{ p.name }}</strong>
+                    <span class="product-meta">{{ p.category_name or '' }} {% if p.size %}| {{ p.size }}{% endif %} {% if p.color %}| {{ p.color }}{% endif %}</span>
+                </div>
+                <div class="product-price-stock">
+                    <span class="price">₹{{ "%.2f"|format(p.selling_price) }}</span>
+                    <span class="stock">Stock: {{ p.quantity }}</span>
+                </div>
+                <button class="btn btn-sm btn-primary add-to-bill" onclick="addItem({{ p.id }}, '{{ p.name|e }}', {{ p.selling_price }}, {{ p.quantity }})">+ Add</button>
+            </div>
+            {% else %}
+            <p class="empty-state">No products in stock.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card billing-cart">
+        <h3 class="card-title">Current Bill</h3>
+        <div class="customer-fields">
+            <input type="text" id="customerName" class="input" placeholder="Customer Name">
+            <input type="text" id="customerPhone" class="input" placeholder="Phone Number">
+        </div>
+
+        <div id="billItems" class="bill-items">
+            <p class="empty-state" id="emptyCart">Add products to start billing</p>
+        </div>
+
+        <div class="bill-summary" id="billSummary" style="display:none;">
+            <div class="summary-row">
+                <span>Subtotal</span>
+                <span id="subtotal">₹0.00</span>
+            </div>
+            <div class="summary-row">
+                <label>Discount %</label>
+                <input type="number" id="discountPercent" class="input input-sm" value="0" min="0" max="100" onchange="recalculate()">
+            </div>
+            <div class="summary-row">
+                <label>Tax (GST) %</label>
+                <input type="number" id="taxPercent" class="input input-sm" value="0" min="0" max="100" onchange="recalculate()">
+            </div>
+            <div class="summary-row summary-discount" id="discountRow" style="display:none;">
+                <span>Discount</span>
+                <span id="discountAmount">-₹0.00</span>
+            </div>
+            <div class="summary-row summary-tax" id="taxRow" style="display:none;">
+                <span>Tax</span>
+                <span id="taxAmount">+₹0.00</span>
+            </div>
+            <div class="summary-row summary-total">
+                <span>Total</span>
+                <span id="totalAmount">₹0.00</span>
+            </div>
+            <div class="form-group">
+                <label>Payment Method</label>
+                <select id="paymentMethod" class="input">
+                    <option value="Cash">Cash</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Card">Card</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+            </div>
+            <button class="btn btn-primary btn-block" onclick="submitBill()">Generate Bill</button>
+        </div>
+    </div>
+</div>
+
+<div id="billModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3>✅ Bill Created Successfully!</h3>
+        <p id="billMessage"></p>
+        <div class="modal-actions">
+            <a href="{{ url_for('billing') }}" class="btn btn-primary">New Bill</a>
+            <a id="viewBillLink" href="#" class="btn btn-outline">View Bill</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='billing.js') }}"></script>
+{% endblock %}

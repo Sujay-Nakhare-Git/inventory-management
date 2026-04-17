@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Categories — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Categories</h2>
+</div>
+
+<div class="card form-card">
+    <h3 class="card-title">Add New Category</h3>
+    <form method="POST" class="inline-form">
+        <input type="text" name="name" placeholder="Category name..." class="input" required>
+        <button type="submit" class="btn btn-primary">Add Category</button>
+    </form>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Category Name</th>
+                    <th>Products</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in categories %}
+                <tr>
+                    <td><strong>{{ c.name }}</strong></td>
+                    <td>{{ c.product_count }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('delete_category', cat_id=c.id) }}" style="display:inline" onsubmit="return confirm('Delete this category?')">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

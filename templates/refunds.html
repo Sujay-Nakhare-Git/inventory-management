@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Refunds & Exchanges — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Refunds & Exchanges</h2>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Refund #</th>
+                    <th>Bill #</th>
+                    <th>Customer</th>
+                    <th>Type</th>
+                    <th>Products</th>
+                    <th>Reason</th>
+                    <th>Refund Amount</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in refunds %}
+                <tr>
+                    <td><strong>#{{ r.id }}</strong></td>
+                    <td><a href="{{ url_for('bill_detail', bill_id=r.bill_id) }}">#{{ r.bill_id }}</a></td>
+                    <td>{{ r.customer_name or 'Walk-in' }}</td>
+                    <td>
+                        <span class="badge {% if r.type == 'refund' %}badge-danger{% elif r.type == 'exchange' %}badge-info{% else %}badge-success{% endif %}">
+                            {{ r.type|capitalize }}
+                        </span>
+                    </td>
+                    <td>{{ r.products or '—' }}</td>
+                    <td>{{ r.reason or '—' }}</td>
+                    <td>{% if r.refund_amount > 0 %}<strong>₹{{ "%.2f"|format(r.refund_amount) }}</strong>{% else %}—{% endif %}</td>
+                    <td>{{ r.created_at }}</td>
+                    <td><a href="{{ url_for('bill_detail', bill_id=r.bill_id) }}" class="btn btn-sm">View Bill</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="9" class="empty-state">No refunds or exchanges yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

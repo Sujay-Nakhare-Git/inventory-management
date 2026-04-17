@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Admin — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Admin</h2>
+    {% if not locked %}
+    <a href="{{ url_for('admin_logout') }}" class="btn btn-outline">🔒 Lock Admin</a>
+    {% endif %}
+</div>
+
+{% if locked %}
+<div class="pl-login-wrapper">
+    <div class="pl-login-card">
+        <div class="pl-login-icon">🔐</div>
+        <h2>Admin Access</h2>
+        <p>Enter password to access Daily Summary, Expenses, and Profit & Loss.</p>
+        <form method="POST" action="{{ url_for('admin') }}">
+            <input type="hidden" name="next_url" value="{{ next_url }}">
+            <div class="form-group">
+                <input type="password" name="password" class="input" placeholder="Enter admin password" required autofocus>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Unlock Admin</button>
+        </form>
+    </div>
+</div>
+{% else %}
+<div class="stats-grid">
+    <div class="card stat-card stat-blue" style="text-align:left;">
+        <div class="card-title">📅 Daily Summary</div>
+        <p class="page-desc">See today's sales, expenses, refunds, top products, and net summary.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('daily_summary') }}" class="btn btn-primary">Open Daily Summary</a>
+        </div>
+    </div>
+
+    <div class="card stat-card stat-gold" style="text-align:left;">
+        <div class="card-title">💸 Expenses</div>
+        <p class="page-desc">Manage operational expenses and keep business costs updated.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('expenses') }}" class="btn btn-primary">Open Expenses</a>
+        </div>
+    </div>
+
+    <div class="card stat-card stat-coral" style="text-align:left;">
+        <div class="card-title">📈 Profit & Loss</div>
+        <p class="page-desc">Track revenue, COGS, expenses, and net profit/loss by period.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('profit_loss') }}" class="btn btn-primary">Open Profit & Loss</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

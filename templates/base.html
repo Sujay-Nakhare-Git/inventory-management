@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Gulmohar by Ankita{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="brand">
+            <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Gulmohar by Ankita" class="brand-logo">
+            <p class="brand-tagline">Handpicked Apparel</p>
+        </div>
+        <ul class="nav-links">
+            <li><a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">
+                <span class="nav-icon">📊</span> Dashboard
+            </a></li>
+            <li><a href="{{ url_for('inventory') }}" class="{% if request.endpoint in ['inventory', 'add_product', 'edit_product'] %}active{% endif %}">
+                <span class="nav-icon">👗</span> Inventory
+            </a></li>
+            <li><a href="{{ url_for('categories') }}" class="{% if request.endpoint == 'categories' %}active{% endif %}">
+                <span class="nav-icon">🏷️</span> Categories
+            </a></li>
+            <li><a href="{{ url_for('billing') }}" class="{% if request.endpoint == 'billing' %}active{% endif %}">
+                <span class="nav-icon">🧾</span> New Bill
+            </a></li>
+            <li><a href="{{ url_for('bills_list') }}" class="{% if request.endpoint in ['bills_list', 'bill_detail'] %}active{% endif %}">
+                <span class="nav-icon">📋</span> Bills History
+            </a></li>
+            <li><a href="{{ url_for('refunds_list') }}" class="{% if request.endpoint in ['refunds_list', 'new_refund'] %}active{% endif %}">
+                <span class="nav-icon">🔄</span> Refunds
+            </a></li>
+            <li><a href="{{ url_for('admin') }}" class="{% if request.endpoint in ['admin', 'expenses', 'profit_loss', 'daily_summary'] %}active{% endif %}">
+                <span class="nav-icon">🔒</span> Admin
+            </a></li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

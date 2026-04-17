@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Expenses — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Expenses</h2>
+    <a href="{{ url_for('admin') }}" class="btn btn-outline">← Back to Admin</a>
+</div>
+
+<div class="card form-card">
+    <h3 class="card-title">Add New Expense</h3>
+    <form method="POST" action="{{ url_for('add_expense') }}">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="title">Title *</label>
+                <input type="text" id="title" name="title" class="input" required placeholder="e.g. Rent, Electricity, Fabric Purchase">
+            </div>
+            <div class="form-group">
+                <label for="amount">Amount (₹) *</label>
+                <input type="number" id="amount" name="amount" class="input" step="0.01" min="0.01" required placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label for="category">Category</label>
+                <select id="category" name="category" class="input">
+                    <option value="Rent">Rent</option>
+                    <option value="Utilities">Utilities</option>
+                    <option value="Fabric & Materials">Fabric & Materials</option>
+                    <option value="Salary">Salary</option>
+                    <option value="Transport">Transport</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Packaging">Packaging</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="General" selected>General</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group" style="grid-column: 1/-1;">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" class="input" rows="2" placeholder="Optional details..."></textarea>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Add Expense</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <div class="filter-bar" style="margin-bottom: 1rem;">
+        <form method="GET" action="{{ url_for('expenses') }}" class="filter-bar" style="width:100%">
+            <input type="text" name="search" placeholder="Search expenses..." value="{{ search }}" class="input">
+            <input type="date" name="date" value="{{ selected_date or '' }}" class="input">
+            <select name="category" class="input">
+                <option value="">All Categories</option>
+                {% for cat in ['Rent', 'Utilities', 'Fabric & Materials', 'Salary', 'Transport', 'Marketing', 'Packaging', 'Maintenance', 'General', 'Other'] %}
+                <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <a href="{{ url_for('expenses', search=search, category=selected_category, date=today_date) }}" class="btn btn-outline">Today</a>
+            <a href="{{ url_for('expenses') }}" class="btn btn-outline">Clear</a>
+        </form>
+    </div>
+
+    <div class="expense-total-bar">
+        <strong>Total Expenses Shown: ₹{{ "%.2f"|format(total) }}</strong>
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Amount (₹)</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in expenses %}
+                <tr>
+                    <td>{{ e.created_at }}</td>
+                    <td><strong>{{ e.title }}</strong></td>
+                    <td><span class="badge badge-info">{{ e.category }}</span></td>
+                    <td>{{ e.description or '—' }}</td>
+                    <td><strong>₹{{ "%.2f"|format(e.amount) }}</strong></td>
+                    <td>
+                        <form method="POST" action="{{ url_for('delete_expense', expense_id=e.id) }}" style="display:inline" onsubmit="return confirm('Delete this expense?')">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="empty-state">No expenses recorded yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

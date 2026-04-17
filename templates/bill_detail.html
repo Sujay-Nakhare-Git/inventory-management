@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Bill #{{ bill.id }} — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Bill #{{ bill.id }}</h2>
+    <div>
+        <a href="{{ url_for('new_refund', bill_id=bill.id) }}" class="btn btn-outline">🔄 Refund / Exchange</a>
+        <button onclick="window.print()" class="btn btn-primary">🖨️ Print</button>
+        <form method="POST" action="{{ url_for('delete_bill', bill_id=bill.id) }}" style="display:inline" onsubmit="return confirm('Delete this bill? Stock will be restored.')">
+            <button type="submit" class="btn btn-danger">Delete Bill</button>
+        </form>
+        <a href="{{ url_for('bills_list') }}" class="btn btn-outline">← Back</a>
+    </div>
+</div>
+
+<div class="card invoice-card" id="printArea">
+    <div class="invoice-header">
+        <div>
+            <h2 class="invoice-brand">Gulmohar by Ankita</h2>
+            <p class="invoice-subtitle">Handpicked Apparel</p>
+        </div>
+        <div class="invoice-meta">
+            <p><strong>Bill #{{ bill.id }}</strong></p>
+            <p>{{ bill.created_at }}</p>
+            <p>Payment: {{ bill.payment_method }}</p>
+        </div>
+    </div>
+
+    {% if bill.customer_name or bill.customer_phone %}
+    <div class="invoice-customer">
+        <h4>Customer Details</h4>
+        {% if bill.customer_name %}<p><strong>Name:</strong> {{ bill.customer_name }}</p>{% endif %}
+        {% if bill.customer_phone %}<p><strong>Phone:</strong> {{ bill.customer_phone }}</p>{% endif %}
+    </div>
+    {% endif %}
+
+    <table class="invoice-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Unit Price</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ item.product_name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>₹{{ "%.2f"|format(item.unit_price) }}</td>
+                <td>₹{{ "%.2f"|format(item.total_price) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="invoice-totals">
+        <div class="summary-row"><span>Subtotal</span><span>₹{{ "%.2f"|format(bill.subtotal) }}</span></div>
+        {% if bill.discount_amount > 0 %}
+        <div class="summary-row"><span>Discount ({{ bill.discount_percent }}%)</span><span>-₹{{ "%.2f"|format(bill.discount_amount) }}</span></div>
+        {% endif %}
+        {% if bill.tax_amount > 0 %}
+        <div class="summary-row"><span>Tax/GST ({{ bill.tax_percent }}%)</span><span>+₹{{ "%.2f"|format(bill.tax_amount) }}</span></div>
+        {% endif %}
+        <div class="summary-row summary-total"><span>Total</span><span>₹{{ "%.2f"|format(bill.total) }}</span></div>
+    </div>
+
+    <div class="invoice-footer">
+        <p>Thank you for shopping at <strong>Gulmohar by Ankita</strong> — Handpicked Apparel!</p>
+    </div>
+</div>
+
+{% if refunds %}
+<div class="card">
+    <h3 class="card-title">🔄 Refunds & Exchanges for this Bill</h3>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Refund #</th>
+                    <th>Type</th>
+                    <th>Reason</th>
+                    <th>Refund Amount</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in refunds %}
+                <tr>
+                    <td><strong>#{{ r.id }}</strong></td>
+                    <td><span class="badge {% if r.type == 'refund' %}badge-danger{% elif r.type == 'exchange' %}badge-info{% else %}badge-success{% endif %}">{{ r.type|capitalize }}</span></td>
+                    <td>{{ r.reason or '—' }}</td>
+                    <td>{% if r.refund_amount > 0 %}₹{{ "%.2f"|format(r.refund_amount) }}{% else %}—{% endif %}</td>
+                    <td>{{ r.created_at }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

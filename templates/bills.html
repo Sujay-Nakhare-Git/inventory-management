@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Bills History — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Bills History</h2>
+    <a href="{{ url_for('billing') }}" class="btn btn-primary">+ New Bill</a>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Bill #</th>
+                    <th>Customer</th>
+                    <th>Phone</th>
+                    <th>Subtotal</th>
+                    <th>Discount</th>
+                    <th>Tax</th>
+                    <th>Total</th>
+                    <th>Payment</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in bills %}
+                <tr>
+                    <td><strong>#{{ b.id }}</strong></td>
+                    <td>{{ b.customer_name or 'Walk-in' }}</td>
+                    <td>{{ b.customer_phone or '—' }}</td>
+                    <td>₹{{ "%.2f"|format(b.subtotal) }}</td>
+                    <td>{% if b.discount_amount > 0 %}-₹{{ "%.2f"|format(b.discount_amount) }}{% else %}—{% endif %}</td>
+                    <td>{% if b.tax_amount > 0 %}+₹{{ "%.2f"|format(b.tax_amount) }}{% else %}—{% endif %}</td>
+                    <td><strong>₹{{ "%.2f"|format(b.total) }}</strong></td>
+                    <td><span class="badge badge-info">{{ b.payment_method }}</span></td>
+                    <td>{{ b.created_at }}</td>
+                    <td class="actions">
+                        <a href="{{ url_for('bill_detail', bill_id=b.id) }}" class="btn btn-sm">View</a>
+                        <a href="{{ url_for('new_refund', bill_id=b.id) }}" class="btn btn-sm btn-outline" title="Refund/Exchange">🔄</a>
+                        <form method="POST" action="{{ url_for('delete_bill', bill_id=b.id) }}" style="display:inline" onsubmit="return confirm('Delete Bill #{{ b.id }}? Stock will be restored.')">
+                            <button type="submit" class="btn btn-sm btn-danger">✕</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="10" class="empty-state">No bills yet. Create your first bill!</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
