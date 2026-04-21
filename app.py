@@ -687,6 +687,39 @@ def admin_logout():
     return redirect(url_for("dashboard"))
 
 
+@app.route("/admin/clean-all-data", methods=["POST"])
+def clean_all_data():
+    if not admin_authenticated():
+        flash("Admin access required.", "error")
+        return redirect(url_for("admin"))
+
+    password = request.form.get("password", "")
+    entered_hash = hashlib.sha256(password.encode()).hexdigest()
+    if not hmac.compare_digest(entered_hash, ADMIN_PASSWORD_HASH):
+        flash("Incorrect admin password. Data was NOT cleared.", "error")
+        return redirect(url_for("admin"))
+
+    confirm = request.form.get("confirm", "")
+    if confirm != "DELETE ALL DATA":
+        flash("Confirmation text did not match. Data was NOT cleared.", "error")
+        return redirect(url_for("admin"))
+
+    db = get_db()
+    db.executescript("""
+        DELETE FROM refund_items;
+        DELETE FROM refunds;
+        DELETE FROM bill_items;
+        DELETE FROM bills;
+        DELETE FROM expenses;
+        DELETE FROM updates;
+    """)
+    db.commit()
+
+    log_update("All Data Cleared", "Admin cleared all history and data.", "admin")
+    flash("All history and data have been permanently deleted.", "success")
+    return redirect(url_for("admin"))
+
+
 @app.route("/daily-summary")
 def daily_summary():
     if not admin_authenticated():
