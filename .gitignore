@@ -1,0 +1,4 @@
+boutique.db
+__pycache__/
+*.pyc
+static/product_images/
