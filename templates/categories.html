@@ -28,22 +28,43 @@
             </thead>
             <tbody>
                 {% for c in categories %}
-                <tr>
-                    <form method="POST" action="{{ url_for('edit_category', cat_id=c.id) }}">
-                        <td><input type="text" name="name" value="{{ c.name }}" class="input" required style="min-width:120px;"></td>
-                        <td><input type="text" name="sku_code" value="{{ c.sku_code or '' }}" class="input" maxlength="5" style="width:100px;text-transform:uppercase;" placeholder="e.g. SAR"></td>
-                        <td>{{ c.product_count }}</td>
-                        <td style="display:flex;gap:0.3rem;">
-                            <button type="submit" class="btn btn-sm btn-primary">Save</button>
-                    </form>
-                            <form method="POST" action="{{ url_for('delete_category', cat_id=c.id) }}" style="display:inline" onsubmit="return confirm('Delete this category?')">
-                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                            </form>
-                        </td>
+                <tr id="row-{{ c.id }}">
+                    <td>
+                        <span class="display-text" data-id="{{ c.id }}">{{ c.name }}</span>
+                        <form method="POST" action="{{ url_for('edit_category', cat_id=c.id) }}" class="edit-form" data-id="{{ c.id }}" style="display:none;">
+                            <input type="text" name="name" value="{{ c.name }}" class="input" required style="min-width:120px;">
+                    </td>
+                    <td>
+                        <span class="display-text" data-id="{{ c.id }}">{{ c.sku_code or '—' }}</span>
+                            <input type="text" name="sku_code" value="{{ c.sku_code or '' }}" class="input edit-form" data-id="{{ c.id }}" maxlength="5" style="width:100px;text-transform:uppercase;display:none;" placeholder="e.g. SAR">
+                    </td>
+                    <td>{{ c.product_count }}</td>
+                    <td style="display:flex;gap:0.3rem;">
+                        <button type="button" class="btn btn-sm btn-primary edit-btn" data-id="{{ c.id }}" onclick="enableEdit({{ c.id }})">Edit</button>
+                            <button type="submit" class="btn btn-sm btn-primary edit-form" data-id="{{ c.id }}" style="display:none;">Save</button>
+                        </form>
+                        <button type="button" class="btn btn-sm edit-form" data-id="{{ c.id }}" style="display:none;" onclick="cancelEdit({{ c.id }}, '{{ c.name }}', '{{ c.sku_code or '' }}')">Cancel</button>
+                        <form method="POST" action="{{ url_for('delete_category', cat_id=c.id) }}" style="display:inline" onsubmit="return confirm('Delete this category?')">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+
+<script>
+function enableEdit(id) {
+    document.querySelectorAll('.display-text[data-id="'+id+'"]').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.edit-form[data-id="'+id+'"]').forEach(el => el.style.display = '');
+    document.querySelector('.edit-btn[data-id="'+id+'"]').style.display = 'none';
+}
+function cancelEdit(id, name, sku) {
+    document.querySelectorAll('.display-text[data-id="'+id+'"]').forEach(el => el.style.display = '');
+    document.querySelectorAll('.edit-form[data-id="'+id+'"]').forEach(el => el.style.display = 'none');
+    document.querySelector('.edit-btn[data-id="'+id+'"]').style.display = '';
+}
+</script>
 {% endblock %}
