@@ -110,6 +110,8 @@ def init_db():
             category TEXT NOT NULL DEFAULT 'General',
             amount REAL NOT NULL DEFAULT 0,
             payment_mode TEXT NOT NULL DEFAULT 'Cash',
+            vendor TEXT,
+            expense_date TEXT DEFAULT (date('now','localtime')),
             created_at TEXT DEFAULT (datetime('now','localtime'))
         );
 
@@ -145,11 +147,15 @@ def init_db():
         db.execute("ALTER TABLE products ADD COLUMN image_filename TEXT")
         db.commit()
 
-    # Add payment_mode column to expenses if upgrading
+    # Add payment_mode, vendor, expense_date columns to expenses if upgrading
     expense_cols = [r[1] for r in db.execute("PRAGMA table_info(expenses)").fetchall()]
     if "payment_mode" not in expense_cols:
         db.execute("ALTER TABLE expenses ADD COLUMN payment_mode TEXT NOT NULL DEFAULT 'Cash'")
-        db.commit()
+    if "vendor" not in expense_cols:
+        db.execute("ALTER TABLE expenses ADD COLUMN vendor TEXT")
+    if "expense_date" not in expense_cols:
+        db.execute("ALTER TABLE expenses ADD COLUMN expense_date TEXT DEFAULT (date('now','localtime'))")
+    db.commit()
 
     # Seed default categories if empty
     count = db.execute("SELECT COUNT(*) FROM categories").fetchone()[0]
@@ -933,12 +939,14 @@ def add_expense():
     description = request.form.get("description", "").strip()
     category = request.form.get("category", "General")
     payment_mode = request.form.get("payment_mode", "Cash")
+    vendor = request.form.get("vendor", "").strip() or None
+    expense_date = request.form.get("expense_date", "").strip() or datetime.now().strftime("%Y-%m-%d")
     amount = float(request.form.get("amount", 0))
     if title and amount > 0:
         db.execute(
-            "INSERT INTO expenses (title, description, category, amount, payment_mode) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (title, description, category, amount, payment_mode),
+            "INSERT INTO expenses (title, description, category, amount, payment_mode, vendor, expense_date) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (title, description, category, amount, payment_mode, vendor, expense_date),
         )
         db.commit()
         log_update("Expense Added", f"{title} — ₹{amount} ({category}, {payment_mode})", "expense")
