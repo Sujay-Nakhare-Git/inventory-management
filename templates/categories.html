@@ -8,8 +8,9 @@
 
 <div class="card form-card">
     <h3 class="card-title">Add New Category</h3>
-    <form method="POST" class="inline-form">
-        <input type="text" name="name" placeholder="Category name..." class="input" required>
+    <form method="POST" class="inline-form" style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-end;">
+        <input type="text" name="name" placeholder="Category name..." class="input" required style="flex:1;min-width:150px;">
+        <input type="text" name="sku_code" placeholder="SKU Code (e.g. SAR)" class="input" maxlength="5" style="width:140px;text-transform:uppercase;">
         <button type="submit" class="btn btn-primary">Add Category</button>
     </form>
 </div>
@@ -20,20 +21,25 @@
             <thead>
                 <tr>
                     <th>Category Name</th>
+                    <th>SKU Code</th>
                     <th>Products</th>
-                    <th>Action</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for c in categories %}
                 <tr>
-                    <td><strong>{{ c.name }}</strong></td>
-                    <td>{{ c.product_count }}</td>
-                    <td>
-                        <form method="POST" action="{{ url_for('delete_category', cat_id=c.id) }}" style="display:inline" onsubmit="return confirm('Delete this category?')">
-                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                        </form>
-                    </td>
+                    <form method="POST" action="{{ url_for('edit_category', cat_id=c.id) }}">
+                        <td><input type="text" name="name" value="{{ c.name }}" class="input" required style="min-width:120px;"></td>
+                        <td><input type="text" name="sku_code" value="{{ c.sku_code or '' }}" class="input" maxlength="5" style="width:100px;text-transform:uppercase;" placeholder="e.g. SAR"></td>
+                        <td>{{ c.product_count }}</td>
+                        <td style="display:flex;gap:0.3rem;">
+                            <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                    </form>
+                            <form method="POST" action="{{ url_for('delete_category', cat_id=c.id) }}" style="display:inline" onsubmit="return confirm('Delete this category?')">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                        </td>
                 </tr>
                 {% endfor %}
             </tbody>

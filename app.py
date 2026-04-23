@@ -49,7 +49,8 @@ def init_db():
     db.executescript("""
         CREATE TABLE IF NOT EXISTS categories (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE
+            name TEXT NOT NULL UNIQUE,
+            sku_code TEXT
         );
 
         CREATE TABLE IF NOT EXISTS products (
@@ -157,12 +158,23 @@ def init_db():
         db.execute("ALTER TABLE expenses ADD COLUMN expense_date TEXT")
     db.commit()
 
+    # Add sku_code column to categories if upgrading
+    cat_cols = [r[1] for r in db.execute("PRAGMA table_info(categories)").fetchall()]
+    if "sku_code" not in cat_cols:
+        db.execute("ALTER TABLE categories ADD COLUMN sku_code TEXT")
+        db.commit()
+
     # Seed default categories if empty
     count = db.execute("SELECT COUNT(*) FROM categories").fetchone()[0]
     if count == 0:
-        for cat in ["Sarees", "Kurtis", "Lehengas", "Suits", "Dupattas",
-                     "Blouses", "Accessories", "Western Wear", "Kids Wear", "Others"]:
-            db.execute("INSERT INTO categories (name) VALUES (?)", (cat,))
+        seed_cats = [
+            ("Sarees", "SAR"), ("Kurtis", "KUR"), ("Lehengas", "LEH"),
+            ("Suits", "SUT"), ("Dupattas", "DUP"), ("Blouses", "BLS"),
+            ("Accessories", "ACC"), ("Western Wear", "WES"),
+            ("Kids Wear", "KID"), ("Others", "OTH"),
+        ]
+        for cat_name, cat_sku in seed_cats:
+            db.execute("INSERT INTO categories (name, sku_code) VALUES (?, ?)", (cat_name, cat_sku))
 
     db.commit()
 
@@ -263,6 +275,15 @@ def add_product():
         selling_price = float(request.form.get("selling_price", 0))
         quantity = int(request.form.get("quantity", 0))
         low_stock_threshold = int(request.form.get("low_stock_threshold", 5))
+
+        # Auto-generate SKU if not provided and category is selected
+        if not sku and category_id:
+            cat = db.execute("SELECT sku_code FROM categories WHERE id = ?", (category_id,)).fetchone()
+            if cat and cat["sku_code"]:
+                count = db.execute(
+                    "SELECT COUNT(*) FROM products WHERE category_id = ?", (category_id,)
+                ).fetchone()[0]
+                sku = f"{cat['sku_code']}-{count + 1:04d}"
 
         image_filename = None
         file = request.files.get("image")
@@ -380,8 +401,9 @@ def categories():
     db = get_db()
     if request.method == "POST":
         name = request.form["name"].strip()
+        sku_code = request.form.get("sku_code", "").strip().upper() or None
         if name:
-            db.execute("INSERT OR IGNORE INTO categories (name) VALUES (?)", (name,))
+            db.execute("INSERT OR IGNORE INTO categories (name, sku_code) VALUES (?, ?)", (name, sku_code))
             db.commit()
             flash(f"Category '{name}' added!", "success")
         return redirect(url_for("categories"))
@@ -390,6 +412,18 @@ def categories():
         "LEFT JOIN products p ON c.id = p.category_id GROUP BY c.id ORDER BY c.name"
     ).fetchall()
     return render_template("categories.html", categories=cats)
+
+
+@app.route("/categories/edit/<int:cat_id>", methods=["POST"])
+def edit_category(cat_id):
+    db = get_db()
+    name = request.form.get("name", "").strip()
+    sku_code = request.form.get("sku_code", "").strip().upper() or None
+    if name:
+        db.execute("UPDATE categories SET name = ?, sku_code = ? WHERE id = ?", (name, sku_code, cat_id))
+        db.commit()
+        flash(f"Category '{name}' updated!", "success")
+    return redirect(url_for("categories"))
 
 
 @app.route("/categories/delete/<int:cat_id>", methods=["POST"])
@@ -411,6 +445,18 @@ def billing():
         "WHERE p.quantity > 0 ORDER BY p.name"
     ).fetchall()
     return render_template("billing.html", products=products)
+
+
+@app.route("/api/next-sku/<int:category_id>")
+def api_next_sku(category_id):
+    db = get_db()
+    cat = db.execute("SELECT sku_code FROM categories WHERE id = ?", (category_id,)).fetchone()
+    if not cat or not cat["sku_code"]:
+        return jsonify({"sku": ""})
+    count = db.execute(
+        "SELECT COUNT(*) FROM products WHERE category_id = ?", (category_id,)
+    ).fetchone()[0]
+    return jsonify({"sku": f"{cat['sku_code']}-{count + 1:04d}"})
 
 
 @app.route("/api/products")
