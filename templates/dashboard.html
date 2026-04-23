@@ -60,21 +60,8 @@
 </div>
 {% endif %}
 
-{% if recent_updates %}
-<div class="card">
-    <h3 class="card-title">🔔 Recent Updates</h3>
-    <div class="updates-list">
-        {% for u in recent_updates %}
-        <div class="update-item">
-            <span class="update-badge update-{{ u.type }}">{{ u.type }}</span>
-            <div class="update-content">
-                <strong>{{ u.title }}</strong>
-                {% if u.description %}<p>{{ u.description }}</p>{% endif %}
-            </div>
-            <span class="update-time">{{ u.created_at }}</span>
-        </div>
-        {% endfor %}
-    </div>
+<div class="card" style="text-align:center;padding:2rem;">
+    <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Gulmohar by Ankita" style="max-width:280px;width:100%;border-radius:12px;">
+    <p style="margin-top:1rem;color:#6b7280;font-family:'Playfair Display',serif;font-size:1.15rem;">Gulmohar by Ankita — Handpicked Apparel</p>
 </div>
-{% endif %}
 {% endblock %}
