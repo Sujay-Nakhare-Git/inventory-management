@@ -111,7 +111,7 @@ def init_db():
             amount REAL NOT NULL DEFAULT 0,
             payment_mode TEXT NOT NULL DEFAULT 'Cash',
             vendor TEXT,
-            expense_date TEXT DEFAULT (date('now','localtime')),
+            expense_date TEXT,
             created_at TEXT DEFAULT (datetime('now','localtime'))
         );
 
@@ -154,7 +154,7 @@ def init_db():
     if "vendor" not in expense_cols:
         db.execute("ALTER TABLE expenses ADD COLUMN vendor TEXT")
     if "expense_date" not in expense_cols:
-        db.execute("ALTER TABLE expenses ADD COLUMN expense_date TEXT DEFAULT (date('now','localtime'))")
+        db.execute("ALTER TABLE expenses ADD COLUMN expense_date TEXT")
     db.commit()
 
     # Seed default categories if empty
