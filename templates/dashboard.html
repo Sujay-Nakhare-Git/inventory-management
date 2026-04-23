@@ -7,6 +7,10 @@
     <p class="page-desc">Welcome back! Here's your Boutique overview.</p>
 </div>
 
+<div class="card" style="text-align:center;padding:0;overflow:hidden;">
+    <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Gulmohar by Ankita" style="width:100%;display:block;border-radius:8px;">
+</div>
+
 <div class="stats-grid">
     <div class="stat-card stat-coral">
         <div class="stat-value">{{ total_products }}</div>
@@ -20,10 +24,10 @@
         <div class="stat-value">{{ low_stock }}</div>
         <div class="stat-label">Low Stock Alerts</div>
     </div>
-    <div class="stat-card stat-green">
+    <!-- <div class="stat-card stat-green">
         <div class="stat-value">₹{{ "%.2f"|format(today_sales) }}</div>
         <div class="stat-label">Today's Sales</div>
-    </div>
+    </div> -->
     <div class="stat-card stat-blue">
         <div class="stat-value">{{ total_bills }}</div>
         <div class="stat-label">Total Bills</div>
@@ -60,7 +64,4 @@
 </div>
 {% endif %}
 
-<div class="card" style="text-align:center;padding:0;overflow:hidden;">
-    <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Gulmohar by Ankita" style="width:100%;display:block;border-radius:8px;">
-</div>
 {% endblock %}
