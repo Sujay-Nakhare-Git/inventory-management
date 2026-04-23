@@ -8,7 +8,7 @@
 </div>
 
 <div class="card form-card">
-    <form method="POST">
+    <form method="POST" enctype="multipart/form-data">
         <div class="form-grid">
             <div class="form-group">
                 <label for="name">Product Name *</label>
@@ -52,10 +52,45 @@
                 <input type="number" id="low_stock_threshold" name="low_stock_threshold" class="input" min="0" value="{{ product.low_stock_threshold if product else '5' }}">
             </div>
         </div>
+
+        <div class="form-group" style="margin-top:1rem;">
+            <label>Product Image</label>
+            {% if product and product.image_filename %}
+            <div style="margin-bottom:0.75rem;">
+                <img id="image-preview" src="{{ url_for('static', filename='product_images/' ~ product.image_filename) }}"
+                     alt="{{ product.name }}" style="max-height:160px;max-width:240px;border-radius:8px;border:1px solid #e5e7eb;object-fit:cover;">
+                <div style="margin-top:0.4rem;">
+                    <label style="font-size:0.85rem;color:#6b7280;">
+                        <input type="checkbox" name="remove_image" value="1" style="margin-right:4px;">
+                        Remove current image
+                    </label>
+                </div>
+            </div>
+            {% else %}
+            <img id="image-preview" src="" alt="" style="display:none;max-height:160px;max-width:240px;border-radius:8px;border:1px solid #e5e7eb;object-fit:cover;margin-bottom:0.5rem;">
+            {% endif %}
+            <input type="file" id="image" name="image" accept="image/png,image/jpeg,image/webp,image/gif" class="input"
+                   style="padding:0.35rem;" onchange="previewImage(event)">
+            <small style="color:#6b7280;">PNG, JPG, WEBP or GIF — max 5 MB</small>
+        </div>
+
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">{{ "Update" if product else "Add" }} Product</button>
             <a href="{{ url_for('inventory') }}" class="btn btn-outline">Cancel</a>
         </div>
     </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function previewImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const preview = document.getElementById('image-preview');
+    preview.src = URL.createObjectURL(file);
+    preview.style.display = 'block';
+    preview.onload = () => URL.revokeObjectURL(preview.src);
+}
+</script>
 {% endblock %}

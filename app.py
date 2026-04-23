@@ -5,6 +5,7 @@ import sqlite3
 import hashlib
 import hmac
 from datetime import datetime
+from werkzeug.utils import secure_filename
 from flask import (
     Flask, render_template, request, redirect, url_for,
     flash, jsonify, g, session, Response
@@ -14,6 +15,18 @@ app = Flask(__name__)
 app.secret_key = os.urandom(32)
 
 DATABASE = os.path.join(app.root_path, "boutique.db")
+UPLOAD_FOLDER = os.path.join(app.root_path, "static", "product_images")
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
+app.config["MAX_CONTENT_LENGTH"] = MAX_IMAGE_SIZE
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+
+def allowed_file(filename):
+    return (
+        "." in filename
+        and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    )
 
 
 def get_db():
@@ -50,6 +63,7 @@ def init_db():
             selling_price REAL NOT NULL DEFAULT 0,
             quantity INTEGER NOT NULL DEFAULT 0,
             low_stock_threshold INTEGER NOT NULL DEFAULT 5,
+            image_filename TEXT,
             created_at TEXT DEFAULT (datetime('now','localtime')),
             updated_at TEXT DEFAULT (datetime('now','localtime')),
             FOREIGN KEY (category_id) REFERENCES categories(id)
@@ -123,6 +137,12 @@ def init_db():
             FOREIGN KEY (product_id) REFERENCES products(id)
         );
     """)
+
+    # Add image_filename column if upgrading an existing DB
+    existing_cols = [r[1] for r in db.execute("PRAGMA table_info(products)").fetchall()]
+    if "image_filename" not in existing_cols:
+        db.execute("ALTER TABLE products ADD COLUMN image_filename TEXT")
+        db.commit()
 
     # Seed default categories if empty
     count = db.execute("SELECT COUNT(*) FROM categories").fetchone()[0]
@@ -231,12 +251,25 @@ def add_product():
         quantity = int(request.form.get("quantity", 0))
         low_stock_threshold = int(request.form.get("low_stock_threshold", 5))
 
+        image_filename = None
+        file = request.files.get("image")
+        if file and file.filename:
+            if not allowed_file(file.filename):
+                flash("Invalid image type. Allowed: PNG, JPG, JPEG, WEBP, GIF.", "error")
+                categories = db.execute("SELECT * FROM categories ORDER BY name").fetchall()
+                return render_template("product_form.html", product=None, categories=categories)
+            filename = secure_filename(file.filename)
+            # Prefix with timestamp to avoid name collisions
+            filename = f"{int(datetime.now().timestamp())}_{filename}"
+            file.save(os.path.join(UPLOAD_FOLDER, filename))
+            image_filename = filename
+
         db.execute(
             "INSERT INTO products (name, category_id, sku, size, color, "
-            "cost_price, selling_price, quantity, low_stock_threshold) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "cost_price, selling_price, quantity, low_stock_threshold, image_filename) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (name, category_id, sku, size, color, cost_price,
-             selling_price, quantity, low_stock_threshold),
+             selling_price, quantity, low_stock_threshold, image_filename),
         )
         db.commit()
         log_update(
@@ -270,12 +303,38 @@ def edit_product(product_id):
         quantity = int(request.form.get("quantity", 0))
         low_stock_threshold = int(request.form.get("low_stock_threshold", 5))
 
+        image_filename = product["image_filename"]  # keep existing by default
+
+        # Remove image if requested
+        if request.form.get("remove_image") == "1" and image_filename:
+            old_path = os.path.join(UPLOAD_FOLDER, image_filename)
+            if os.path.isfile(old_path):
+                os.remove(old_path)
+            image_filename = None
+
+        # Replace with new upload
+        file = request.files.get("image")
+        if file and file.filename:
+            if not allowed_file(file.filename):
+                flash("Invalid image type. Allowed: PNG, JPG, JPEG, WEBP, GIF.", "error")
+                categories = db.execute("SELECT * FROM categories ORDER BY name").fetchall()
+                return render_template("product_form.html", product=product, categories=categories)
+            # Remove old file
+            if image_filename:
+                old_path = os.path.join(UPLOAD_FOLDER, image_filename)
+                if os.path.isfile(old_path):
+                    os.remove(old_path)
+            filename = secure_filename(file.filename)
+            filename = f"{int(datetime.now().timestamp())}_{filename}"
+            file.save(os.path.join(UPLOAD_FOLDER, filename))
+            image_filename = filename
+
         db.execute(
             "UPDATE products SET name=?, category_id=?, sku=?, size=?, color=?, "
             "cost_price=?, selling_price=?, quantity=?, low_stock_threshold=?, "
-            "updated_at=datetime('now','localtime') WHERE id=?",
+            "image_filename=?, updated_at=datetime('now','localtime') WHERE id=?",
             (name, category_id, sku, size, color, cost_price,
-             selling_price, quantity, low_stock_threshold, product_id),
+             selling_price, quantity, low_stock_threshold, image_filename, product_id),
         )
         db.commit()
         log_update("Product Updated", f"Updated '{name}'", "inventory")
@@ -289,8 +348,12 @@ def edit_product(product_id):
 @app.route("/inventory/delete/<int:product_id>", methods=["POST"])
 def delete_product(product_id):
     db = get_db()
-    product = db.execute("SELECT name FROM products WHERE id = ?", (product_id,)).fetchone()
+    product = db.execute("SELECT name, image_filename FROM products WHERE id = ?", (product_id,)).fetchone()
     if product:
+        if product["image_filename"]:
+            img_path = os.path.join(UPLOAD_FOLDER, product["image_filename"])
+            if os.path.isfile(img_path):
+                os.remove(img_path)
         db.execute("DELETE FROM products WHERE id = ?", (product_id,))
         db.commit()
         log_update("Product Deleted", f"Deleted '{product['name']}'", "inventory")
