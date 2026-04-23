@@ -109,6 +109,7 @@ def init_db():
             description TEXT,
             category TEXT NOT NULL DEFAULT 'General',
             amount REAL NOT NULL DEFAULT 0,
+            payment_mode TEXT NOT NULL DEFAULT 'Cash',
             created_at TEXT DEFAULT (datetime('now','localtime'))
         );
 
@@ -142,6 +143,12 @@ def init_db():
     existing_cols = [r[1] for r in db.execute("PRAGMA table_info(products)").fetchall()]
     if "image_filename" not in existing_cols:
         db.execute("ALTER TABLE products ADD COLUMN image_filename TEXT")
+        db.commit()
+
+    # Add payment_mode column to expenses if upgrading
+    expense_cols = [r[1] for r in db.execute("PRAGMA table_info(expenses)").fetchall()]
+    if "payment_mode" not in expense_cols:
+        db.execute("ALTER TABLE expenses ADD COLUMN payment_mode TEXT NOT NULL DEFAULT 'Cash'")
         db.commit()
 
     # Seed default categories if empty
@@ -925,15 +932,16 @@ def add_expense():
     title = request.form["title"].strip()
     description = request.form.get("description", "").strip()
     category = request.form.get("category", "General")
+    payment_mode = request.form.get("payment_mode", "Cash")
     amount = float(request.form.get("amount", 0))
     if title and amount > 0:
         db.execute(
-            "INSERT INTO expenses (title, description, category, amount) "
-            "VALUES (?, ?, ?, ?)",
-            (title, description, category, amount),
+            "INSERT INTO expenses (title, description, category, amount, payment_mode) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (title, description, category, amount, payment_mode),
         )
         db.commit()
-        log_update("Expense Added", f"{title} — ₹{amount} ({category})", "expense")
+        log_update("Expense Added", f"{title} — ₹{amount} ({category}, {payment_mode})", "expense")
         flash(f"Expense '₹{amount} — {title}' added!", "success")
     else:
         flash("Please provide a title and valid amount.", "error")

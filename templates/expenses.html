@@ -37,6 +37,17 @@
                     <option value="Other">Other</option>
                 </select>
             </div>
+            <div class="form-group">
+                <label for="payment_mode">Payment Mode</label>
+                <select id="payment_mode" name="payment_mode" class="input">
+                    <option value="Cash" selected>Cash</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Card">Card</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
             <div class="form-group" style="grid-column: 1/-1;">
                 <label for="description">Description</label>
                 <textarea id="description" name="description" class="input" rows="2" placeholder="Optional details..."></textarea>
@@ -76,6 +87,7 @@
                     <th>Date</th>
                     <th>Title</th>
                     <th>Category</th>
+                    <th>Payment Mode</th>
                     <th>Description</th>
                     <th>Amount (₹)</th>
                     <th>Action</th>
@@ -87,6 +99,7 @@
                     <td>{{ e.created_at }}</td>
                     <td><strong>{{ e.title }}</strong></td>
                     <td><span class="badge badge-info">{{ e.category }}</span></td>
+                    <td>{{ e.payment_mode or 'Cash' }}</td>
                     <td>{{ e.description or '—' }}</td>
                     <td><strong>₹{{ "%.2f"|format(e.amount) }}</strong></td>
                     <td>
@@ -96,7 +109,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="6" class="empty-state">No expenses recorded yet.</td></tr>
+                <tr><td colspan="7" class="empty-state">No expenses recorded yet.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
