@@ -17,8 +17,11 @@ app.secret_key = os.urandom(32)
 DATABASE = os.path.join(app.root_path, "boutique.db")
 EXPENSE_BILL_UPLOAD_DIR = os.path.join(app.root_path, "static", "expense_bills")
 ALLOWED_BILL_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
+PRODUCT_IMAGE_UPLOAD_DIR = os.path.join(app.root_path, "static", "product_images")
+ALLOWED_PRODUCT_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
 
 os.makedirs(EXPENSE_BILL_UPLOAD_DIR, exist_ok=True)
+os.makedirs(PRODUCT_IMAGE_UPLOAD_DIR, exist_ok=True)
 
 
 def get_db():
@@ -143,6 +146,12 @@ def init_db():
     if "sku_code" not in category_columns:
         db.execute("ALTER TABLE categories ADD COLUMN sku_code TEXT")
 
+    product_columns = {
+        row["name"] for row in db.execute("PRAGMA table_info(products)").fetchall()
+    }
+    if "image_filename" not in product_columns:
+        db.execute("ALTER TABLE products ADD COLUMN image_filename TEXT")
+
     expense_columns = {
         row["name"] for row in db.execute("PRAGMA table_info(expenses)").fetchall()
     }
@@ -187,6 +196,29 @@ def save_expense_bill_image(uploaded_file, title):
     saved_path = os.path.join(EXPENSE_BILL_UPLOAD_DIR, filename)
     uploaded_file.save(saved_path)
     return f"expense_bills/{filename}"
+
+
+def allowed_product_image(filename):
+    return (
+        "." in filename and
+        filename.rsplit(".", 1)[1].lower() in ALLOWED_PRODUCT_IMAGE_EXTENSIONS
+    )
+
+
+def save_product_image(uploaded_file, product_name):
+    if not uploaded_file or not uploaded_file.filename:
+        return None
+
+    if not allowed_product_image(uploaded_file.filename):
+        return None
+
+    safe_name = secure_filename(product_name) or "product"
+    extension = uploaded_file.filename.rsplit(".", 1)[1].lower()
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
+    filename = f"{safe_name}_{timestamp}.{extension}"
+    saved_path = os.path.join(PRODUCT_IMAGE_UPLOAD_DIR, filename)
+    uploaded_file.save(saved_path)
+    return filename
 
 
 ADMIN_PASSWORD_HASH = "d1215baec4cf39b5c9cc710527fbbfcb3d4290caaf9b0f095d32198c9d5e28aa"
@@ -271,13 +303,21 @@ def add_product():
         selling_price = float(request.form.get("selling_price", 0))
         quantity = int(request.form.get("quantity", 0))
         low_stock_threshold = int(request.form.get("low_stock_threshold", 5))
+        product_image = request.files.get("image")
+
+        image_filename = None
+        if product_image and product_image.filename:
+            if not allowed_product_image(product_image.filename):
+                flash("Product image must be PNG, JPG, JPEG, WEBP, or GIF.", "error")
+                return redirect(url_for("add_product"))
+            image_filename = save_product_image(product_image, name)
 
         db.execute(
             "INSERT INTO products (name, category_id, sku, size, color, "
-            "cost_price, selling_price, quantity, low_stock_threshold) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "cost_price, selling_price, quantity, low_stock_threshold, image_filename) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (name, category_id, sku, size, color, cost_price,
-             selling_price, quantity, low_stock_threshold),
+             selling_price, quantity, low_stock_threshold, image_filename),
         )
         db.commit()
         log_update(
@@ -310,13 +350,32 @@ def edit_product(product_id):
         selling_price = float(request.form.get("selling_price", 0))
         quantity = int(request.form.get("quantity", 0))
         low_stock_threshold = int(request.form.get("low_stock_threshold", 5))
+        remove_image = request.form.get("remove_image") == "1"
+        product_image = request.files.get("image")
+
+        image_filename = product["image_filename"]
+        if remove_image and image_filename:
+            old_path = os.path.join(PRODUCT_IMAGE_UPLOAD_DIR, image_filename)
+            if os.path.exists(old_path):
+                os.remove(old_path)
+            image_filename = None
+
+        if product_image and product_image.filename:
+            if not allowed_product_image(product_image.filename):
+                flash("Product image must be PNG, JPG, JPEG, WEBP, or GIF.", "error")
+                return redirect(url_for("edit_product", product_id=product_id))
+            if image_filename:
+                old_path = os.path.join(PRODUCT_IMAGE_UPLOAD_DIR, image_filename)
+                if os.path.exists(old_path):
+                    os.remove(old_path)
+            image_filename = save_product_image(product_image, name)
 
         db.execute(
             "UPDATE products SET name=?, category_id=?, sku=?, size=?, color=?, "
-            "cost_price=?, selling_price=?, quantity=?, low_stock_threshold=?, "
+            "cost_price=?, selling_price=?, quantity=?, low_stock_threshold=?, image_filename=?, "
             "updated_at=datetime('now','localtime') WHERE id=?",
             (name, category_id, sku, size, color, cost_price,
-             selling_price, quantity, low_stock_threshold, product_id),
+             selling_price, quantity, low_stock_threshold, image_filename, product_id),
         )
         db.commit()
         log_update("Product Updated", f"Updated '{name}'", "inventory")
@@ -330,8 +389,15 @@ def edit_product(product_id):
 @app.route("/inventory/delete/<int:product_id>", methods=["POST"])
 def delete_product(product_id):
     db = get_db()
-    product = db.execute("SELECT name FROM products WHERE id = ?", (product_id,)).fetchone()
+    product = db.execute(
+        "SELECT name, image_filename FROM products WHERE id = ?",
+        (product_id,),
+    ).fetchone()
     if product:
+        if product["image_filename"]:
+            image_path = os.path.join(PRODUCT_IMAGE_UPLOAD_DIR, product["image_filename"])
+            if os.path.exists(image_path):
+                os.remove(image_path)
         db.execute("DELETE FROM products WHERE id = ?", (product_id,))
         db.commit()
         log_update("Product Deleted", f"Deleted '{product['name']}'", "inventory")
@@ -958,6 +1024,59 @@ def add_expense():
     else:
         flash("Please provide a title and valid amount.", "error")
     return redirect(url_for("expenses"))
+
+
+@app.route("/expenses/edit/<int:expense_id>", methods=["GET", "POST"])
+def edit_expense(expense_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to manage expenses.", "error")
+        return redirect(url_for("admin", next=url_for("expenses")))
+
+    db = get_db()
+    expense = db.execute("SELECT * FROM expenses WHERE id = ?", (expense_id,)).fetchone()
+    if not expense:
+        flash("Expense not found.", "error")
+        return redirect(url_for("expenses"))
+
+    if request.method == "POST":
+        title = request.form["title"].strip()
+        description = request.form.get("description", "").strip()
+        category = request.form.get("category", "General")
+        amount = float(request.form.get("amount", 0))
+        remove_image = request.form.get("remove_bill_image") == "1"
+        bill_image = request.files.get("bill_image")
+
+        if not title or amount <= 0:
+            flash("Please provide a title and valid amount.", "error")
+            return redirect(url_for("edit_expense", expense_id=expense_id))
+
+        bill_image_path = expense["bill_image_path"]
+        if remove_image and bill_image_path:
+            old_path = os.path.join(app.root_path, "static", bill_image_path)
+            if os.path.exists(old_path):
+                os.remove(old_path)
+            bill_image_path = None
+
+        if bill_image and bill_image.filename:
+            if not allowed_bill_image(bill_image.filename):
+                flash("Bill image must be PNG, JPG, JPEG, or WEBP.", "error")
+                return redirect(url_for("edit_expense", expense_id=expense_id))
+            if bill_image_path:
+                old_path = os.path.join(app.root_path, "static", bill_image_path)
+                if os.path.exists(old_path):
+                    os.remove(old_path)
+            bill_image_path = save_expense_bill_image(bill_image, title)
+
+        db.execute(
+            "UPDATE expenses SET title = ?, description = ?, category = ?, amount = ?, bill_image_path = ? WHERE id = ?",
+            (title, description, category, amount, bill_image_path, expense_id),
+        )
+        db.commit()
+        log_update("Expense Updated", f"{title} — ₹{amount} ({category})", "expense")
+        flash("Expense updated.", "success")
+        return redirect(url_for("expenses"))
+
+    return render_template("expense_form.html", expense=expense)
 
 
 @app.route("/expenses/delete/<int:expense_id>", methods=["POST"])
