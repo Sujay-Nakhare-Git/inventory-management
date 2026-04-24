@@ -19,6 +19,10 @@
                 <input type="text" id="title" name="title" class="input" required placeholder="e.g. Rent, Electricity, Fabric Purchase">
             </div>
             <div class="form-group">
+                <label for="vendor">Vendor</label>
+                <input type="text" id="vendor" name="vendor" class="input" placeholder="e.g. ABC Textiles">
+            </div>
+            <div class="form-group">
                 <label for="amount">Amount (₹) *</label>
                 <input type="number" id="amount" name="amount" class="input" step="0.01" min="0.01" required placeholder="0.00">
             </div>
@@ -80,6 +84,7 @@
                 <tr>
                     <th>Date</th>
                     <th>Title</th>
+                    <th>Vendor</th>
                     <th>Category</th>
                     <th>Description</th>
                     <th>Bill</th>
@@ -92,6 +97,7 @@
                 <tr>
                     <td>{{ e.created_at }}</td>
                     <td><strong>{{ e.title }}</strong></td>
+                    <td>{{ e.vendor or '—' }}</td>
                     <td><span class="badge badge-info">{{ e.category }}</span></td>
                     <td>{{ e.description or '—' }}</td>
                     <td>
@@ -112,7 +118,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="7" class="empty-state">No expenses recorded yet.</td></tr>
+                <tr><td colspan="8" class="empty-state">No expenses recorded yet.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

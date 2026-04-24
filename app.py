@@ -108,6 +108,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS expenses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
+            vendor TEXT,
             description TEXT,
             category TEXT NOT NULL DEFAULT 'General',
             amount REAL NOT NULL DEFAULT 0,
@@ -162,6 +163,8 @@ def init_db():
     expense_columns = {
         row["name"] for row in db.execute("PRAGMA table_info(expenses)").fetchall()
     }
+    if "vendor" not in expense_columns:
+        db.execute("ALTER TABLE expenses ADD COLUMN vendor TEXT")
     if "bill_image_path" not in expense_columns:
         db.execute("ALTER TABLE expenses ADD COLUMN bill_image_path TEXT")
 
@@ -1023,8 +1026,8 @@ def expenses():
     query = "SELECT * FROM expenses WHERE 1=1"
     params = []
     if search:
-        query += " AND (title LIKE ? OR description LIKE ?)"
-        params += [f"%{search}%", f"%{search}%"]
+        query += " AND (title LIKE ? OR description LIKE ? OR vendor LIKE ?)"
+        params += [f"%{search}%", f"%{search}%", f"%{search}%"]
     if category:
         query += " AND category = ?"
         params.append(category)
@@ -1049,6 +1052,7 @@ def add_expense():
 
     db = get_db()
     title = request.form["title"].strip()
+    vendor = request.form.get("vendor", "").strip()
     description = request.form.get("description", "").strip()
     category = request.form.get("category", "General")
     amount = float(request.form.get("amount", 0))
@@ -1062,9 +1066,9 @@ def add_expense():
             bill_image_path = save_expense_bill_image(bill_image, title)
 
         db.execute(
-            "INSERT INTO expenses (title, description, category, amount, bill_image_path) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (title, description, category, amount, bill_image_path),
+            "INSERT INTO expenses (title, vendor, description, category, amount, bill_image_path) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (title, vendor or None, description, category, amount, bill_image_path),
         )
         db.commit()
         log_update("Expense Added", f"{title} — ₹{amount} ({category})", "expense")
@@ -1088,6 +1092,7 @@ def edit_expense(expense_id):
 
     if request.method == "POST":
         title = request.form["title"].strip()
+        vendor = request.form.get("vendor", "").strip()
         description = request.form.get("description", "").strip()
         category = request.form.get("category", "General")
         amount = float(request.form.get("amount", 0))
@@ -1116,8 +1121,8 @@ def edit_expense(expense_id):
             bill_image_path = save_expense_bill_image(bill_image, title)
 
         db.execute(
-            "UPDATE expenses SET title = ?, description = ?, category = ?, amount = ?, bill_image_path = ? WHERE id = ?",
-            (title, description, category, amount, bill_image_path, expense_id),
+            "UPDATE expenses SET title = ?, vendor = ?, description = ?, category = ?, amount = ?, bill_image_path = ? WHERE id = ?",
+            (title, vendor or None, description, category, amount, bill_image_path, expense_id),
         )
         db.commit()
         log_update("Expense Updated", f"{title} — ₹{amount} ({category})", "expense")
@@ -1262,9 +1267,9 @@ def export_expenses():
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["ID", "Title", "Description", "Category", "Amount (₹)", "Date"])
+    writer.writerow(["ID", "Title", "Vendor", "Description", "Category", "Amount (₹)", "Date"])
     for r in rows:
-        writer.writerow([r["id"], r["title"], r["description"] or "",
+        writer.writerow([r["id"], r["title"], r["vendor"] or "", r["description"] or "",
                          r["category"], r["amount"], r["created_at"]])
 
     filename = f"expenses_{date or 'all'}.csv"
