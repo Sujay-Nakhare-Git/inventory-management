@@ -565,11 +565,13 @@ textarea.input { resize: vertical; }
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.5);
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     z-index: 1000;
 }
+
+.modal.is-open { display: flex; }
 
 .modal-content {
     background: var(--white);
@@ -583,6 +585,48 @@ textarea.input { resize: vertical; }
 
 .modal-content h3 { font-family: 'Playfair Display', serif; margin-bottom: 1rem; }
 .modal-actions { display: flex; gap: 0.75rem; justify-content: center; margin-top: 1.5rem; }
+
+.image-preview-content {
+    position: relative;
+    max-width: min(90vw, 900px);
+    width: auto;
+    padding: 1.5rem;
+}
+
+.image-preview-content h3 {
+    margin-bottom: 1rem;
+    padding-right: 2rem;
+}
+
+.image-preview-content img {
+    display: block;
+    max-width: min(82vw, 820px);
+    max-height: 75vh;
+    width: auto;
+    height: auto;
+    border-radius: 10px;
+    object-fit: contain;
+    background: var(--gray-100);
+}
+
+.image-preview-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.9rem;
+    border: none;
+    background: transparent;
+    color: var(--gray-700);
+    font-size: 2rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.image-preview-trigger,
+.inventory-thumb-button {
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
 
 /* ── Empty State ─────────────────────────────────────────────────────── */
 .empty-state {
@@ -603,6 +647,72 @@ textarea.input { resize: vertical; }
 }
 
 .update-expense { background: var(--gold-light); color: #b8860b; }
+
+.expense-bill-thumb-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--gray-300);
+    background: var(--white);
+    box-shadow: var(--shadow);
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.expense-bill-thumb-link:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-hover);
+    border-color: var(--emerald);
+}
+
+.expense-bill-thumb {
+    display: block;
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    background: var(--gray-100);
+}
+
+.inventory-thumb-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--gray-300);
+    background: var(--white);
+    box-shadow: var(--shadow);
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.inventory-thumb-button:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-hover);
+    border-color: var(--emerald);
+}
+
+.inventory-thumb-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.inventory-thumb-placeholder {
+    width: 52px;
+    height: 52px;
+    background: #f3f4f6;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    font-size: 1.3rem;
+}
 
 /* ── P&L Login ───────────────────────────────────────────────────────── */
 .pl-login-wrapper {
@@ -858,6 +968,11 @@ textarea.input { resize: vertical; }
     /* Cards */
     .card { padding: 1rem; }
 
+    .expense-bill-thumb {
+        width: 60px;
+        height: 60px;
+    }
+
     /* P&L */
     .pl-grid { grid-template-columns: 1fr; }
     .pl-margins { flex-direction: column; gap: 0.5rem; }
@@ -871,6 +986,14 @@ textarea.input { resize: vertical; }
 
     /* Modal */
     .modal-content { margin: 1rem; }
+    .image-preview-content {
+        width: calc(100vw - 2rem);
+        padding: 1rem;
+    }
+    .image-preview-content img {
+        max-width: 100%;
+        max-height: 70vh;
+    }
 
     /* Admin cards */
     .admin-grid { grid-template-columns: 1fr !important; }

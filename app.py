@@ -5,28 +5,20 @@ import sqlite3
 import hashlib
 import hmac
 from datetime import datetime
-from werkzeug.utils import secure_filename
 from flask import (
     Flask, render_template, request, redirect, url_for,
     flash, jsonify, g, session, Response
 )
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = os.urandom(32)
 
 DATABASE = os.path.join(app.root_path, "boutique.db")
-UPLOAD_FOLDER = os.path.join(app.root_path, "static", "product_images")
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
-MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
-app.config["MAX_CONTENT_LENGTH"] = MAX_IMAGE_SIZE
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+EXPENSE_BILL_UPLOAD_DIR = os.path.join(app.root_path, "static", "expense_bills")
+ALLOWED_BILL_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 
-
-def allowed_file(filename):
-    return (
-        "." in filename
-        and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-    )
+os.makedirs(EXPENSE_BILL_UPLOAD_DIR, exist_ok=True)
 
 
 def get_db():
@@ -49,8 +41,7 @@ def init_db():
     db.executescript("""
         CREATE TABLE IF NOT EXISTS categories (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE,
-            sku_code TEXT
+            name TEXT NOT NULL UNIQUE
         );
 
         CREATE TABLE IF NOT EXISTS products (
@@ -64,7 +55,6 @@ def init_db():
             selling_price REAL NOT NULL DEFAULT 0,
             quantity INTEGER NOT NULL DEFAULT 0,
             low_stock_threshold INTEGER NOT NULL DEFAULT 5,
-            image_filename TEXT,
             created_at TEXT DEFAULT (datetime('now','localtime')),
             updated_at TEXT DEFAULT (datetime('now','localtime')),
             FOREIGN KEY (category_id) REFERENCES categories(id)
@@ -110,9 +100,6 @@ def init_db():
             description TEXT,
             category TEXT NOT NULL DEFAULT 'General',
             amount REAL NOT NULL DEFAULT 0,
-            payment_mode TEXT NOT NULL DEFAULT 'Cash',
-            vendor TEXT,
-            expense_date TEXT,
             created_at TEXT DEFAULT (datetime('now','localtime'))
         );
 
@@ -142,39 +129,18 @@ def init_db():
         );
     """)
 
-    # Add image_filename column if upgrading an existing DB
-    existing_cols = [r[1] for r in db.execute("PRAGMA table_info(products)").fetchall()]
-    if "image_filename" not in existing_cols:
-        db.execute("ALTER TABLE products ADD COLUMN image_filename TEXT")
-        db.commit()
-
-    # Add payment_mode, vendor, expense_date columns to expenses if upgrading
-    expense_cols = [r[1] for r in db.execute("PRAGMA table_info(expenses)").fetchall()]
-    if "payment_mode" not in expense_cols:
-        db.execute("ALTER TABLE expenses ADD COLUMN payment_mode TEXT NOT NULL DEFAULT 'Cash'")
-    if "vendor" not in expense_cols:
-        db.execute("ALTER TABLE expenses ADD COLUMN vendor TEXT")
-    if "expense_date" not in expense_cols:
-        db.execute("ALTER TABLE expenses ADD COLUMN expense_date TEXT")
-    db.commit()
-
-    # Add sku_code column to categories if upgrading
-    cat_cols = [r[1] for r in db.execute("PRAGMA table_info(categories)").fetchall()]
-    if "sku_code" not in cat_cols:
-        db.execute("ALTER TABLE categories ADD COLUMN sku_code TEXT")
-        db.commit()
-
     # Seed default categories if empty
     count = db.execute("SELECT COUNT(*) FROM categories").fetchone()[0]
     if count == 0:
-        seed_cats = [
-            ("Sarees", "SAR"), ("Kurtis", "KUR"), ("Lehengas", "LEH"),
-            ("Suits", "SUT"), ("Dupattas", "DUP"), ("Blouses", "BLS"),
-            ("Accessories", "ACC"), ("Western Wear", "WES"),
-            ("Kids Wear", "KID"), ("Others", "OTH"),
-        ]
-        for cat_name, cat_sku in seed_cats:
-            db.execute("INSERT INTO categories (name, sku_code) VALUES (?, ?)", (cat_name, cat_sku))
+        for cat in ["Sarees", "Kurtis", "Lehengas", "Suits", "Dupattas",
+                     "Blouses", "Accessories", "Western Wear", "Kids Wear", "Others"]:
+            db.execute("INSERT INTO categories (name) VALUES (?)", (cat,))
+
+    expense_columns = {
+        row["name"] for row in db.execute("PRAGMA table_info(expenses)").fetchall()
+    }
+    if "bill_image_path" not in expense_columns:
+        db.execute("ALTER TABLE expenses ADD COLUMN bill_image_path TEXT")
 
     db.commit()
 
@@ -191,6 +157,29 @@ def log_update(title, description, update_type="general"):
         (title, description, update_type),
     )
     db.commit()
+
+
+def allowed_bill_image(filename):
+    return (
+        "." in filename and
+        filename.rsplit(".", 1)[1].lower() in ALLOWED_BILL_IMAGE_EXTENSIONS
+    )
+
+
+def save_expense_bill_image(uploaded_file, title):
+    if not uploaded_file or not uploaded_file.filename:
+        return None
+
+    if not allowed_bill_image(uploaded_file.filename):
+        return None
+
+    safe_title = secure_filename(title) or "expense"
+    extension = uploaded_file.filename.rsplit(".", 1)[1].lower()
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
+    filename = f"{safe_title}_{timestamp}.{extension}"
+    saved_path = os.path.join(EXPENSE_BILL_UPLOAD_DIR, filename)
+    uploaded_file.save(saved_path)
+    return f"expense_bills/{filename}"
 
 
 ADMIN_PASSWORD_HASH = "d1215baec4cf39b5c9cc710527fbbfcb3d4290caaf9b0f095d32198c9d5e28aa"
@@ -276,34 +265,12 @@ def add_product():
         quantity = int(request.form.get("quantity", 0))
         low_stock_threshold = int(request.form.get("low_stock_threshold", 5))
 
-        # Auto-generate SKU if not provided and category is selected
-        if not sku and category_id:
-            cat = db.execute("SELECT sku_code FROM categories WHERE id = ?", (category_id,)).fetchone()
-            if cat and cat["sku_code"]:
-                count = db.execute(
-                    "SELECT COUNT(*) FROM products WHERE category_id = ?", (category_id,)
-                ).fetchone()[0]
-                sku = f"{cat['sku_code']}-{count + 1:04d}"
-
-        image_filename = None
-        file = request.files.get("image")
-        if file and file.filename:
-            if not allowed_file(file.filename):
-                flash("Invalid image type. Allowed: PNG, JPG, JPEG, WEBP, GIF.", "error")
-                categories = db.execute("SELECT * FROM categories ORDER BY name").fetchall()
-                return render_template("product_form.html", product=None, categories=categories)
-            filename = secure_filename(file.filename)
-            # Prefix with timestamp to avoid name collisions
-            filename = f"{int(datetime.now().timestamp())}_{filename}"
-            file.save(os.path.join(UPLOAD_FOLDER, filename))
-            image_filename = filename
-
         db.execute(
             "INSERT INTO products (name, category_id, sku, size, color, "
-            "cost_price, selling_price, quantity, low_stock_threshold, image_filename) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "cost_price, selling_price, quantity, low_stock_threshold) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (name, category_id, sku, size, color, cost_price,
-             selling_price, quantity, low_stock_threshold, image_filename),
+             selling_price, quantity, low_stock_threshold),
         )
         db.commit()
         log_update(
@@ -337,38 +304,12 @@ def edit_product(product_id):
         quantity = int(request.form.get("quantity", 0))
         low_stock_threshold = int(request.form.get("low_stock_threshold", 5))
 
-        image_filename = product["image_filename"]  # keep existing by default
-
-        # Remove image if requested
-        if request.form.get("remove_image") == "1" and image_filename:
-            old_path = os.path.join(UPLOAD_FOLDER, image_filename)
-            if os.path.isfile(old_path):
-                os.remove(old_path)
-            image_filename = None
-
-        # Replace with new upload
-        file = request.files.get("image")
-        if file and file.filename:
-            if not allowed_file(file.filename):
-                flash("Invalid image type. Allowed: PNG, JPG, JPEG, WEBP, GIF.", "error")
-                categories = db.execute("SELECT * FROM categories ORDER BY name").fetchall()
-                return render_template("product_form.html", product=product, categories=categories)
-            # Remove old file
-            if image_filename:
-                old_path = os.path.join(UPLOAD_FOLDER, image_filename)
-                if os.path.isfile(old_path):
-                    os.remove(old_path)
-            filename = secure_filename(file.filename)
-            filename = f"{int(datetime.now().timestamp())}_{filename}"
-            file.save(os.path.join(UPLOAD_FOLDER, filename))
-            image_filename = filename
-
         db.execute(
             "UPDATE products SET name=?, category_id=?, sku=?, size=?, color=?, "
             "cost_price=?, selling_price=?, quantity=?, low_stock_threshold=?, "
-            "image_filename=?, updated_at=datetime('now','localtime') WHERE id=?",
+            "updated_at=datetime('now','localtime') WHERE id=?",
             (name, category_id, sku, size, color, cost_price,
-             selling_price, quantity, low_stock_threshold, image_filename, product_id),
+             selling_price, quantity, low_stock_threshold, product_id),
         )
         db.commit()
         log_update("Product Updated", f"Updated '{name}'", "inventory")
@@ -382,12 +323,8 @@ def edit_product(product_id):
 @app.route("/inventory/delete/<int:product_id>", methods=["POST"])
 def delete_product(product_id):
     db = get_db()
-    product = db.execute("SELECT name, image_filename FROM products WHERE id = ?", (product_id,)).fetchone()
+    product = db.execute("SELECT name FROM products WHERE id = ?", (product_id,)).fetchone()
     if product:
-        if product["image_filename"]:
-            img_path = os.path.join(UPLOAD_FOLDER, product["image_filename"])
-            if os.path.isfile(img_path):
-                os.remove(img_path)
         db.execute("DELETE FROM products WHERE id = ?", (product_id,))
         db.commit()
         log_update("Product Deleted", f"Deleted '{product['name']}'", "inventory")
@@ -401,9 +338,8 @@ def categories():
     db = get_db()
     if request.method == "POST":
         name = request.form["name"].strip()
-        sku_code = request.form.get("sku_code", "").strip().upper() or None
         if name:
-            db.execute("INSERT OR IGNORE INTO categories (name, sku_code) VALUES (?, ?)", (name, sku_code))
+            db.execute("INSERT OR IGNORE INTO categories (name) VALUES (?)", (name,))
             db.commit()
             flash(f"Category '{name}' added!", "success")
         return redirect(url_for("categories"))
@@ -412,18 +348,6 @@ def categories():
         "LEFT JOIN products p ON c.id = p.category_id GROUP BY c.id ORDER BY c.name"
     ).fetchall()
     return render_template("categories.html", categories=cats)
-
-
-@app.route("/categories/edit/<int:cat_id>", methods=["POST"])
-def edit_category(cat_id):
-    db = get_db()
-    name = request.form.get("name", "").strip()
-    sku_code = request.form.get("sku_code", "").strip().upper() or None
-    if name:
-        db.execute("UPDATE categories SET name = ?, sku_code = ? WHERE id = ?", (name, sku_code, cat_id))
-        db.commit()
-        flash(f"Category '{name}' updated!", "success")
-    return redirect(url_for("categories"))
 
 
 @app.route("/categories/delete/<int:cat_id>", methods=["POST"])
@@ -445,18 +369,6 @@ def billing():
         "WHERE p.quantity > 0 ORDER BY p.name"
     ).fetchall()
     return render_template("billing.html", products=products)
-
-
-@app.route("/api/next-sku/<int:category_id>")
-def api_next_sku(category_id):
-    db = get_db()
-    cat = db.execute("SELECT sku_code FROM categories WHERE id = ?", (category_id,)).fetchone()
-    if not cat or not cat["sku_code"]:
-        return jsonify({"sku": ""})
-    count = db.execute(
-        "SELECT COUNT(*) FROM products WHERE category_id = ?", (category_id,)
-    ).fetchone()[0]
-    return jsonify({"sku": f"{cat['sku_code']}-{count + 1:04d}"})
 
 
 @app.route("/api/products")
@@ -809,39 +721,6 @@ def admin_logout():
     return redirect(url_for("dashboard"))
 
 
-@app.route("/admin/clean-all-data", methods=["POST"])
-def clean_all_data():
-    if not admin_authenticated():
-        flash("Admin access required.", "error")
-        return redirect(url_for("admin"))
-
-    password = request.form.get("password", "")
-    entered_hash = hashlib.sha256(password.encode()).hexdigest()
-    if not hmac.compare_digest(entered_hash, ADMIN_PASSWORD_HASH):
-        flash("Incorrect admin password. Data was NOT cleared.", "error")
-        return redirect(url_for("admin"))
-
-    confirm = request.form.get("confirm", "")
-    if confirm != "DELETE ALL DATA":
-        flash("Confirmation text did not match. Data was NOT cleared.", "error")
-        return redirect(url_for("admin"))
-
-    db = get_db()
-    db.executescript("""
-        DELETE FROM refund_items;
-        DELETE FROM refunds;
-        DELETE FROM bill_items;
-        DELETE FROM bills;
-        DELETE FROM expenses;
-        DELETE FROM updates;
-    """)
-    db.commit()
-
-    log_update("All Data Cleared", "Admin cleared all history and data.", "admin")
-    flash("All history and data have been permanently deleted.", "success")
-    return redirect(url_for("admin"))
-
-
 @app.route("/daily-summary")
 def daily_summary():
     if not admin_authenticated():
@@ -984,18 +863,23 @@ def add_expense():
     title = request.form["title"].strip()
     description = request.form.get("description", "").strip()
     category = request.form.get("category", "General")
-    payment_mode = request.form.get("payment_mode", "Cash")
-    vendor = request.form.get("vendor", "").strip() or None
-    expense_date = request.form.get("expense_date", "").strip() or datetime.now().strftime("%Y-%m-%d")
     amount = float(request.form.get("amount", 0))
+    bill_image = request.files.get("bill_image")
     if title and amount > 0:
+        bill_image_path = None
+        if bill_image and bill_image.filename:
+            if not allowed_bill_image(bill_image.filename):
+                flash("Bill image must be PNG, JPG, JPEG, or WEBP.", "error")
+                return redirect(url_for("expenses"))
+            bill_image_path = save_expense_bill_image(bill_image, title)
+
         db.execute(
-            "INSERT INTO expenses (title, description, category, amount, payment_mode, vendor, expense_date) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (title, description, category, amount, payment_mode, vendor, expense_date),
+            "INSERT INTO expenses (title, description, category, amount, bill_image_path) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (title, description, category, amount, bill_image_path),
         )
         db.commit()
-        log_update("Expense Added", f"{title} — ₹{amount} ({category}, {payment_mode})", "expense")
+        log_update("Expense Added", f"{title} — ₹{amount} ({category})", "expense")
         flash(f"Expense '₹{amount} — {title}' added!", "success")
     else:
         flash("Please provide a title and valid amount.", "error")
@@ -1009,8 +893,15 @@ def delete_expense(expense_id):
         return redirect(url_for("admin", next=url_for("expenses")))
 
     db = get_db()
-    expense = db.execute("SELECT title, amount FROM expenses WHERE id = ?", (expense_id,)).fetchone()
+    expense = db.execute(
+        "SELECT title, amount, bill_image_path FROM expenses WHERE id = ?",
+        (expense_id,),
+    ).fetchone()
     if expense:
+        if expense["bill_image_path"]:
+            image_path = os.path.join(app.root_path, "static", expense["bill_image_path"])
+            if os.path.exists(image_path):
+                os.remove(image_path)
         db.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
         db.commit()
         log_update("Expense Deleted", f"Deleted '{expense['title']}' — ₹{expense['amount']}", "expense")
