@@ -11,6 +11,12 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 
+try:
+    from PIL import Image, UnidentifiedImageError
+except ImportError:
+    Image = None
+    UnidentifiedImageError = Exception
+
 app = Flask(__name__)
 app.secret_key = os.urandom(32)
 
@@ -19,6 +25,7 @@ EXPENSE_BILL_UPLOAD_DIR = os.path.join(app.root_path, "static", "expense_bills")
 ALLOWED_BILL_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 PRODUCT_IMAGE_UPLOAD_DIR = os.path.join(app.root_path, "static", "product_images")
 ALLOWED_PRODUCT_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
+MAX_IMAGE_SIZE = (1600, 1600)
 
 os.makedirs(EXPENSE_BILL_UPLOAD_DIR, exist_ok=True)
 os.makedirs(PRODUCT_IMAGE_UPLOAD_DIR, exist_ok=True)
@@ -194,7 +201,7 @@ def save_expense_bill_image(uploaded_file, title):
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
     filename = f"{safe_title}_{timestamp}.{extension}"
     saved_path = os.path.join(EXPENSE_BILL_UPLOAD_DIR, filename)
-    uploaded_file.save(saved_path)
+    save_optimized_image(uploaded_file, saved_path, extension)
     return f"expense_bills/{filename}"
 
 
@@ -217,8 +224,49 @@ def save_product_image(uploaded_file, product_name):
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
     filename = f"{safe_name}_{timestamp}.{extension}"
     saved_path = os.path.join(PRODUCT_IMAGE_UPLOAD_DIR, filename)
-    uploaded_file.save(saved_path)
+    save_optimized_image(uploaded_file, saved_path, extension)
     return filename
+
+
+def save_optimized_image(uploaded_file, saved_path, extension):
+    if Image is None:
+        uploaded_file.save(saved_path)
+        return
+
+    format_map = {
+        "jpg": "JPEG",
+        "jpeg": "JPEG",
+        "png": "PNG",
+        "webp": "WEBP",
+        "gif": "GIF",
+    }
+    image_format = format_map.get(extension, "JPEG")
+
+    try:
+        uploaded_file.stream.seek(0)
+        with Image.open(uploaded_file.stream) as img:
+            resample = Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS
+            img.thumbnail(MAX_IMAGE_SIZE, resample)
+
+            save_kwargs = {}
+            if image_format == "JPEG":
+                if img.mode not in ("RGB", "L"):
+                    img = img.convert("RGB")
+                save_kwargs = {"quality": 82, "optimize": True}
+            elif image_format == "WEBP":
+                if img.mode not in ("RGB", "RGBA"):
+                    img = img.convert("RGBA" if "A" in img.getbands() else "RGB")
+                save_kwargs = {"quality": 80, "method": 6}
+            elif image_format == "PNG":
+                save_kwargs = {"optimize": True, "compress_level": 7}
+            elif image_format == "GIF" and img.mode not in ("P", "L"):
+                img = img.convert("P", palette=Image.ADAPTIVE)
+                save_kwargs = {"optimize": True}
+
+            img.save(saved_path, format=image_format, **save_kwargs)
+    except (UnidentifiedImageError, OSError, ValueError):
+        uploaded_file.stream.seek(0)
+        uploaded_file.save(saved_path)
 
 
 ADMIN_PASSWORD_HASH = "d1215baec4cf39b5c9cc710527fbbfcb3d4290caaf9b0f095d32198c9d5e28aa"
