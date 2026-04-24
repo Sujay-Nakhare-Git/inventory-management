@@ -41,7 +41,8 @@ def init_db():
     db.executescript("""
         CREATE TABLE IF NOT EXISTS categories (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE
+            name TEXT NOT NULL UNIQUE,
+            sku_code TEXT
         );
 
         CREATE TABLE IF NOT EXISTS products (
@@ -135,6 +136,12 @@ def init_db():
         for cat in ["Sarees", "Kurtis", "Lehengas", "Suits", "Dupattas",
                      "Blouses", "Accessories", "Western Wear", "Kids Wear", "Others"]:
             db.execute("INSERT INTO categories (name) VALUES (?)", (cat,))
+
+    category_columns = {
+        row["name"] for row in db.execute("PRAGMA table_info(categories)").fetchall()
+    }
+    if "sku_code" not in category_columns:
+        db.execute("ALTER TABLE categories ADD COLUMN sku_code TEXT")
 
     expense_columns = {
         row["name"] for row in db.execute("PRAGMA table_info(expenses)").fetchall()
@@ -338,8 +345,12 @@ def categories():
     db = get_db()
     if request.method == "POST":
         name = request.form["name"].strip()
+        sku_code = request.form.get("sku_code", "").strip().upper() or None
         if name:
-            db.execute("INSERT OR IGNORE INTO categories (name) VALUES (?)", (name,))
+            db.execute(
+                "INSERT OR IGNORE INTO categories (name, sku_code) VALUES (?, ?)",
+                (name, sku_code),
+            )
             db.commit()
             flash(f"Category '{name}' added!", "success")
         return redirect(url_for("categories"))
@@ -348,6 +359,25 @@ def categories():
         "LEFT JOIN products p ON c.id = p.category_id GROUP BY c.id ORDER BY c.name"
     ).fetchall()
     return render_template("categories.html", categories=cats)
+
+
+@app.route("/categories/edit/<int:cat_id>", methods=["POST"])
+def edit_category(cat_id):
+    db = get_db()
+    name = request.form["name"].strip()
+    sku_code = request.form.get("sku_code", "").strip().upper() or None
+
+    if not name:
+        flash("Category name is required.", "error")
+        return redirect(url_for("categories"))
+
+    db.execute(
+        "UPDATE categories SET name = ?, sku_code = ? WHERE id = ?",
+        (name, sku_code, cat_id),
+    )
+    db.commit()
+    flash("Category updated.", "success")
+    return redirect(url_for("categories"))
 
 
 @app.route("/categories/delete/<int:cat_id>", methods=["POST"])
@@ -719,6 +749,50 @@ def admin_logout():
     session.pop("pl_authenticated", None)
     flash("Admin area locked.", "success")
     return redirect(url_for("dashboard"))
+
+
+@app.route("/admin/clean-all-data", methods=["POST"])
+def clean_all_data():
+    confirm = request.form.get("confirm", "").strip()
+    password = request.form.get("password", "")
+
+    if not admin_authenticated():
+        flash("Please unlock Admin first.", "error")
+        return redirect(url_for("admin"))
+
+    if confirm != "DELETE ALL DATA":
+        flash("Confirmation text did not match.", "error")
+        return redirect(url_for("admin"))
+
+    entered_hash = hashlib.sha256(password.encode()).hexdigest()
+    if not hmac.compare_digest(entered_hash, ADMIN_PASSWORD_HASH):
+        flash("Incorrect admin password.", "error")
+        return redirect(url_for("admin"))
+
+    db = get_db()
+    expense_images = db.execute(
+        "SELECT bill_image_path FROM expenses WHERE bill_image_path IS NOT NULL AND bill_image_path != ''"
+    ).fetchall()
+    for row in expense_images:
+        image_path = os.path.join(app.root_path, "static", row["bill_image_path"])
+        if os.path.exists(image_path):
+            os.remove(image_path)
+
+    db.execute("DELETE FROM bill_items")
+    db.execute("DELETE FROM bills")
+    db.execute("DELETE FROM refund_items")
+    db.execute("DELETE FROM refunds")
+    db.execute("DELETE FROM expenses")
+    db.execute("DELETE FROM updates")
+    db.commit()
+
+    log_update(
+        "All Business Data Cleared",
+        "Bills, refunds, expenses, and history were permanently deleted from Admin.",
+        "announcement",
+    )
+    flash("All bills, refunds, expenses, and history were deleted.", "success")
+    return redirect(url_for("admin"))
 
 
 @app.route("/daily-summary")
