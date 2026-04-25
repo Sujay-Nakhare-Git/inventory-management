@@ -121,6 +121,7 @@
                     <thead>
                         <tr style="border-bottom:2px solid #ecf0f1;">
                             <th style="text-align:left;padding:0.5rem 0.75rem;font-size:0.9rem;">Size</th>
+                            <th style="text-align:left;padding:0.5rem 0.75rem;font-size:0.9rem;">Category</th>
                             <th style="text-align:right;padding:0.5rem 0.75rem;font-size:0.9rem;">Products</th>
                             <th style="text-align:right;padding:0.5rem 0.75rem;font-size:0.9rem;">Stock</th>
                         </tr>
@@ -129,6 +130,7 @@
                         {% for row in size_counts %}
                         <tr style="border-bottom:1px solid #f0f0f0;">
                             <td style="padding:0.4rem 0.75rem;">{{ row.size }}</td>
+                            <td style="padding:0.4rem 0.75rem;">{{ row.category }}</td>
                             <td style="padding:0.4rem 0.75rem;text-align:right;">{{ row.product_count }}</td>
                             <td style="padding:0.4rem 0.75rem;text-align:right;font-weight:bold;">{{ row.total_stock }}</td>
                         </tr>

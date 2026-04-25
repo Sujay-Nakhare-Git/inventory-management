@@ -1301,10 +1301,11 @@ def admin():
         ).fetchall()
         size_counts = db.execute(
             "SELECT COALESCE(p.size, 'No Size') as size, "
+            "COALESCE(c.name, 'Uncategorized') as category, "
             "COUNT(p.id) as product_count, COALESCE(SUM(p.quantity), 0) as total_stock "
-            "FROM products p"
+            "FROM products p LEFT JOIN categories c ON p.category_id = c.id"
             + size_where +
-            " GROUP BY p.size ORDER BY total_stock DESC",
+            " GROUP BY p.size, c.name ORDER BY p.size, c.name",
             size_params,
         ).fetchall()
 
