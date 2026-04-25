@@ -669,8 +669,28 @@ def create_bill():
 @app.route("/bills")
 def bills_list():
     db = get_db()
-    bills = db.execute("SELECT * FROM bills ORDER BY created_at DESC").fetchall()
-    return render_template("bills.html", bills=bills)
+    search = request.args.get("search", "").strip()
+    search_type = request.args.get("search_type", "all")
+    
+    query = "SELECT * FROM bills WHERE 1=1"
+    params = []
+    
+    if search:
+        if search_type == "phone":
+            query += " AND customer_phone LIKE ?"
+            params.append(f"%{search}%")
+        elif search_type == "name":
+            query += " AND customer_name LIKE ?"
+            params.append(f"%{search}%")
+        else:  # search_type == "all"
+            query += " AND (customer_name LIKE ? OR customer_phone LIKE ?)"
+            params.append(f"%{search}%")
+            params.append(f"%{search}%")
+    
+    query += " ORDER BY created_at DESC"
+    bills = db.execute(query, params).fetchall()
+    
+    return render_template("bills.html", bills=bills, search=search, search_type=search_type)
 
 
 @app.route("/bills/<int:bill_id>")
