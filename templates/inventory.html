@@ -27,14 +27,12 @@
             <thead>
                 <tr>
                     <th>Image</th>
-                    <th>Name</th>
-                    <th>SKU</th>
-                    <th>Category</th>
-                    <th>Size</th>
-                    <th>Color</th>
-                    <th>Cost (₹)</th>
-                    <th>Price (₹)</th>
-                    <th>Qty</th>
+                    <th class="sortable" data-col="1" data-type="string">SKU <span class="sort-icon">⇅</span></th>
+                    <th class="sortable" data-col="2" data-type="string">Category <span class="sort-icon">⇅</span></th>
+                    <th class="sortable" data-col="3" data-type="string">Size <span class="sort-icon">⇅</span></th>
+                    <th class="sortable" data-col="4" data-type="number">Cost (₹) <span class="sort-icon">⇅</span></th>
+                    <th class="sortable" data-col="5" data-type="number">Price (₹) <span class="sort-icon">⇅</span></th>
+                    <th class="sortable" data-col="6" data-type="number">Qty <span class="sort-icon">⇅</span></th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -51,11 +49,9 @@
                         <div class="inventory-thumb-placeholder">&#128247;</div>
                         {% endif %}
                     </td>
-                    <td><strong>{{ p.name }}</strong></td>
                     <td>{{ p.sku or '—' }}</td>
                     <td>{{ p.category_name or '—' }}</td>
                     <td>{{ p.size or '—' }}</td>
-                    <td>{{ p.color or '—' }}</td>
                     <td>{{ "%.2f"|format(p.cost_price) }}</td>
                     <td>{{ "%.2f"|format(p.selling_price) }}</td>
                     <td>
@@ -130,6 +126,47 @@
         if (event.key === 'Escape' && modal.classList.contains('is-open')) {
             closeModal();
         }
+    });
+})();
+</script>
+<script>
+(() => {
+    const table = document.querySelector('.table-wrapper table');
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    const headers = table.querySelectorAll('th.sortable');
+    let currentCol = null;
+    let ascending = true;
+
+    headers.forEach(th => {
+        th.style.cursor = 'pointer';
+        th.style.userSelect = 'none';
+        th.addEventListener('click', () => {
+            const col = parseInt(th.dataset.col);
+            const type = th.dataset.type;
+            if (currentCol === col) {
+                ascending = !ascending;
+            } else {
+                currentCol = col;
+                ascending = true;
+            }
+            // Reset all icons
+            headers.forEach(h => h.querySelector('.sort-icon').textContent = '⇅');
+            th.querySelector('.sort-icon').textContent = ascending ? '↑' : '↓';
+
+            const rows = Array.from(tbody.querySelectorAll('tr')).filter(r => !r.querySelector('.empty-state'));
+            rows.sort((a, b) => {
+                let aVal = a.cells[col].textContent.trim();
+                let bVal = b.cells[col].textContent.trim();
+                if (type === 'number') {
+                    aVal = parseFloat(aVal.replace(/[^\d.-]/g, '')) || 0;
+                    bVal = parseFloat(bVal.replace(/[^\d.-]/g, '')) || 0;
+                    return ascending ? aVal - bVal : bVal - aVal;
+                }
+                return ascending ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+            });
+            rows.forEach(r => tbody.appendChild(r));
+        });
     });
 })();
 </script>

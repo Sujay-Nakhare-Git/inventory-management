@@ -11,10 +11,6 @@
     <form method="POST" enctype="multipart/form-data">
         <div class="form-grid">
             <div class="form-group">
-                <label for="name">Product Name *</label>
-                <input type="text" id="name" name="name" class="input" required value="{{ product.name if product else '' }}">
-            </div>
-            <div class="form-group">
                 <label for="sku">SKU <small style="color:#6b7280;">(auto-generated from category)</small></label>
                 <input type="text" id="sku" name="sku" class="input" value="{{ product.sku if product and product.sku else '' }}" placeholder="Auto-generated from category" readonly style="background:#f3f4f6;cursor:not-allowed;">
             </div>
@@ -32,10 +28,6 @@
                 <input type="text" id="size" name="size" class="input" placeholder="e.g. S, M, L, XL, Free Size" value="{{ product.size if product and product.size else '' }}">
             </div>
             <div class="form-group">
-                <label for="color">Color</label>
-                <input type="text" id="color" name="color" class="input" value="{{ product.color if product and product.color else '' }}">
-            </div>
-            <div class="form-group">
                 <label for="cost_price">Cost Price (₹) *</label>
                 <input type="number" id="cost_price" name="cost_price" class="input" step="0.01" min="0" required value="{{ product.cost_price if product else '0' }}">
             </div>
@@ -45,11 +37,7 @@
             </div>
             <div class="form-group">
                 <label for="quantity">Quantity *</label>
-                <input type="number" id="quantity" name="quantity" class="input" min="0" required value="{{ product.quantity if product else '0' }}">
-            </div>
-            <div class="form-group">
-                <label for="low_stock_threshold">Low Stock Threshold</label>
-                <input type="number" id="low_stock_threshold" name="low_stock_threshold" class="input" min="0" value="{{ product.low_stock_threshold if product else '5' }}">
+                <input type="number" id="quantity" name="quantity" class="input" min="0" required value="{{ product.quantity if product else '1' }}">
             </div>
         </div>
 
@@ -93,12 +81,22 @@ function previewImage(event) {
     preview.onload = () => URL.revokeObjectURL(preview.src);
 }
 
+// Store the original category and SKU for edit form
+const originalCategoryId = document.getElementById('category_id').value;
+const originalSku = document.getElementById('sku').value;
+
 function generateSku() {
     const skuInput = document.getElementById('sku');
     const select = document.getElementById('category_id');
     const option = select.options[select.selectedIndex];
     const skuCode = option.getAttribute('data-sku');
     const categoryId = select.value;
+
+    // If category reverted to original, restore original SKU
+    if (categoryId === originalCategoryId && originalSku) {
+        skuInput.value = originalSku;
+        return;
+    }
 
     if (!skuCode || !categoryId) {
         skuInput.value = '';

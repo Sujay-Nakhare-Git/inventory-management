@@ -372,16 +372,20 @@ def inventory():
 def add_product():
     db = get_db()
     if request.method == "POST":
-        name = request.form["name"].strip()
+        name = request.form.get("name", "").strip()
         category_id = request.form.get("category_id") or None
         sku = generate_sku(db, category_id) if category_id else None
         size = request.form.get("size", "").strip()
         color = request.form.get("color", "").strip()
         cost_price = float(request.form.get("cost_price", 0))
         selling_price = float(request.form.get("selling_price", 0))
-        quantity = int(request.form.get("quantity", 0))
+        quantity = int(request.form.get("quantity", 1))
         low_stock_threshold = int(request.form.get("low_stock_threshold", 5))
         product_image = request.files.get("image")
+
+        # Use SKU as the display name if no name provided
+        if not name and sku:
+            name = sku
 
         image_filename = None
         if product_image and product_image.filename:
@@ -419,7 +423,7 @@ def edit_product(product_id):
         return redirect(url_for("inventory"))
 
     if request.method == "POST":
-        name = request.form["name"].strip()
+        name = request.form.get("name", "").strip()
         category_id = request.form.get("category_id") or None
         # Re-generate SKU if category changed
         old_category_id = str(product["category_id"]) if product["category_id"] else None
@@ -431,10 +435,16 @@ def edit_product(product_id):
         color = request.form.get("color", "").strip()
         cost_price = float(request.form.get("cost_price", 0))
         selling_price = float(request.form.get("selling_price", 0))
-        quantity = int(request.form.get("quantity", 0))
+        quantity = int(request.form.get("quantity", 1))
         low_stock_threshold = int(request.form.get("low_stock_threshold", 5))
         remove_image = request.form.get("remove_image") == "1"
         product_image = request.files.get("image")
+
+        # Use SKU as the display name if no name provided
+        if not name and sku:
+            name = sku
+        elif not name:
+            name = product["name"]
 
         image_filename = product["image_filename"]
         if remove_image and image_filename:
