@@ -985,6 +985,7 @@ def process_refund():
     ).fetchall()
 
     refund_amount = 0
+    store_credit_refund = 0
     processed_items = []
 
     for bi in bill_items:
@@ -1008,6 +1009,15 @@ def process_refund():
                 (qty, bi["product_id"]),
             )
             refund_amount += item_refund
+
+        elif action == "store_credit":
+            # Return stock
+            db.execute(
+                "UPDATE products SET quantity = quantity + ?, "
+                "updated_at = datetime('now','localtime') WHERE id = ?",
+                (qty, bi["product_id"]),
+            )
+            store_credit_refund += item_refund
 
         elif action == "exchange":
             exchange_product_id = request.form.get(f"exchange_{bi['id']}")
@@ -1055,13 +1065,52 @@ def process_refund():
         flash("No items selected for refund/exchange.", "error")
         return redirect(url_for("new_refund", bill_id=bill_id))
 
-    refund_type = "exchange" if all(i["action"] == "exchange" for i in processed_items) else \
-                  "refund" if all(i["action"] == "refund" for i in processed_items) else "mixed"
+    # Handle store credit refund
+    if store_credit_refund > 0:
+        sc_phone = request.form.get("store_credit_phone", "").strip()
+        sc_name = request.form.get("store_credit_name", "").strip() or bill["customer_name"] or "Walk-in"
+        if not sc_phone or len(sc_phone) != 10:
+            flash("Please provide a valid 10-digit phone number for store credit.", "error")
+            return redirect(url_for("new_refund", bill_id=bill_id))
+
+        # Find or create store credit account
+        credit = db.execute(
+            "SELECT * FROM store_credits WHERE customer_phone = ?", (sc_phone,)
+        ).fetchone()
+        if credit:
+            credit_id = credit["id"]
+            db.execute(
+                "UPDATE store_credits SET balance = balance + ?, updated_at = datetime('now','localtime') WHERE id = ?",
+                (round(store_credit_refund, 2), credit_id),
+            )
+        else:
+            cursor2 = db.execute(
+                "INSERT INTO store_credits (customer_name, customer_phone, balance) VALUES (?, ?, ?)",
+                (sc_name, sc_phone, round(store_credit_refund, 2)),
+            )
+            credit_id = cursor2.lastrowid
+
+        db.execute(
+            "INSERT INTO credit_transactions (credit_id, bill_id, amount, transaction_type, notes) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (credit_id, bill_id, round(store_credit_refund, 2), "credit",
+             f"Refund from Bill #{bill_id}"),
+        )
+
+    actions = set(i["action"] for i in processed_items)
+    if actions == {"exchange"}:
+        refund_type = "exchange"
+    elif actions == {"refund"}:
+        refund_type = "refund"
+    elif actions == {"store_credit"}:
+        refund_type = "store_credit"
+    else:
+        refund_type = "mixed"
 
     cursor = db.execute(
         "INSERT INTO refunds (bill_id, customer_name, type, reason, refund_amount) "
         "VALUES (?, ?, ?, ?, ?)",
-        (bill_id, bill["customer_name"], refund_type, reason, round(refund_amount, 2)),
+        (bill_id, bill["customer_name"], refund_type, reason, round(refund_amount + store_credit_refund, 2)),
     )
     refund_id = cursor.lastrowid
 
@@ -1081,21 +1130,27 @@ def process_refund():
     for it in processed_items:
         if it["action"] == "refund":
             desc_parts.append(f"Refunded {it['quantity']}× {it['product_name']}")
+        elif it["action"] == "store_credit":
+            desc_parts.append(f"Store Credit {it['quantity']}× {it['product_name']}")
         else:
             desc_parts.append(f"Exchanged {it['quantity']}× {it['product_name']} → {it['exchange_product_name']}")
 
+    type_label = {"refund": "Refund", "exchange": "Exchange", "store_credit": "Store Credit"}.get(refund_type, "Refund/Exchange")
+
     log_update(
-        f"{'Refund' if refund_type == 'refund' else 'Exchange' if refund_type == 'exchange' else 'Refund/Exchange'} Processed",
+        f"{type_label} Processed",
         f"Bill #{bill_id} — {'; '.join(desc_parts)}" +
-        (f" — Refund: ₹{round(refund_amount, 2)}" if refund_amount > 0 else ""),
+        (f" — Cash Refund: ₹{round(refund_amount, 2)}" if refund_amount > 0 else "") +
+        (f" — Store Credit: ₹{round(store_credit_refund, 2)}" if store_credit_refund > 0 else ""),
         "billing",
     )
 
-    flash(
-        f"{'Refund' if refund_type == 'refund' else 'Exchange' if refund_type == 'exchange' else 'Refund/Exchange'} processed! "
-        + (f"Refund amount: ₹{round(refund_amount, 2)}" if refund_amount > 0 else ""),
-        "success",
-    )
+    flash_msg = f"{type_label} processed!"
+    if refund_amount > 0:
+        flash_msg += f" Cash refund: ₹{round(refund_amount, 2)}"
+    if store_credit_refund > 0:
+        flash_msg += f" Store credit: ₹{round(store_credit_refund, 2)}"
+    flash(flash_msg, "success")
     return redirect(url_for("bill_detail", bill_id=bill_id))
 
 

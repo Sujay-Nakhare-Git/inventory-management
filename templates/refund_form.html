@@ -34,7 +34,8 @@
                         <label>Action</label>
                         <select name="action_{{ item.id }}" class="input" onchange="toggleExchange({{ item.id }}, this.value)">
                             <option value="keep">Keep (No Change)</option>
-                            <option value="refund">Refund</option>
+                            <option value="refund">Refund (Cash)</option>
+                            <option value="store_credit">Refund (Store Credit)</option>
                             <option value="exchange">Exchange</option>
                         </select>
                     </div>
@@ -59,6 +60,20 @@
         </div>
     </div>
 
+    <!-- Store Credit Phone (shown when store_credit action selected) -->
+    <div class="card form-card" id="storeCreditSection" style="display:none;">
+        <h3 class="card-title">💳 Store Credit Details</h3>
+        <p style="color:#7f8c8d;margin-bottom:1rem;">The refund amount will be added to the customer's store credit balance.</p>
+        <div class="form-group">
+            <label>Customer Phone Number *</label>
+            <input type="tel" name="store_credit_phone" id="storeCreditPhone" class="input" placeholder="10-digit phone number" pattern="[0-9]{10}" value="{{ bill.customer_phone or '' }}">
+        </div>
+        <div class="form-group">
+            <label>Customer Name (for new credit accounts)</label>
+            <input type="text" name="store_credit_name" id="storeCreditName" class="input" placeholder="Customer name" value="{{ bill.customer_name or '' }}">
+        </div>
+    </div>
+
     <div class="card form-card">
         <div class="form-group">
             <label for="reason">Reason for Refund / Exchange</label>
@@ -77,6 +92,19 @@
 function toggleExchange(itemId, action) {
     const el = document.getElementById('exchange_' + itemId);
     el.style.display = action === 'exchange' ? 'flex' : 'none';
+    updateStoreCreditSection();
+}
+
+function updateStoreCreditSection() {
+    const selects = document.querySelectorAll('select[name^="action_"]');
+    let hasStoreCredit = false;
+    selects.forEach(s => { if (s.value === 'store_credit') hasStoreCredit = true; });
+    document.getElementById('storeCreditSection').style.display = hasStoreCredit ? 'block' : 'none';
+    if (hasStoreCredit) {
+        document.getElementById('storeCreditPhone').required = true;
+    } else {
+        document.getElementById('storeCreditPhone').required = false;
+    }
 }
 </script>
 {% endblock %}
