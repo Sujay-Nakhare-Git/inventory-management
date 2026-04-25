@@ -12,7 +12,13 @@
         <div class="form-grid">
             <div class="form-group">
                 <label for="sku">SKU <small style="color:#6b7280;">(auto-generated from category)</small></label>
-                <input type="text" id="sku" name="sku" class="input" value="{{ product.sku if product and product.sku else '' }}" placeholder="Auto-generated from category" readonly style="background:#f3f4f6;cursor:not-allowed;">
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                    <input type="text" id="sku" name="sku" class="input" value="{{ product.sku if product and product.sku else '' }}" placeholder="Auto-generated from category" readonly style="background:#f3f4f6;cursor:not-allowed;flex:1;">
+                    {% if product %}
+                    <button type="button" id="editSkuBtn" class="btn btn-sm btn-outline" onclick="enableSkuEdit()" title="Edit SKU manually">✏️</button>
+                    <button type="button" id="cancelSkuBtn" class="btn btn-sm btn-outline" onclick="cancelSkuEdit()" style="display:none;" title="Cancel edit">✖</button>
+                    {% endif %}
+                </div>
             </div>
             <div class="form-group">
                 <label for="category_id">Category</label>
@@ -84,8 +90,32 @@ function previewImage(event) {
 // Store the original category and SKU for edit form
 const originalCategoryId = document.getElementById('category_id').value;
 const originalSku = document.getElementById('sku').value;
+let skuManualEdit = false;
+
+function enableSkuEdit() {
+    const skuInput = document.getElementById('sku');
+    skuInput.removeAttribute('readonly');
+    skuInput.style.background = '#fff';
+    skuInput.style.cursor = 'text';
+    skuInput.focus();
+    skuManualEdit = true;
+    document.getElementById('editSkuBtn').style.display = 'none';
+    document.getElementById('cancelSkuBtn').style.display = '';
+}
+
+function cancelSkuEdit() {
+    const skuInput = document.getElementById('sku');
+    skuInput.value = originalSku;
+    skuInput.setAttribute('readonly', '');
+    skuInput.style.background = '#f3f4f6';
+    skuInput.style.cursor = 'not-allowed';
+    skuManualEdit = false;
+    document.getElementById('editSkuBtn').style.display = '';
+    document.getElementById('cancelSkuBtn').style.display = 'none';
+}
 
 function generateSku() {
+    if (skuManualEdit) return;
     const skuInput = document.getElementById('sku');
     const select = document.getElementById('category_id');
     const option = select.options[select.selectedIndex];

@@ -21,48 +21,10 @@
         <div class="stat-value">{{ total_stock }}</div>
         <div class="stat-label">Items in Stock</div>
     </div>
-    <div class="stat-card stat-red">
-        <div class="stat-value">{{ low_stock }}</div>
-        <div class="stat-label">Low Stock Alerts</div>
-    </div>
-    <!-- <div class="stat-card stat-green">
-        <div class="stat-value">₹{{ "%.2f"|format(today_sales) }}</div>
-        <div class="stat-label">Today's Sales</div>
-    </div> -->
     <div class="stat-card stat-blue">
         <div class="stat-value">{{ total_bills }}</div>
         <div class="stat-label">Total Bills</div>
     </div>
 </div>
-
-{% if low_stock_products %}
-<div class="card">
-    <h3 class="card-title">⚠️ Low Stock Products</h3>
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr>
-                    <th>Product</th>
-                    <th>Category</th>
-                    <th>Quantity</th>
-                    <th>Threshold</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in low_stock_products %}
-                <tr>
-                    <td><strong>{{ p.name }}</strong></td>
-                    <td>{{ p.category_name or '—' }}</td>
-                    <td><span class="badge badge-danger">{{ p.quantity }}</span></td>
-                    <td>{{ p.low_stock_threshold }}</td>
-                    <td><a href="{{ url_for('edit_product', product_id=p.id) }}" class="btn btn-sm">Restock</a></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-{% endif %}
 
 {% endblock %}

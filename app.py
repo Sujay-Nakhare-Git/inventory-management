@@ -425,9 +425,12 @@ def edit_product(product_id):
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         category_id = request.form.get("category_id") or None
-        # Re-generate SKU if category changed
+        # Re-generate SKU if category changed, or use manual SKU if edited
+        manual_sku = request.form.get("sku", "").strip()
         old_category_id = str(product["category_id"]) if product["category_id"] else None
-        if category_id != old_category_id:
+        if manual_sku and manual_sku != product["sku"]:
+            sku = manual_sku
+        elif category_id != old_category_id:
             sku = generate_sku(db, category_id) if category_id else None
         else:
             sku = product["sku"]
