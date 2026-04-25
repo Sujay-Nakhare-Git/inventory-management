@@ -1263,8 +1263,15 @@ def admin():
     all_sizes = []
     filter_category = request.args.get("filter_category", "")
     filter_size = request.args.get("filter_size", "")
+    inventory_totals = None
     if admin_authenticated():
         db = get_db()
+        inventory_totals = db.execute(
+            "SELECT COALESCE(SUM(cost_price * quantity), 0) as total_cost, "
+            "COALESCE(SUM(selling_price * quantity), 0) as total_selling, "
+            "COALESCE(SUM(quantity), 0) as total_items "
+            "FROM products WHERE quantity > 0"
+        ).fetchone()
         all_categories = db.execute(
             "SELECT DISTINCT COALESCE(c.name, 'Uncategorized') as name "
             "FROM products p LEFT JOIN categories c ON p.category_id = c.id ORDER BY name"
@@ -1319,6 +1326,7 @@ def admin():
         all_sizes=all_sizes,
         filter_category=filter_category,
         filter_size=filter_size,
+        inventory_totals=inventory_totals,
     )
 
 

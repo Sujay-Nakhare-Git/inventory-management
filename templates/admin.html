@@ -62,6 +62,24 @@
 <!-- Inventory Counts by Category & Size -->
 <div style="margin-top:2rem;">
     <h3 style="margin-bottom:1rem;">📦 Inventory Overview</h3>
+
+    {% if inventory_totals %}
+    <div class="stats-grid" style="margin-bottom:1rem;">
+        <div class="card stat-card stat-gold" style="text-align:center;">
+            <div class="stat-value">₹{{ "{:,.2f}".format(inventory_totals.total_cost) }}</div>
+            <div class="stat-label">Total Cost Price</div>
+        </div>
+        <div class="card stat-card stat-green" style="text-align:center;">
+            <div class="stat-value">₹{{ "{:,.2f}".format(inventory_totals.total_selling) }}</div>
+            <div class="stat-label">Total Selling Price</div>
+        </div>
+        <div class="card stat-card stat-blue" style="text-align:center;">
+            <div class="stat-value">{{ inventory_totals.total_items }}</div>
+            <div class="stat-label">Total Items in Stock</div>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="stats-grid">
         <div class="card" style="text-align:left;">
             <div class="card-title">🏷️ By Category</div>
