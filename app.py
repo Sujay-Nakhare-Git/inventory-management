@@ -490,22 +490,30 @@ def delete_product(product_id):
 
 # ── SKU Generation ────────────────────────────────────────────────────────
 def generate_sku(db, category_id):
-    """Generate next sequential SKU for a category."""
+    """Generate next sequential unique SKU for a category."""
     cat = db.execute("SELECT sku_code FROM categories WHERE id = ?", (category_id,)).fetchone()
     if not cat or not cat["sku_code"]:
         return None
     prefix = cat["sku_code"]
-    row = db.execute(
-        "SELECT sku FROM products WHERE sku LIKE ? ORDER BY sku DESC LIMIT 1",
-        (f"{prefix}-%",),
-    ).fetchone()
-    next_num = 1
-    if row and row["sku"]:
+    # Find the highest numeric suffix across all products with this prefix
+    rows = db.execute(
+        "SELECT sku FROM products WHERE sku LIKE ?", (f"{prefix}-%",)
+    ).fetchall()
+    max_num = 0
+    for r in rows:
         try:
-            next_num = int(row["sku"].split("-")[-1]) + 1
-        except ValueError:
+            num = int(r["sku"].split("-")[-1])
+            if num > max_num:
+                max_num = num
+        except (ValueError, IndexError):
             pass
-    return f"{prefix}-{next_num:03d}"
+    next_num = max_num + 1
+    sku = f"{prefix}-{next_num:03d}"
+    # Ensure uniqueness (in case of manual entries or edge cases)
+    while db.execute("SELECT 1 FROM products WHERE sku = ?", (sku,)).fetchone():
+        next_num += 1
+        sku = f"{prefix}-{next_num:03d}"
+    return sku
 
 
 @app.route("/api/next-sku/<int:category_id>")
