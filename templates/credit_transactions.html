@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Credit Transactions — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>💳 {{ credit.customer_name }} — Transaction History</h2>
+    <a href="{{ url_for('store_credits') }}" class="btn btn-outline">← Back to Store Credits</a>
+</div>
+
+<!-- Customer Details Card -->
+<div class="card" style="margin-bottom:2rem;background:#f8f9fa;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;">
+        <div>
+            <div style="color:#7f8c8d;font-size:0.9rem;">📱 Phone</div>
+            <div style="font-size:1.2rem;font-weight:bold;">{{ credit.customer_phone }}</div>
+        </div>
+        <div>
+            <div style="color:#7f8c8d;font-size:0.9rem;">💰 Current Balance</div>
+            <div style="font-size:1.2rem;font-weight:bold;color:#27ae60;">₹{{ "%.2f" | format(credit.balance) }}</div>
+        </div>
+        <div>
+            <div style="color:#7f8c8d;font-size:0.9rem;">📅 Created</div>
+            <div style="font-size:1.2rem;font-weight:bold;">{{ credit.created_at[:10] }}</div>
+        </div>
+        <div>
+            <div style="color:#7f8c8d;font-size:0.9rem;">🔄 Updated</div>
+            <div style="font-size:1.2rem;font-weight:bold;">{{ credit.updated_at[:10] }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Transactions List -->
+{% if transactions %}
+<div style="overflow-x: auto;">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date & Time</th>
+                <th>Type</th>
+                <th>Amount (₹)</th>
+                <th>Bill #</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for txn in transactions %}
+            <tr>
+                <td>{{ txn.created_at }}</td>
+                <td>
+                    {% if txn.transaction_type == 'debit' %}
+                    <span class="badge" style="background:#e74c3c;color:#fff;padding:0.25rem 0.75rem;border-radius:4px;font-size:0.85rem;">↓ Used</span>
+                    {% else %}
+                    <span class="badge" style="background:#27ae60;color:#fff;padding:0.25rem 0.75rem;border-radius:4px;font-size:0.85rem;">↑ Added</span>
+                    {% endif %}
+                </td>
+                <td style="{% if txn.transaction_type == 'debit' %}color:#e74c3c;{% else %}color:#27ae60;{% endif %}font-weight:bold;">
+                    {% if txn.transaction_type == 'debit' %}-{% else %}+{% endif %}₹{{ "%.2f" | format(txn.amount) }}
+                </td>
+                <td>
+                    {% if txn.bill_id %}
+                    <a href="{{ url_for('bill_detail', bill_id=txn.bill_id) }}" style="color:#3498db;text-decoration:none;">
+                        #{{ txn.bill_id }}
+                    </a>
+                    {% else %}
+                    <span style="color:#95a5a6;">—</span>
+                    {% endif %}
+                </td>
+                <td>{{ txn.notes or "—" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:3rem;background:#f8f9fa;">
+    <p style="color:#7f8c8d;font-size:1.1rem;">No transactions yet for this store credit.</p>
+</div>
+{% endif %}
+
+<style>
+    @media (max-width: 768px) {
+        .table {
+            font-size: 0.9rem;
+        }
+    }
+</style>
+{% endblock %}

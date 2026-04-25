@@ -139,6 +139,27 @@ def init_db():
             FOREIGN KEY (refund_id) REFERENCES refunds(id),
             FOREIGN KEY (product_id) REFERENCES products(id)
         );
+
+        CREATE TABLE IF NOT EXISTS store_credits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_name TEXT NOT NULL,
+            customer_phone TEXT NOT NULL UNIQUE,
+            balance REAL NOT NULL DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now','localtime')),
+            updated_at TEXT DEFAULT (datetime('now','localtime'))
+        );
+
+        CREATE TABLE IF NOT EXISTS credit_transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            credit_id INTEGER NOT NULL,
+            bill_id INTEGER,
+            amount REAL NOT NULL DEFAULT 0,
+            transaction_type TEXT NOT NULL,
+            notes TEXT,
+            created_at TEXT DEFAULT (datetime('now','localtime')),
+            FOREIGN KEY (credit_id) REFERENCES store_credits(id),
+            FOREIGN KEY (bill_id) REFERENCES bills(id)
+        );
     """)
 
     # Seed default categories if empty
@@ -167,6 +188,12 @@ def init_db():
         db.execute("ALTER TABLE expenses ADD COLUMN vendor TEXT")
     if "bill_image_path" not in expense_columns:
         db.execute("ALTER TABLE expenses ADD COLUMN bill_image_path TEXT")
+
+    bills_columns = {
+        row["name"] for row in db.execute("PRAGMA table_info(bills)").fetchall()
+    }
+    if "store_credit_used" not in bills_columns:
+        db.execute("ALTER TABLE bills ADD COLUMN store_credit_used REAL DEFAULT 0")
 
     db.commit()
 
@@ -541,6 +568,8 @@ def create_bill():
     discount_percent = float(data.get("discount_percent", 0))
     tax_percent = float(data.get("tax_percent", 0))
     payment_method = data.get("payment_method", "Cash")
+    store_credit_id = data.get("store_credit_id")
+    store_credit_amount = float(data.get("store_credit_amount", 0))
 
     subtotal = 0
     validated_items = []
@@ -570,12 +599,33 @@ def create_bill():
     tax_amount = round(after_discount * tax_percent / 100, 2)
     total = round(after_discount + tax_amount, 2)
 
+    # Validate store credit if provided
+    if store_credit_id:
+        try:
+            store_credit_id = int(store_credit_id)
+            credit = db.execute(
+                "SELECT * FROM store_credits WHERE id = ?", (store_credit_id,)
+            ).fetchone()
+            if not credit:
+                return jsonify({"error": "Store credit not found"}), 400
+            if credit["balance"] < store_credit_amount:
+                return jsonify({"error": f"Insufficient store credit. Available: ₹{credit['balance']}"}), 400
+            # Store credit gets deducted from total after tax
+            store_credit_amount = round(min(store_credit_amount, total), 2)
+            total = round(total - store_credit_amount, 2)
+        except (ValueError, TypeError):
+            store_credit_id = None
+            store_credit_amount = 0
+    else:
+        store_credit_id = None
+        store_credit_amount = 0
+
     cursor = db.execute(
         "INSERT INTO bills (customer_name, customer_phone, subtotal, "
         "discount_percent, discount_amount, tax_percent, tax_amount, "
-        "total, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "total, payment_method, store_credit_used) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (customer_name, customer_phone, subtotal, discount_percent,
-         discount_amount, tax_percent, tax_amount, total, payment_method),
+         discount_amount, tax_percent, tax_amount, total, payment_method, store_credit_amount),
     )
     bill_id = cursor.lastrowid
 
@@ -592,10 +642,24 @@ def create_bill():
             (it["quantity"], it["product_id"]),
         )
 
+    # Record store credit transaction if used
+    if store_credit_id and store_credit_amount > 0:
+        db.execute(
+            "INSERT INTO credit_transactions (credit_id, bill_id, amount, transaction_type, notes) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (store_credit_id, bill_id, store_credit_amount, "debit", f"Used in Bill #{bill_id}"),
+        )
+        db.execute(
+            "UPDATE store_credits SET balance = balance - ?, updated_at = datetime('now','localtime') WHERE id = ?",
+            (store_credit_amount, store_credit_id),
+        )
+
     db.commit()
     log_update(
         "New Bill Created",
-        f"Bill #{bill_id} — ₹{total} ({payment_method}) — {customer_name or 'Walk-in'}",
+        f"Bill #{bill_id} — ₹{after_discount + tax_amount} ({payment_method})" +
+        (f" — Store Credit: ₹{store_credit_amount}" if store_credit_amount > 0 else "") +
+        f" — {customer_name or 'Walk-in'}",
         "billing",
     )
 
@@ -642,19 +706,216 @@ def delete_bill(bill_id):
             (item["quantity"], item["product_id"]),
         )
 
+    # Restore store credit if it was used
+    if bill["store_credit_used"] and bill["store_credit_used"] > 0:
+        transaction = db.execute(
+            "SELECT credit_id FROM credit_transactions WHERE bill_id = ? AND transaction_type = 'debit'",
+            (bill_id,)
+        ).fetchone()
+        if transaction:
+            credit_id = transaction["credit_id"]
+            db.execute(
+                "UPDATE store_credits SET balance = balance + ?, updated_at = datetime('now','localtime') WHERE id = ?",
+                (bill["store_credit_used"], credit_id),
+            )
+            db.execute(
+                "INSERT INTO credit_transactions (credit_id, bill_id, amount, transaction_type, notes) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (credit_id, bill_id, bill["store_credit_used"], "credit", f"Restored from deleted Bill #{bill_id}"),
+            )
+
     db.execute("DELETE FROM bill_items WHERE bill_id = ?", (bill_id,))
     db.execute("DELETE FROM refund_items WHERE refund_id IN (SELECT id FROM refunds WHERE bill_id = ?)", (bill_id,))
     db.execute("DELETE FROM refunds WHERE bill_id = ?", (bill_id,))
+    db.execute("DELETE FROM credit_transactions WHERE bill_id = ?", (bill_id,))
     db.execute("DELETE FROM bills WHERE id = ?", (bill_id,))
     db.commit()
 
     log_update(
         "Bill Deleted",
-        f"Bill #{bill_id} — ₹{bill['total']} deleted. Stock restored.",
+        f"Bill #{bill_id} — ₹{bill['total']} deleted. Stock restored." +
+        (f" Store Credit restored: ₹{bill['store_credit_used']}" if bill["store_credit_used"] > 0 else ""),
         "billing",
     )
     flash(f"Bill #{bill_id} deleted and stock restored.", "success")
     return redirect(url_for("bills_list"))
+
+
+# ── Store Credits ────────────────────────────────────────────────────────
+@app.route("/store-credits")
+def store_credits():
+    if not admin_authenticated():
+        flash("Please unlock Admin to access Store Credits.", "error")
+        return redirect(url_for("admin", next=url_for("store_credits")))
+
+    db = get_db()
+    search = request.args.get("search", "").strip()
+    query = "SELECT * FROM store_credits WHERE 1=1"
+    params = []
+    if search:
+        query += " AND (customer_name LIKE ? OR customer_phone LIKE ?)"
+        params += [f"%{search}%", f"%{search}%"]
+    query += " ORDER BY updated_at DESC"
+    all_credits = db.execute(query, params).fetchall()
+    return render_template("store_credits.html", credits=all_credits, search=search)
+
+
+@app.route("/store-credits/add", methods=["POST"])
+def add_store_credit():
+    if not admin_authenticated():
+        flash("Please unlock Admin to add store credit.", "error")
+        return redirect(url_for("admin", next=url_for("store_credits")))
+
+    db = get_db()
+    customer_name = request.form.get("customer_name", "").strip()
+    customer_phone = request.form.get("customer_phone", "").strip()
+    balance = float(request.form.get("balance", 0))
+
+    if not customer_name or not customer_phone or balance <= 0:
+        flash("Please provide customer name, phone, and balance.", "error")
+        return redirect(url_for("store_credits"))
+
+    # Check if phone already exists
+    existing = db.execute(
+        "SELECT id FROM store_credits WHERE customer_phone = ?", (customer_phone,)
+    ).fetchone()
+    if existing:
+        flash(f"Store credit for phone {customer_phone} already exists.", "error")
+        return redirect(url_for("store_credits"))
+
+    cursor = db.execute(
+        "INSERT INTO store_credits (customer_name, customer_phone, balance) "
+        "VALUES (?, ?, ?)",
+        (customer_name, customer_phone, round(balance, 2)),
+    )
+    credit_id = cursor.lastrowid
+
+    # Record initial transaction
+    db.execute(
+        "INSERT INTO credit_transactions (credit_id, amount, transaction_type, notes) "
+        "VALUES (?, ?, ?, ?)",
+        (credit_id, balance, "credit", "Initial credit added"),
+    )
+    db.commit()
+
+    log_update(
+        "Store Credit Added",
+        f"{customer_name} ({customer_phone}) — ₹{balance}",
+        "store_credit",
+    )
+    flash(f"Store credit for {customer_name} (₹{balance}) added!", "success")
+    return redirect(url_for("store_credits"))
+
+
+@app.route("/api/store-credit/lookup/<phone>")
+def lookup_store_credit(phone):
+    db = get_db()
+    credit = db.execute(
+        "SELECT * FROM store_credits WHERE customer_phone = ?", (phone,)
+    ).fetchone()
+    if not credit:
+        return jsonify({"found": False})
+    return jsonify({
+        "found": True,
+        "id": credit["id"],
+        "customer_name": credit["customer_name"],
+        "customer_phone": credit["customer_phone"],
+        "balance": credit["balance"],
+    })
+
+
+@app.route("/store-credits/<int:credit_id>/add-balance", methods=["POST"])
+def add_credit_balance(credit_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to modify store credits.", "error")
+        return redirect(url_for("store_credits"))
+
+    db = get_db()
+    credit = db.execute(
+        "SELECT * FROM store_credits WHERE id = ?", (credit_id,)
+    ).fetchone()
+    if not credit:
+        flash("Store credit not found.", "error")
+        return redirect(url_for("store_credits"))
+
+    amount = float(request.form.get("amount", 0))
+    notes = request.form.get("notes", "").strip()
+
+    if amount <= 0:
+        flash("Please provide a valid amount.", "error")
+        return redirect(url_for("store_credits"))
+
+    db.execute(
+        "UPDATE store_credits SET balance = balance + ?, updated_at = datetime('now','localtime') WHERE id = ?",
+        (round(amount, 2), credit_id),
+    )
+    db.execute(
+        "INSERT INTO credit_transactions (credit_id, amount, transaction_type, notes) "
+        "VALUES (?, ?, ?, ?)",
+        (credit_id, amount, "credit", notes or "Balance added"),
+    )
+    db.commit()
+
+    log_update(
+        "Store Credit Added",
+        f"{credit['customer_name']} — ₹{amount}" + (f" ({notes})" if notes else ""),
+        "store_credit",
+    )
+    flash(f"₹{amount} added to {credit['customer_name']}'s store credit!", "success")
+    return redirect(url_for("store_credits"))
+
+
+@app.route("/store-credits/<int:credit_id>/transactions")
+def credit_transactions(credit_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to view store credit details.", "error")
+        return redirect(url_for("admin", next=url_for("credit_transactions", credit_id=credit_id)))
+
+    db = get_db()
+    credit = db.execute(
+        "SELECT * FROM store_credits WHERE id = ?", (credit_id,)
+    ).fetchone()
+    if not credit:
+        flash("Store credit not found.", "error")
+        return redirect(url_for("store_credits"))
+
+    transactions = db.execute(
+        "SELECT * FROM credit_transactions WHERE credit_id = ? ORDER BY created_at DESC",
+        (credit_id,)
+    ).fetchall()
+
+    return render_template(
+        "credit_transactions.html",
+        credit=credit,
+        transactions=transactions,
+    )
+
+
+@app.route("/store-credits/<int:credit_id>/delete", methods=["POST"])
+def delete_store_credit(credit_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to delete store credits.", "error")
+        return redirect(url_for("store_credits"))
+
+    db = get_db()
+    credit = db.execute(
+        "SELECT * FROM store_credits WHERE id = ?", (credit_id,)
+    ).fetchone()
+    if not credit:
+        flash("Store credit not found.", "error")
+        return redirect(url_for("store_credits"))
+
+    db.execute("DELETE FROM credit_transactions WHERE credit_id = ?", (credit_id,))
+    db.execute("DELETE FROM store_credits WHERE id = ?", (credit_id,))
+    db.commit()
+
+    log_update(
+        "Store Credit Deleted",
+        f"{credit['customer_name']} ({credit['customer_phone']})",
+        "store_credit",
+    )
+    flash(f"Store credit for {credit['customer_name']} deleted.", "success")
+    return redirect(url_for("store_credits"))
 
 
 # ── Refunds & Exchanges ──────────────────────────────────────────────────

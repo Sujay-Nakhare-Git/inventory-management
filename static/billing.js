@@ -1,5 +1,6 @@
 // Billing cart state
 let cartItems = [];
+let currentStoreCredit = null;  // Store current credit info
 
 // Product search filter
 document.getElementById('productSearch').addEventListener('input', function() {
@@ -9,6 +10,53 @@ document.getElementById('productSearch').addEventListener('input', function() {
         item.style.display = searchText.includes(query) ? 'flex' : 'none';
     });
 });
+
+function toggleStoreCredit() {
+    const useCredit = document.getElementById('useStoreCredit').checked;
+    document.getElementById('storeCreditFields').style.display = useCredit ? 'block' : 'none';
+    if (!useCredit) {
+        currentStoreCredit = null;
+        document.getElementById('storeCreditInfo').style.display = 'none';
+        document.getElementById('storeCreditAmount').value = '0';
+        recalculate();
+    }
+}
+
+async function lookupStoreCredit() {
+    const phone = document.getElementById('storeCreditPhone').value.trim();
+    const errorDiv = document.getElementById('storeCreditError');
+    
+    if (!phone || phone.length !== 10) {
+        errorDiv.textContent = 'Please enter a valid 10-digit phone number.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    try {
+        const resp = await fetch(`/api/store-credit/lookup/${phone}`);
+        const data = await resp.json();
+        
+        if (!data.found) {
+            errorDiv.textContent = 'No store credit account found for this phone number.';
+            errorDiv.style.display = 'block';
+            document.getElementById('storeCreditInfo').style.display = 'none';
+            currentStoreCredit = null;
+            return;
+        }
+
+        errorDiv.style.display = 'none';
+        currentStoreCredit = data;
+        document.getElementById('storeCreditCustomerName').textContent = data.customer_name;
+        document.getElementById('storeCreditBalance').textContent = `₹${data.balance.toFixed(2)}`;
+        document.getElementById('storeCreditAmount').max = data.balance;
+        document.getElementById('storeCreditAmount').value = '0';
+        document.getElementById('storeCreditInfo').style.display = 'block';
+        recalculate();
+    } catch (err) {
+        errorDiv.textContent = 'Error looking up store credit. Please try again.';
+        errorDiv.style.display = 'block';
+    }
+}
 
 function addItem(id, name, price, maxStock) {
     const existing = cartItems.find(i => i.product_id === id);
@@ -89,15 +137,24 @@ function recalculate() {
     const discountAmt = subtotal * discountPct / 100;
     const afterDiscount = subtotal - discountAmt;
     const taxAmt = afterDiscount * taxPct / 100;
-    const total = afterDiscount + taxAmt;
+    
+    let storeCreditAmt = 0;
+    if (document.getElementById('useStoreCredit').checked && currentStoreCredit) {
+        storeCreditAmt = parseFloat(document.getElementById('storeCreditAmount').value) || 0;
+        storeCreditAmt = Math.min(storeCreditAmt, currentStoreCredit.balance);
+    }
+    
+    const total = Math.max(0, afterDiscount + taxAmt - storeCreditAmt);
 
     document.getElementById('subtotal').textContent = `₹${subtotal.toFixed(2)}`;
     document.getElementById('discountAmount').textContent = `-₹${discountAmt.toFixed(2)}`;
     document.getElementById('taxAmount').textContent = `+₹${taxAmt.toFixed(2)}`;
     document.getElementById('totalAmount').textContent = `₹${total.toFixed(2)}`;
+    document.getElementById('storeCreditUsed').textContent = `-₹${storeCreditAmt.toFixed(2)}`;
 
     document.getElementById('discountRow').style.display = discountPct > 0 ? 'flex' : 'none';
     document.getElementById('taxRow').style.display = taxPct > 0 ? 'flex' : 'none';
+    document.getElementById('storeCreditRow').style.display = storeCreditAmt > 0 ? 'flex' : 'none';
 }
 
 async function submitBill() {
@@ -106,12 +163,18 @@ async function submitBill() {
         return;
     }
 
+    const storeCreditAmt = document.getElementById('useStoreCredit').checked && currentStoreCredit 
+        ? (parseFloat(document.getElementById('storeCreditAmount').value) || 0) 
+        : 0;
+
     const payload = {
         customer_name: document.getElementById('customerName').value.trim(),
         customer_phone: document.getElementById('customerPhone').value.trim(),
         discount_percent: parseFloat(document.getElementById('discountPercent').value) || 0,
         tax_percent: parseFloat(document.getElementById('taxPercent').value) || 0,
         payment_method: document.getElementById('paymentMethod').value,
+        store_credit_id: currentStoreCredit ? currentStoreCredit.id : null,
+        store_credit_amount: storeCreditAmt,
         items: cartItems.map(i => ({
             product_id: i.product_id,
             quantity: i.quantity
@@ -136,6 +199,9 @@ async function submitBill() {
         document.getElementById('viewBillLink').href = `/bills/${data.bill_id}`;
         document.getElementById('billModal').style.display = 'flex';
         cartItems = [];
+        currentStoreCredit = null;
+        document.getElementById('useStoreCredit').checked = false;
+        toggleStoreCredit();
     } catch (err) {
         alert('Network error. Please try again.');
     }
