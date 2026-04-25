@@ -374,7 +374,7 @@ def add_product():
     if request.method == "POST":
         name = request.form["name"].strip()
         category_id = request.form.get("category_id") or None
-        sku = request.form.get("sku", "").strip() or None
+        sku = generate_sku(db, category_id) if category_id else None
         size = request.form.get("size", "").strip()
         color = request.form.get("color", "").strip()
         cost_price = float(request.form.get("cost_price", 0))
@@ -421,7 +421,12 @@ def edit_product(product_id):
     if request.method == "POST":
         name = request.form["name"].strip()
         category_id = request.form.get("category_id") or None
-        sku = request.form.get("sku", "").strip() or None
+        # Re-generate SKU if category changed
+        old_category_id = str(product["category_id"]) if product["category_id"] else None
+        if category_id != old_category_id:
+            sku = generate_sku(db, category_id) if category_id else None
+        else:
+            sku = product["sku"]
         size = request.form.get("size", "").strip()
         color = request.form.get("color", "").strip()
         cost_price = float(request.form.get("cost_price", 0))
@@ -483,6 +488,33 @@ def delete_product(product_id):
     return redirect(url_for("inventory"))
 
 
+# ── SKU Generation ────────────────────────────────────────────────────────
+def generate_sku(db, category_id):
+    """Generate next sequential SKU for a category."""
+    cat = db.execute("SELECT sku_code FROM categories WHERE id = ?", (category_id,)).fetchone()
+    if not cat or not cat["sku_code"]:
+        return None
+    prefix = cat["sku_code"]
+    row = db.execute(
+        "SELECT sku FROM products WHERE sku LIKE ? ORDER BY sku DESC LIMIT 1",
+        (f"{prefix}-%",),
+    ).fetchone()
+    next_num = 1
+    if row and row["sku"]:
+        try:
+            next_num = int(row["sku"].split("-")[-1]) + 1
+        except ValueError:
+            pass
+    return f"{prefix}-{next_num:03d}"
+
+
+@app.route("/api/next-sku/<int:category_id>")
+def next_sku(category_id):
+    db = get_db()
+    sku = generate_sku(db, category_id)
+    return jsonify({"sku": sku or ""})
+
+
 # ── Categories ───────────────────────────────────────────────────────────
 @app.route("/categories", methods=["GET", "POST"])
 def categories():
@@ -515,10 +547,24 @@ def edit_category(cat_id):
         flash("Category name is required.", "error")
         return redirect(url_for("categories"))
 
+    old_cat = db.execute("SELECT sku_code FROM categories WHERE id = ?", (cat_id,)).fetchone()
+    old_sku_code = old_cat["sku_code"] if old_cat else None
+
     db.execute(
         "UPDATE categories SET name = ?, sku_code = ? WHERE id = ?",
         (name, sku_code, cat_id),
     )
+
+    # Update all product SKUs if category SKU code changed
+    if sku_code != old_sku_code:
+        products = db.execute(
+            "SELECT id, sku FROM products WHERE category_id = ? ORDER BY id",
+            (cat_id,),
+        ).fetchall()
+        for i, p in enumerate(products, 1):
+            new_sku = f"{sku_code}-{i:03d}" if sku_code else None
+            db.execute("UPDATE products SET sku = ? WHERE id = ?", (new_sku, p["id"]))
+
     db.commit()
     flash("Category updated.", "success")
     return redirect(url_for("categories"))
