@@ -108,8 +108,18 @@ function generateSku() {
     fetch(`/api/next-sku/${categoryId}`)
         .then(r => r.json())
         .then(data => {
-            skuInput.value = data.sku;
-        });
+            if (data.sku) skuInput.value = data.sku;
+        })
+        .catch(() => {});
 }
+
+// Auto-generate SKU on page load for add form when no SKU exists yet
+document.addEventListener('DOMContentLoaded', function() {
+    const skuInput = document.getElementById('sku');
+    const select = document.getElementById('category_id');
+    if (select.value && !skuInput.value) {
+        generateSku();
+    }
+});
 </script>
 {% endblock %}
