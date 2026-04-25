@@ -65,6 +65,17 @@
     <div class="stats-grid">
         <div class="card" style="text-align:left;">
             <div class="card-title">🏷️ By Category</div>
+            <form method="GET" action="{{ url_for('admin') }}" style="margin-top:0.75rem;display:flex;gap:0.5rem;align-items:center;">
+                {% if filter_size %}<input type="hidden" name="filter_size" value="{{ filter_size }}">{% endif %}
+                <select name="filter_category" class="input" style="font-size:0.85rem;padding:0.3rem 0.5rem;">
+                    <option value="">All Categories</option>
+                    {% for c in all_categories %}
+                    <option value="{{ c.name }}" {% if filter_category == c.name %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+                {% if filter_category %}<a href="{{ url_for('admin', filter_size=filter_size) }}" class="btn btn-sm btn-outline">Clear</a>{% endif %}
+            </form>
             {% if category_counts %}
             <div style="overflow-x:auto;margin-top:0.75rem;">
                 <table style="width:100%;border-collapse:collapse;">
@@ -93,6 +104,17 @@
 
         <div class="card" style="text-align:left;">
             <div class="card-title">📏 By Size</div>
+            <form method="GET" action="{{ url_for('admin') }}" style="margin-top:0.75rem;display:flex;gap:0.5rem;align-items:center;">
+                {% if filter_category %}<input type="hidden" name="filter_category" value="{{ filter_category }}">{% endif %}
+                <select name="filter_size" class="input" style="font-size:0.85rem;padding:0.3rem 0.5rem;">
+                    <option value="">All Sizes</option>
+                    {% for s in all_sizes %}
+                    <option value="{{ s.name }}" {% if filter_size == s.name %}selected{% endif %}>{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+                {% if filter_size %}<a href="{{ url_for('admin', filter_category=filter_category) }}" class="btn btn-sm btn-outline">Clear</a>{% endif %}
+            </form>
             {% if size_counts %}
             <div style="overflow-x:auto;margin-top:0.75rem;">
                 <table style="width:100%;border-collapse:collapse;">

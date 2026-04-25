@@ -1259,19 +1259,53 @@ def admin():
 
     category_counts = []
     size_counts = []
+    all_categories = []
+    all_sizes = []
+    filter_category = request.args.get("filter_category", "")
+    filter_size = request.args.get("filter_size", "")
     if admin_authenticated():
         db = get_db()
+        all_categories = db.execute(
+            "SELECT DISTINCT COALESCE(c.name, 'Uncategorized') as name "
+            "FROM products p LEFT JOIN categories c ON p.category_id = c.id ORDER BY name"
+        ).fetchall()
+        all_sizes = db.execute(
+            "SELECT DISTINCT COALESCE(p.size, 'No Size') as name FROM products p ORDER BY name"
+        ).fetchall()
+
+        cat_where = ""
+        cat_params = []
+        if filter_category:
+            if filter_category == "Uncategorized":
+                cat_where = " WHERE c.name IS NULL"
+            else:
+                cat_where = " WHERE c.name = ?"
+                cat_params = [filter_category]
+
+        size_where = ""
+        size_params = []
+        if filter_size:
+            if filter_size == "No Size":
+                size_where = " WHERE p.size IS NULL OR p.size = ''"
+            else:
+                size_where = " WHERE p.size = ?"
+                size_params = [filter_size]
+
         category_counts = db.execute(
             "SELECT COALESCE(c.name, 'Uncategorized') as category, "
             "COUNT(p.id) as product_count, COALESCE(SUM(p.quantity), 0) as total_stock "
-            "FROM products p LEFT JOIN categories c ON p.category_id = c.id "
-            "GROUP BY c.name ORDER BY total_stock DESC"
+            "FROM products p LEFT JOIN categories c ON p.category_id = c.id"
+            + cat_where +
+            " GROUP BY c.name ORDER BY total_stock DESC",
+            cat_params,
         ).fetchall()
         size_counts = db.execute(
             "SELECT COALESCE(p.size, 'No Size') as size, "
             "COUNT(p.id) as product_count, COALESCE(SUM(p.quantity), 0) as total_stock "
-            "FROM products p "
-            "GROUP BY p.size ORDER BY total_stock DESC"
+            "FROM products p"
+            + size_where +
+            " GROUP BY p.size ORDER BY total_stock DESC",
+            size_params,
         ).fetchall()
 
     return render_template(
@@ -1280,6 +1314,10 @@ def admin():
         next_url=next_url,
         category_counts=category_counts,
         size_counts=size_counts,
+        all_categories=all_categories,
+        all_sizes=all_sizes,
+        filter_category=filter_category,
+        filter_size=filter_size,
     )
 
 
