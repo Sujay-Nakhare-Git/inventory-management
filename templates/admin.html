@@ -59,6 +59,68 @@
     </div>
 </div>
 
+<!-- Inventory Counts by Category & Size -->
+<div style="margin-top:2rem;">
+    <h3 style="margin-bottom:1rem;">📦 Inventory Overview</h3>
+    <div class="stats-grid">
+        <div class="card" style="text-align:left;">
+            <div class="card-title">🏷️ By Category</div>
+            {% if category_counts %}
+            <div style="overflow-x:auto;margin-top:0.75rem;">
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead>
+                        <tr style="border-bottom:2px solid #ecf0f1;">
+                            <th style="text-align:left;padding:0.5rem 0.75rem;font-size:0.9rem;">Category</th>
+                            <th style="text-align:right;padding:0.5rem 0.75rem;font-size:0.9rem;">Products</th>
+                            <th style="text-align:right;padding:0.5rem 0.75rem;font-size:0.9rem;">Stock</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in category_counts %}
+                        <tr style="border-bottom:1px solid #f0f0f0;">
+                            <td style="padding:0.4rem 0.75rem;">{{ row.category }}</td>
+                            <td style="padding:0.4rem 0.75rem;text-align:right;">{{ row.product_count }}</td>
+                            <td style="padding:0.4rem 0.75rem;text-align:right;font-weight:bold;">{{ row.total_stock }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p style="color:#95a5a6;margin-top:0.5rem;">No products added yet.</p>
+            {% endif %}
+        </div>
+
+        <div class="card" style="text-align:left;">
+            <div class="card-title">📏 By Size</div>
+            {% if size_counts %}
+            <div style="overflow-x:auto;margin-top:0.75rem;">
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead>
+                        <tr style="border-bottom:2px solid #ecf0f1;">
+                            <th style="text-align:left;padding:0.5rem 0.75rem;font-size:0.9rem;">Size</th>
+                            <th style="text-align:right;padding:0.5rem 0.75rem;font-size:0.9rem;">Products</th>
+                            <th style="text-align:right;padding:0.5rem 0.75rem;font-size:0.9rem;">Stock</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in size_counts %}
+                        <tr style="border-bottom:1px solid #f0f0f0;">
+                            <td style="padding:0.4rem 0.75rem;">{{ row.size }}</td>
+                            <td style="padding:0.4rem 0.75rem;text-align:right;">{{ row.product_count }}</td>
+                            <td style="padding:0.4rem 0.75rem;text-align:right;font-weight:bold;">{{ row.total_stock }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p style="color:#95a5a6;margin-top:0.5rem;">No products added yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
 <!-- Clean All Data -->
 <div class="stats-grid" style="margin-top:2rem;">
     <div class="card stat-card" style="text-align:left; border:2px solid #e74c3c;">

@@ -1189,10 +1189,30 @@ def admin():
         flash("Incorrect admin password.", "error")
 
     next_url = request.args.get("next", "")
+
+    category_counts = []
+    size_counts = []
+    if admin_authenticated():
+        db = get_db()
+        category_counts = db.execute(
+            "SELECT COALESCE(c.name, 'Uncategorized') as category, "
+            "COUNT(p.id) as product_count, COALESCE(SUM(p.quantity), 0) as total_stock "
+            "FROM products p LEFT JOIN categories c ON p.category_id = c.id "
+            "GROUP BY c.name ORDER BY total_stock DESC"
+        ).fetchall()
+        size_counts = db.execute(
+            "SELECT COALESCE(p.size, 'No Size') as size, "
+            "COUNT(p.id) as product_count, COALESCE(SUM(p.quantity), 0) as total_stock "
+            "FROM products p "
+            "GROUP BY p.size ORDER BY total_stock DESC"
+        ).fetchall()
+
     return render_template(
         "admin.html",
         locked=not admin_authenticated(),
         next_url=next_url,
+        category_counts=category_counts,
+        size_counts=size_counts,
     )
 
 
