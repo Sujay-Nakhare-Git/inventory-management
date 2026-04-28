@@ -2,7 +2,7 @@
 {% block title %}Bill #{{ bill.id }} — Gulmohar by Ankita{% endblock %}
 
 {% block content %}
-<div class="page-header">
+<div class="page-header no-print">
     <h2>Bill #{{ bill.id }}</h2>
     <div>
         <a href="{{ url_for('new_refund', bill_id=bill.id) }}" class="btn btn-outline">🔄 Refund / Exchange</a>
@@ -14,7 +14,7 @@
     </div>
 </div>
 
-<div class="card invoice-card" id="printArea">
+<div class="card invoice-card screen-only" id="printArea">
     <div class="invoice-header">
         <div>
             <h2 class="invoice-brand">Gulmohar by Ankita</h2>
@@ -74,8 +74,53 @@
     </div>
 </div>
 
+<!-- ===== Thermal (3-inch) printable receipt ===== -->
+<div class="thermal-receipt" aria-hidden="true">
+    <div class="t-center t-brand">Gulmohar by Ankita</div>
+    <div class="t-center t-sub">Handpicked Apparel</div>
+    <div class="t-sep"></div>
+    <div class="t-row"><span>Bill #</span><span>{{ bill.id }}</span></div>
+    <div class="t-row"><span>Date</span><span>{{ bill.created_at }}</span></div>
+    <div class="t-row"><span>Pay</span><span>{{ bill.payment_method }}</span></div>
+    {% if bill.customer_name %}<div class="t-row"><span>Cust</span><span>{{ bill.customer_name }}</span></div>{% endif %}
+    {% if bill.customer_phone %}<div class="t-row"><span>Ph</span><span>{{ bill.customer_phone }}</span></div>{% endif %}
+    <div class="t-sep"></div>
+    <table class="t-items">
+        <thead>
+            <tr><th class="t-l">Item</th><th class="t-r">Qty</th><th class="t-r">Rate</th><th class="t-r">Amt</th></tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td class="t-l" colspan="4">{{ item.product_name }}</td>
+            </tr>
+            <tr>
+                <td class="t-l"></td>
+                <td class="t-r">{{ item.quantity }}</td>
+                <td class="t-r">{{ "%.2f"|format(item.unit_price) }}</td>
+                <td class="t-r">{{ "%.2f"|format(item.total_price) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="t-sep"></div>
+    <div class="t-row"><span>Subtotal</span><span>{{ "%.2f"|format(bill.subtotal) }}</span></div>
+    {% if bill.discount_amount > 0 %}
+    <div class="t-row"><span>Disc ({{ bill.discount_percent }}%)</span><span>-{{ "%.2f"|format(bill.discount_amount) }}</span></div>
+    {% endif %}
+    {% if bill.tax_amount > 0 %}
+    <div class="t-row"><span>Tax ({{ bill.tax_percent }}%)</span><span>+{{ "%.2f"|format(bill.tax_amount) }}</span></div>
+    {% endif %}
+    <div class="t-sep"></div>
+    <div class="t-row t-total"><span>TOTAL</span><span>Rs.{{ "%.2f"|format(bill.total) }}</span></div>
+    <div class="t-sep"></div>
+    <div class="t-center t-thanks">Thank you!</div>
+    <div class="t-center t-thanks">Visit again ❤️</div>
+    <div class="t-feed">&nbsp;</div>
+</div>
+
 {% if refunds %}
-<div class="card">
+<div class="card no-print">
     <h3 class="card-title">🔄 Refunds & Exchanges for this Bill</h3>
     <div class="table-wrapper">
         <table>

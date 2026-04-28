@@ -880,11 +880,91 @@ textarea.input { resize: vertical; }
     z-index: 90;
 }
 
+/* ── Thermal receipt (3-inch / 72mm) ─────────────────────────────────── */
+.thermal-receipt { display: none; }
+
+@media screen {
+    .thermal-receipt { display: none !important; }
+}
+
 /* ── Print Styles ────────────────────────────────────────────────────── */
 @media print {
-    .sidebar, .page-header .btn, .flash-messages, .hamburger, .sidebar-overlay { display: none !important; }
-    .content { margin-left: 0; padding: 0; }
-    .card { box-shadow: none; border: 1px solid #ddd; }
+    @page { size: 72mm auto; margin: 0; }
+
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        color: #000 !important;
+        width: 72mm;
+        font-family: "Courier New", "Liberation Mono", monospace;
+        font-size: 11px;
+        line-height: 1.25;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Hide all chrome and the on-screen invoice card. */
+    .sidebar, .sidebar-overlay, .hamburger,
+    .page-header, .flash-messages,
+    .no-print, .screen-only,
+    .invoice-card, .card.no-print { display: none !important; }
+
+    .content {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 72mm !important;
+        max-width: 72mm !important;
+    }
+
+    .thermal-receipt {
+        display: block !important;
+        width: 72mm;
+        padding: 2mm 3mm 0 3mm;
+        box-sizing: border-box;
+        color: #000;
+    }
+    .thermal-receipt .t-center { text-align: center; }
+    .thermal-receipt .t-l { text-align: left; }
+    .thermal-receipt .t-r { text-align: right; }
+    .thermal-receipt .t-brand { font-size: 14px; font-weight: 700; margin-top: 1mm; }
+    .thermal-receipt .t-sub { font-size: 10px; margin-bottom: 1mm; }
+    .thermal-receipt .t-sep {
+        border-top: 1px dashed #000;
+        margin: 1.5mm 0;
+        height: 0;
+    }
+    .thermal-receipt .t-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 4mm;
+        font-size: 11px;
+    }
+    .thermal-receipt .t-row span:last-child { text-align: right; }
+    .thermal-receipt .t-total { font-size: 13px; font-weight: 700; }
+    .thermal-receipt .t-thanks { font-size: 10px; margin-top: 0.5mm; }
+    .thermal-receipt .t-feed { height: 8mm; }
+
+    .thermal-receipt .t-items {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+    }
+    .thermal-receipt .t-items th,
+    .thermal-receipt .t-items td {
+        padding: 0.5mm 0;
+        font-size: 10px;
+        border: none;
+        vertical-align: top;
+        word-break: break-word;
+    }
+    .thermal-receipt .t-items thead th {
+        border-bottom: 1px solid #000;
+        font-weight: 700;
+    }
+
+    /* Avoid breaking a single item across pages. */
+    .thermal-receipt .t-items tr { page-break-inside: avoid; }
 }
 
 /* ── Responsive: Tablet ──────────────────────────────────────────────── */
