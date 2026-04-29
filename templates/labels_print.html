@@ -22,11 +22,13 @@
 <div class="labels-page">
     {% for p in labels %}
     <div class="label-card">
-        <div class="label-brand">Gulmohar by Ankita</div>
-        <div class="label-sku">{{ p.sku or '—' }}</div>
-        <div class="label-divider"></div>
-        <div class="label-row"><span>Size</span><strong>{{ p.size or '—' }}</strong></div>
-        <div class="label-price">₹{{ "%.0f"|format(p.selling_price) }}</div>
+        <div class="label-inner">
+            <div class="label-brand">Gulmohar by Ankita</div>
+            <div class="label-sku">{{ p.sku or '—' }}</div>
+            <div class="label-divider"></div>
+            <div class="label-row"><span>Size</span><strong>{{ p.size or '—' }}</strong></div>
+            <div class="label-price">₹{{ "%.0f"|format(p.selling_price) }}</div>
+        </div>
     </div>
     {% endfor %}
 </div>

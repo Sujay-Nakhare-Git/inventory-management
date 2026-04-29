@@ -898,16 +898,29 @@ textarea.input { resize: vertical; }
     width: 3in;
     height: 2in;
     box-sizing: border-box;
-    padding: 0.12in 0.18in;
     border: 1px dashed #aaa;
     background: #fff;
     color: #000;
+    position: relative;
+    overflow: hidden;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+.label-inner {
+    /* Rotated -90deg so the readable content is vertical (2in wide x 3in tall) */
+    width: 2in;
+    height: 3in;
+    box-sizing: border-box;
+    padding: 0.12in 0.18in;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-90deg);
+    transform-origin: center center;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     font-family: "Helvetica Neue", Arial, sans-serif;
-    page-break-inside: avoid;
-    break-inside: avoid;
 }
 .label-brand { font-size: 9pt; text-align: center; color: #444; }
 .label-sku {
