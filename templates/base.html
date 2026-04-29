@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
     <button class="hamburger" id="hamburgerBtn" onclick="document.querySelector('.sidebar').classList.toggle('open'); this.classList.toggle('active')">
         <span></span><span></span><span></span>
     </button>

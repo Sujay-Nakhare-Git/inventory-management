@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Print Labels — Gulmohar by Ankita{% endblock %}
+{% block body_class %}print-labels{% endblock %}
+
+{% block content %}
+<div class="page-header no-print">
+    <h2>🏷️ {{ labels|length }} Label{{ '' if labels|length == 1 else 's' }} Ready</h2>
+    <div>
+        <button onclick="window.print()" class="btn btn-primary">🖨️ Print</button>
+        <a href="{{ url_for('inventory_labels') }}" class="btn btn-outline">← Back</a>
+    </div>
+</div>
+
+<div class="card no-print">
+    <p class="page-desc">
+        These are <strong>2&quot; (height) × 3&quot; (width)</strong> vertical labels.
+        In the print dialog set <strong>Margins: None</strong> and <strong>Scale: 100%</strong>.
+        Each label prints on its own page so it works with both label-roll printers and pre-cut sheets.
+    </p>
+</div>
+
+<div class="labels-page">
+    {% for p in labels %}
+    <div class="label-card">
+        <div class="label-brand">Gulmohar by Ankita</div>
+        <div class="label-sku">{{ p.sku or '—' }}</div>
+        <div class="label-divider"></div>
+        <div class="label-row"><span>Size</span><strong>{{ p.size or '—' }}</strong></div>
+        <div class="label-price">₹{{ "%.0f"|format(p.selling_price) }}</div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1382,6 +1382,100 @@ def clean_all_data():
     return redirect(url_for("admin"))
 
 
+# ── Inventory Labels (2"x3" vertical) ────────────────────────────────────
+@app.route("/admin/labels", methods=["GET"])
+def inventory_labels():
+    if not admin_authenticated():
+        flash("Please unlock Admin to print labels.", "error")
+        return redirect(url_for("admin", next=url_for("inventory_labels")))
+
+    db = get_db()
+    filter_category = request.args.get("filter_category", "").strip()
+    filter_size = request.args.get("filter_size", "").strip()
+    search = request.args.get("q", "").strip()
+
+    query = (
+        "SELECT p.id, p.name, p.sku, p.size, p.selling_price, p.quantity, "
+        "COALESCE(c.name, 'Uncategorized') AS category "
+        "FROM products p LEFT JOIN categories c ON p.category_id = c.id"
+    )
+    where = []
+    params = []
+    if filter_category:
+        if filter_category == "Uncategorized":
+            where.append("c.name IS NULL")
+        else:
+            where.append("c.name = ?")
+            params.append(filter_category)
+    if filter_size:
+        if filter_size == "No Size":
+            where.append("(p.size IS NULL OR p.size = '')")
+        else:
+            where.append("p.size = ?")
+            params.append(filter_size)
+    if search:
+        where.append("(p.sku LIKE ? OR p.name LIKE ?)")
+        params.extend([f"%{search}%", f"%{search}%"])
+    if where:
+        query += " WHERE " + " AND ".join(where)
+    query += " ORDER BY c.name, p.sku"
+
+    products = db.execute(query, params).fetchall()
+    all_categories = db.execute(
+        "SELECT DISTINCT COALESCE(c.name, 'Uncategorized') as name "
+        "FROM products p LEFT JOIN categories c ON p.category_id = c.id ORDER BY name"
+    ).fetchall()
+    all_sizes = db.execute(
+        "SELECT DISTINCT COALESCE(p.size, 'No Size') as name FROM products p ORDER BY name"
+    ).fetchall()
+
+    return render_template(
+        "labels_select.html",
+        products=products,
+        all_categories=all_categories,
+        all_sizes=all_sizes,
+        filter_category=filter_category,
+        filter_size=filter_size,
+        search=search,
+    )
+
+
+@app.route("/admin/labels/print", methods=["POST"])
+def inventory_labels_print():
+    if not admin_authenticated():
+        flash("Please unlock Admin to print labels.", "error")
+        return redirect(url_for("admin"))
+
+    ids_raw = request.form.getlist("product_ids")
+    try:
+        product_ids = [int(x) for x in ids_raw if x.strip().isdigit()]
+    except ValueError:
+        product_ids = []
+
+    try:
+        copies = max(1, min(50, int(request.form.get("copies", "1"))))
+    except (TypeError, ValueError):
+        copies = 1
+
+    if not product_ids:
+        flash("Please select at least one product to print labels for.", "error")
+        return redirect(url_for("inventory_labels"))
+
+    db = get_db()
+    placeholders = ",".join("?" for _ in product_ids)
+    rows = db.execute(
+        f"SELECT id, name, sku, size, selling_price FROM products WHERE id IN ({placeholders})",
+        product_ids,
+    ).fetchall()
+
+    # Preserve the order of selection.
+    rows_by_id = {r["id"]: r for r in rows}
+    products = [rows_by_id[i] for i in product_ids if i in rows_by_id]
+    labels = [p for p in products for _ in range(copies)]
+
+    return render_template("labels_print.html", labels=labels, copies=copies)
+
+
 @app.route("/daily-summary")
 def daily_summary():
     if not admin_authenticated():

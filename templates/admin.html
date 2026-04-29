@@ -165,6 +165,13 @@
 
 <!-- Clean All Data -->
 <div class="stats-grid" style="margin-top:2rem;">
+    <div class="card stat-card" style="text-align:left;">
+        <div class="card-title">🏷️ Print Inventory Labels</div>
+        <p class="page-desc">Generate 2&quot; × 3&quot; vertical labels with SKU, Price, and Size for one, several, or all products.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('inventory_labels') }}" class="btn btn-primary">Open Label Generator</a>
+        </div>
+    </div>
     <div class="card stat-card" style="text-align:left; border:2px solid #e74c3c;">
         <div class="card-title">🗑️ Clean All Data</div>
         <p class="page-desc">Permanently delete all bills, expenses, refunds, and history. Products and categories are kept. This action cannot be undone.</p>

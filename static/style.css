@@ -887,11 +887,61 @@ textarea.input { resize: vertical; }
     .thermal-receipt { display: none !important; }
 }
 
-/* ── Print Styles ────────────────────────────────────────────────────── */
-@media print {
-    @page { size: 72mm auto; margin: 0; }
+/* ── Inventory labels (3"W x 2"H) ────────────────────────────────────── */
+.labels-page {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 3in);
+    gap: 0.25in;
+    margin-top: 1rem;
+}
+.label-card {
+    width: 3in;
+    height: 2in;
+    box-sizing: border-box;
+    padding: 0.12in 0.18in;
+    border: 1px dashed #aaa;
+    background: #fff;
+    color: #000;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+.label-brand { font-size: 9pt; text-align: center; color: #444; }
+.label-sku {
+    font-size: 22pt;
+    font-weight: 800;
+    text-align: center;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    margin-top: 0.02in;
+    word-break: break-all;
+}
+.label-divider { border-top: 1px solid #000; margin: 0.05in 0; }
+.label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 11pt;
+}
+.label-row span { color: #555; text-transform: uppercase; font-size: 8pt; letter-spacing: 0.05em; }
+.label-row strong { font-size: 14pt; font-weight: 700; }
+.label-price {
+    font-size: 24pt;
+    font-weight: 800;
+    text-align: center;
+    line-height: 1;
+}
 
-    html, body {
+/* ── Print Styles: Thermal Receipt (72mm) ────────────────────────────── */
+@page receipt { size: 72mm auto; margin: 0; }
+
+@media print {
+    body.print-receipt { page: receipt; }
+
+    body.print-receipt {
         margin: 0 !important;
         padding: 0 !important;
         background: #fff !important;
@@ -905,19 +955,24 @@ textarea.input { resize: vertical; }
     }
 
     /* Hide all chrome and the on-screen invoice card. */
-    .sidebar, .sidebar-overlay, .hamburger,
-    .page-header, .flash-messages,
-    .no-print, .screen-only,
-    .invoice-card, .card.no-print { display: none !important; }
+    body.print-receipt .sidebar,
+    body.print-receipt .sidebar-overlay,
+    body.print-receipt .hamburger,
+    body.print-receipt .page-header,
+    body.print-receipt .flash-messages,
+    body.print-receipt .no-print,
+    body.print-receipt .screen-only,
+    body.print-receipt .invoice-card,
+    body.print-receipt .card.no-print { display: none !important; }
 
-    .content {
+    body.print-receipt .content {
         margin: 0 !important;
         padding: 0 !important;
         width: 72mm !important;
         max-width: 72mm !important;
     }
 
-    .thermal-receipt {
+    body.print-receipt .thermal-receipt {
         display: block !important;
         width: 72mm;
         padding: 2mm 3mm 0 3mm;
@@ -965,6 +1020,52 @@ textarea.input { resize: vertical; }
 
     /* Avoid breaking a single item across pages. */
     .thermal-receipt .t-items tr { page-break-inside: avoid; }
+}
+
+/* ── Print Styles: Inventory Labels (3"W x 2"H) ──────────────────────── */
+@media print {
+    body.print-labels { page: label; }
+}
+@page label { size: 3in 2in; margin: 0; }
+
+@media print {
+    body.print-labels {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        color: #000 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    body.print-labels .sidebar,
+    body.print-labels .sidebar-overlay,
+    body.print-labels .hamburger,
+    body.print-labels .page-header,
+    body.print-labels .flash-messages,
+    body.print-labels .no-print { display: none !important; }
+
+    body.print-labels .content {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 3in !important;
+        max-width: 3in !important;
+    }
+    body.print-labels .labels-page {
+        display: block;
+        margin: 0;
+        gap: 0;
+    }
+    body.print-labels .label-card {
+        width: 3in;
+        height: 2in;
+        border: none;
+        page-break-after: always;
+        break-after: page;
+    }
+    body.print-labels .label-card:last-child {
+        page-break-after: auto;
+        break-after: auto;
+    }
 }
 
 /* ── Responsive: Tablet ──────────────────────────────────────────────── */

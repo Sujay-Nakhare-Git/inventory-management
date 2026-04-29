@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Inventory Labels — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>🏷️ Print Inventory Labels</h2>
+    <a href="{{ url_for('admin') }}" class="btn btn-outline">← Back to Admin</a>
+</div>
+
+<div class="card">
+    <p class="page-desc">
+        Select one, several, or all products to generate <strong>2&quot; × 3&quot; vertical labels</strong>
+        showing SKU, Price, and Size. Use a label printer or feed pre-cut sheets.
+    </p>
+
+    <form method="GET" action="{{ url_for('inventory_labels') }}" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin:1rem 0;align-items:center;">
+        <input type="text" name="q" value="{{ search }}" class="input" placeholder="Search SKU or name" style="min-width:180px;">
+        <select name="filter_category" class="input">
+            <option value="">All Categories</option>
+            {% for c in all_categories %}
+            <option value="{{ c.name }}" {% if filter_category == c.name %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+        <select name="filter_size" class="input">
+            <option value="">All Sizes</option>
+            {% for s in all_sizes %}
+            <option value="{{ s.name }}" {% if filter_size == s.name %}selected{% endif %}>{{ s.name }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+        {% if search or filter_category or filter_size %}
+        <a href="{{ url_for('inventory_labels') }}" class="btn btn-outline btn-sm">Clear</a>
+        {% endif %}
+    </form>
+
+    <form method="POST" action="{{ url_for('inventory_labels_print') }}" id="labelsForm">
+        <div style="display:flex;flex-wrap:wrap;gap:0.75rem;align-items:center;margin-bottom:0.75rem;">
+            <label style="display:flex;align-items:center;gap:0.4rem;font-weight:600;">
+                <input type="checkbox" id="selectAll"> Select All ({{ products|length }})
+            </label>
+            <label style="display:flex;align-items:center;gap:0.4rem;">
+                Copies per label:
+                <input type="number" name="copies" value="1" min="1" max="50" class="input" style="width:80px;">
+            </label>
+            <button type="submit" class="btn btn-primary">🖨️ Generate Labels</button>
+            <span id="selectedCount" style="color:#666;font-size:0.9rem;">0 selected</span>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:40px;"></th>
+                        <th>SKU</th>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Size</th>
+                        <th>Price</th>
+                        <th>Stock</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in products %}
+                    <tr>
+                        <td><input type="checkbox" name="product_ids" value="{{ p.id }}" class="rowChk"></td>
+                        <td><strong>{{ p.sku or '—' }}</strong></td>
+                        <td>{{ p.name }}</td>
+                        <td>{{ p.category }}</td>
+                        <td>{{ p.size or '—' }}</td>
+                        <td>₹{{ "%.2f"|format(p.selling_price) }}</td>
+                        <td>{{ p.quantity }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" style="text-align:center;color:#888;">No products match the filters.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+</div>
+
+<script>
+(function () {
+    var selectAll = document.getElementById('selectAll');
+    var rowChks = document.querySelectorAll('.rowChk');
+    var counter = document.getElementById('selectedCount');
+
+    function refresh() {
+        var n = 0;
+        rowChks.forEach(function (c) { if (c.checked) n++; });
+        counter.textContent = n + ' selected';
+        selectAll.checked = (n > 0 && n === rowChks.length);
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            rowChks.forEach(function (c) { c.checked = selectAll.checked; });
+            refresh();
+        });
+    }
+    rowChks.forEach(function (c) { c.addEventListener('change', refresh); });
+    refresh();
+})();
+</script>
+{% endblock %}
