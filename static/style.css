@@ -956,6 +956,11 @@ textarea.input { resize: vertical; }
     font-weight: 400;
     font-style: italic;
 }
+.label-divider {
+    border-top: 1px solid #000;
+    width: 100%;
+    margin: 0.02in 0;
+}
 .label-address {
     font-size: 6.5pt;
     text-align: center;
