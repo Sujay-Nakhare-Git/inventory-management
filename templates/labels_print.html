@@ -33,13 +33,19 @@
                 <div class="label-row"><span class="label-field-name">Price</span><strong class="label-field-value">₹{{ "%.0f"|format(p.selling_price) }}</strong></div>
             </div>
             <div class="label-wash-icons">
-                <span title="Hand Wash">🧼</span>
-                <span title="Do Not Bleach">🚫</span>
-                <span title="Iron Low">🔥</span>
-                <span title="Do Not Tumble Dry">💨</span>
+                <!-- Machine Washable -->
+                <svg viewBox="0 0 40 40" class="wash-icon"><path d="M8 8h24v24H8z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 20c2-3 4-3 6 0s4 3 6 0s4 3 6 0" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                <!-- Wash Cold 30° -->
+                <svg viewBox="0 0 40 40" class="wash-icon"><path d="M8 8h24v24H8z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 20c2-3 4-3 6 0s4 3 6 0s4 3 6 0" fill="none" stroke="currentColor" stroke-width="2"/><text x="20" y="17" text-anchor="middle" font-size="8" fill="currentColor">30°</text></svg>
+                <!-- Do Not Bleach -->
+                <svg viewBox="0 0 40 40" class="wash-icon"><polygon points="20,8 34,32 6,32" fill="none" stroke="currentColor" stroke-width="2"/><line x1="8" y1="8" x2="34" y2="34" stroke="currentColor" stroke-width="2"/><line x1="34" y1="8" x2="8" y2="34" stroke="currentColor" stroke-width="2"/></svg>
+                <!-- Iron Cool -->
+                <svg viewBox="0 0 40 40" class="wash-icon"><path d="M10 28h20l4 4H6l4-4z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 28V14a2 2 0 012-2h12a2 2 0 012 2v14" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="20" cy="22" r="1.5" fill="currentColor"/></svg>
+                <!-- Do Not Tumble Dry -->
+                <svg viewBox="0 0 40 40" class="wash-icon"><rect x="8" y="8" width="24" height="24" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="20" cy="20" r="8" fill="none" stroke="currentColor" stroke-width="2"/><line x1="8" y1="8" x2="32" y2="32" stroke="currentColor" stroke-width="2"/><line x1="32" y1="8" x2="8" y2="32" stroke="currentColor" stroke-width="2"/></svg>
             </div>
-            <div class="label-brand">Gulmohar By Ankita</div>
             <div class="label-address">Shop 23, Azure by Paranjape, Tathawade, Pune - 411033</div>
+            <div class="label-brand">Gulmohar <span class="label-brand-accent">By Ankita</span></div>
         </div>
     </div>
     {% endfor %}
