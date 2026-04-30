@@ -895,8 +895,8 @@ textarea.input { resize: vertical; }
     margin-top: 1rem;
 }
 .label-card {
-    width: 50mm;
-    height: 76mm;
+    width: 76mm;
+    height: 50mm;
     box-sizing: border-box;
     border: 1px dashed #aaa;
     background: #fff;
@@ -911,6 +911,11 @@ textarea.input { resize: vertical; }
     height: 76mm;
     box-sizing: border-box;
     padding: 3mm 4mm;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-90deg);
+    transform-origin: center center;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -1054,7 +1059,7 @@ textarea.input { resize: vertical; }
 @media print {
     body.print-labels { page: label; }
 }
-@page label { size: 50mm 76mm; margin: 0; }
+@page label { size: 76mm 50mm; margin: 0; }
 
 @media print {
     body.print-labels {
@@ -1075,8 +1080,8 @@ textarea.input { resize: vertical; }
     body.print-labels .content {
         margin: 0 !important;
         padding: 0 !important;
-        width: 50mm !important;
-        max-width: 50mm !important;
+        width: 76mm !important;
+        max-width: 76mm !important;
     }
     body.print-labels .labels-page {
         display: block;
@@ -1085,8 +1090,8 @@ textarea.input { resize: vertical; }
         gap: 0;
     }
     body.print-labels .label-card {
-        width: 50mm;
-        height: 76mm;
+        width: 76mm;
+        height: 50mm;
         border: none;
         margin: 0;
         padding: 0;
