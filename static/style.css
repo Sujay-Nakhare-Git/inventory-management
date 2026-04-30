@@ -932,6 +932,7 @@ textarea.input { resize: vertical; }
     width: 100%;
 }
 .label-field-name { font-size: 10pt; color: #000; font-weight: 600; }
+.label-field-value-sku { font-size: 10pt; font-weight: 700; }
 .label-field-value { font-size: 13pt; font-weight: 700; }
 .label-wash-icons {
     display: flex;
