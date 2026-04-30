@@ -911,7 +911,7 @@ textarea.input { resize: vertical; }
     width: 2in;
     height: 3in;
     box-sizing: border-box;
-    padding: 0.12in 0.18in;
+    padding: 0.15in 0.18in;
     position: absolute;
     top: 50%;
     left: 50%;
@@ -920,32 +920,36 @@ textarea.input { resize: vertical; }
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    align-items: center;
     font-family: "Helvetica Neue", Arial, sans-serif;
 }
-.label-brand { font-size: 9pt; text-align: center; color: #444; }
-.label-sku {
-    font-size: 22pt;
-    font-weight: 800;
-    text-align: center;
-    letter-spacing: 0.04em;
-    line-height: 1;
-    margin-top: 0.02in;
-    word-break: break-all;
-}
-.label-divider { border-top: 1px solid #000; margin: 0.05in 0; }
+.label-section { width: 100%; }
+.label-top { padding-top: 0.02in; }
 .label-row {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
+    width: 100%;
+}
+.label-field-name { font-size: 10pt; color: #000; font-weight: 600; }
+.label-field-value { font-size: 13pt; font-weight: 700; }
+.label-wash-icons {
+    display: flex;
+    gap: 0.12in;
+    justify-content: center;
     font-size: 11pt;
 }
-.label-row span { color: #555; text-transform: uppercase; font-size: 8pt; letter-spacing: 0.05em; }
-.label-row strong { font-size: 14pt; font-weight: 700; }
-.label-price {
-    font-size: 24pt;
-    font-weight: 800;
+.label-brand {
+    font-size: 10pt;
+    font-weight: 700;
     text-align: center;
-    line-height: 1;
+    color: #000;
+}
+.label-address {
+    font-size: 6.5pt;
+    text-align: center;
+    color: #444;
+    line-height: 1.2;
 }
 
 /* ── Print Styles: Thermal Receipt (72mm) ────────────────────────────── */

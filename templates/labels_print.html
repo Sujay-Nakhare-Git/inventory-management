@@ -23,11 +23,23 @@
     {% for p in labels %}
     <div class="label-card">
         <div class="label-inner">
-            <div class="label-brand">Gulmohar by Ankita</div>
-            <div class="label-sku">{{ p.sku or '—' }}</div>
-            <div class="label-divider"></div>
-            <div class="label-row"><span>Size</span><strong>{{ p.size or '—' }}</strong></div>
-            <div class="label-price">₹{{ "%.0f"|format(p.selling_price) }}</div>
+            <div class="label-section label-top">
+                <div class="label-row"><span class="label-field-name">Style Code:</span><strong class="label-field-value">{{ p.sku or '—' }}</strong></div>
+            </div>
+            <div class="label-section">
+                <div class="label-row"><span class="label-field-name">Size</span><strong class="label-field-value">{{ p.size or '—' }}</strong></div>
+            </div>
+            <div class="label-section">
+                <div class="label-row"><span class="label-field-name">Price</span><strong class="label-field-value">₹{{ "%.0f"|format(p.selling_price) }}</strong></div>
+            </div>
+            <div class="label-wash-icons">
+                <span title="Hand Wash">🧼</span>
+                <span title="Do Not Bleach">🚫</span>
+                <span title="Iron Low">🔥</span>
+                <span title="Do Not Tumble Dry">💨</span>
+            </div>
+            <div class="label-brand">Gulmohar By Ankita</div>
+            <div class="label-address">Shop 23, Azure by Paranjape, Tathawade, Pune - 411033</div>
         </div>
     </div>
     {% endfor %}
