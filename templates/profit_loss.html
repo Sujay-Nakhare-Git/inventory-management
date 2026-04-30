@@ -31,7 +31,7 @@
     </div>
     <div class="stat-card stat-red">
         <div class="stat-value">₹{{ "%.2f"|format(total_expenses) }}</div>
-        <div class="stat-label">Total Expenses</div>
+        <div class="stat-label">Expenses (P&L only)</div>
     </div>
     <div class="stat-card {% if net_profit >= 0 %}stat-green{% else %}stat-red{% endif %}">
         <div class="stat-value">₹{{ "%.2f"|format(net_profit) }}</div>
@@ -39,6 +39,12 @@
             {% if net_profit >= 0 %}✅ Net Profit{% else %}❌ Net Loss{% endif %}
         </div>
     </div>
+    {% if total_investment > 0 %}
+    <div class="stat-card" style="border:2px solid #8e44ad;">
+        <div class="stat-value">₹{{ "%.2f"|format(total_investment) }}</div>
+        <div class="stat-label">Total Investment</div>
+    </div>
+    {% endif %}
 </div>
 
 <!-- P&L Breakdown -->
@@ -91,6 +97,24 @@
                 <span class="pl-positive"><strong>₹{{ "%.2f"|format(inventory_retail - inventory_cost) }}</strong></span>
             </div>
         </div>
+
+        {% if total_investment > 0 %}
+        <h3 class="card-title" style="margin-top: 1.5rem;">💰 Initial Investment</h3>
+        <div class="pl-table">
+            <div class="pl-row">
+                <span>Total Investment</span>
+                <span>₹{{ "%.2f"|format(total_investment) }}</span>
+            </div>
+            {% if revenue > 0 %}
+            <div class="pl-row">
+                <span>ROI (Return on Investment)</span>
+                <span {% if net_profit >= 0 %}class="pl-positive"{% else %}class="pl-negative"{% endif %}>
+                    <strong>{{ "%.1f"|format((net_profit / total_investment) * 100) }}%</strong>
+                </span>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
 
         {% if expense_breakdown %}
         <h3 class="card-title" style="margin-top: 1.5rem;">📋 Expenses by Category</h3>

@@ -50,6 +50,13 @@
                 <input type="file" id="bill_image" name="bill_image" class="input" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp">
                 <small class="page-desc">Optional receipt or invoice image. Accepted formats: PNG, JPG, JPEG, WEBP.</small>
             </div>
+            <div class="form-group" style="grid-column: 1/-1;">
+                <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                    <input type="checkbox" name="include_in_pl" value="1" checked style="width:auto;">
+                    <span>Include in Profit & Loss calculation</span>
+                </label>
+                <small class="page-desc">Uncheck to track this expense without affecting P&L reports (e.g. personal expenses, one-time non-business costs).</small>
+            </div>
         </div>
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">Add Expense</button>
@@ -86,6 +93,7 @@
                     <th>Title</th>
                     <th>Vendor</th>
                     <th>Category</th>
+                    <th>P&L</th>
                     <th>Description</th>
                     <th>Bill</th>
                     <th>Amount (₹)</th>
@@ -99,6 +107,13 @@
                     <td><strong>{{ e.title }}</strong></td>
                     <td>{{ e.vendor or '—' }}</td>
                     <td><span class="badge badge-info">{{ e.category }}</span></td>
+                    <td>
+                        {% if e.include_in_pl %}
+                        <span class="badge badge-info" style="background:#27ae60;color:#fff;" title="Included in Profit & Loss">📊 P&L</span>
+                        {% else %}
+                        <span class="badge" style="background:#95a5a6;color:#fff;" title="Tracking only — not in P&L">📋 Track</span>
+                        {% endif %}
+                    </td>
                     <td>{{ e.description or '—' }}</td>
                     <td>
                         {% if e.bill_image_path %}
@@ -118,7 +133,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="8" class="empty-state">No expenses recorded yet.</td></tr>
+                <tr><td colspan="9" class="empty-state">No expenses recorded yet.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

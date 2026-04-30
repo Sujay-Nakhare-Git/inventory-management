@@ -160,6 +160,14 @@ def init_db():
             FOREIGN KEY (credit_id) REFERENCES store_credits(id),
             FOREIGN KEY (bill_id) REFERENCES bills(id)
         );
+
+        CREATE TABLE IF NOT EXISTS investments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            description TEXT NOT NULL,
+            amount REAL NOT NULL DEFAULT 0,
+            investment_date TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now','localtime'))
+        );
     """)
 
     # Seed default categories if empty
@@ -194,6 +202,9 @@ def init_db():
     }
     if "store_credit_used" not in bills_columns:
         db.execute("ALTER TABLE bills ADD COLUMN store_credit_used REAL DEFAULT 0")
+
+    if "include_in_pl" not in expense_columns:
+        db.execute("ALTER TABLE expenses ADD COLUMN include_in_pl INTEGER NOT NULL DEFAULT 1")
 
     db.commit()
 
@@ -1264,8 +1275,14 @@ def admin():
     filter_category = request.args.get("filter_category", "")
     filter_size = request.args.get("filter_size", "")
     inventory_totals = None
+    investments = []
+    total_investment = 0
     if admin_authenticated():
         db = get_db()
+        investments = db.execute(
+            "SELECT * FROM investments ORDER BY investment_date DESC"
+        ).fetchall()
+        total_investment = sum(i["amount"] for i in investments)
         inventory_totals = db.execute(
             "SELECT COALESCE(SUM(cost_price * quantity), 0) as total_cost, "
             "COALESCE(SUM(selling_price * quantity), 0) as total_selling, "
@@ -1327,6 +1344,8 @@ def admin():
         filter_category=filter_category,
         filter_size=filter_size,
         inventory_totals=inventory_totals,
+        investments=investments,
+        total_investment=total_investment,
     )
 
 
@@ -1336,6 +1355,58 @@ def admin_logout():
     session.pop("pl_authenticated", None)
     flash("Admin area locked.", "success")
     return redirect(url_for("dashboard"))
+
+
+@app.route("/admin/investments/add", methods=["POST"])
+def add_investment():
+    if not admin_authenticated():
+        flash("Please unlock Admin to manage investments.", "error")
+        return redirect(url_for("admin"))
+
+    db = get_db()
+    description = request.form.get("description", "").strip()
+    amount = request.form.get("amount", "")
+    investment_date = request.form.get("investment_date", "").strip()
+
+    if not description or not amount or not investment_date:
+        flash("Please provide description, amount, and date.", "error")
+        return redirect(url_for("admin"))
+
+    try:
+        amount = float(amount)
+        if amount <= 0:
+            raise ValueError
+    except ValueError:
+        flash("Please provide a valid positive amount.", "error")
+        return redirect(url_for("admin"))
+
+    db.execute(
+        "INSERT INTO investments (description, amount, investment_date) VALUES (?, ?, ?)",
+        (description, amount, investment_date),
+    )
+    db.commit()
+    log_update("Investment Added", f"{description} — ₹{amount} on {investment_date}", "investment")
+    flash(f"Investment '₹{amount} — {description}' added!", "success")
+    return redirect(url_for("admin"))
+
+
+@app.route("/admin/investments/delete/<int:investment_id>", methods=["POST"])
+def delete_investment(investment_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to manage investments.", "error")
+        return redirect(url_for("admin"))
+
+    db = get_db()
+    inv = db.execute("SELECT * FROM investments WHERE id = ?", (investment_id,)).fetchone()
+    if not inv:
+        flash("Investment not found.", "error")
+        return redirect(url_for("admin"))
+
+    db.execute("DELETE FROM investments WHERE id = ?", (investment_id,))
+    db.commit()
+    log_update("Investment Deleted", f"{inv['description']} — ₹{inv['amount']}", "investment")
+    flash("Investment deleted.", "success")
+    return redirect(url_for("admin"))
 
 
 @app.route("/admin/clean-all-data", methods=["POST"])
@@ -1620,6 +1691,7 @@ def add_expense():
     description = request.form.get("description", "").strip()
     category = request.form.get("category", "General")
     amount = float(request.form.get("amount", 0))
+    include_in_pl = 1 if request.form.get("include_in_pl") else 0
     bill_image = request.files.get("bill_image")
     if title and amount > 0:
         bill_image_path = None
@@ -1630,9 +1702,9 @@ def add_expense():
             bill_image_path = save_expense_bill_image(bill_image, title)
 
         db.execute(
-            "INSERT INTO expenses (title, vendor, description, category, amount, bill_image_path) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (title, vendor or None, description, category, amount, bill_image_path),
+            "INSERT INTO expenses (title, vendor, description, category, amount, bill_image_path, include_in_pl) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (title, vendor or None, description, category, amount, bill_image_path, include_in_pl),
         )
         db.commit()
         log_update("Expense Added", f"{title} — ₹{amount} ({category})", "expense")
@@ -1660,6 +1732,7 @@ def edit_expense(expense_id):
         description = request.form.get("description", "").strip()
         category = request.form.get("category", "General")
         amount = float(request.form.get("amount", 0))
+        include_in_pl = 1 if request.form.get("include_in_pl") else 0
         remove_image = request.form.get("remove_bill_image") == "1"
         bill_image = request.files.get("bill_image")
 
@@ -1685,8 +1758,8 @@ def edit_expense(expense_id):
             bill_image_path = save_expense_bill_image(bill_image, title)
 
         db.execute(
-            "UPDATE expenses SET title = ?, vendor = ?, description = ?, category = ?, amount = ?, bill_image_path = ? WHERE id = ?",
-            (title, vendor or None, description, category, amount, bill_image_path, expense_id),
+            "UPDATE expenses SET title = ?, vendor = ?, description = ?, category = ?, amount = ?, bill_image_path = ?, include_in_pl = ? WHERE id = ?",
+            (title, vendor or None, description, category, amount, bill_image_path, include_in_pl, expense_id),
         )
         db.commit()
         log_update("Expense Updated", f"{title} — ₹{amount} ({category})", "expense")
@@ -1754,19 +1827,24 @@ def profit_loss():
         (date_filter,),
     ).fetchone()[0]
 
-    # Expenses
+    # Expenses (only those marked for P&L)
     total_expenses = db.execute(
-        "SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE created_at LIKE ?",
+        "SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE include_in_pl = 1 AND created_at LIKE ?",
         (date_filter,),
     ).fetchone()[0]
 
     gross_profit = revenue - cogs
     net_profit = gross_profit - total_expenses
 
-    # Expenses by category
+    # Total investment
+    total_investment = db.execute(
+        "SELECT COALESCE(SUM(amount), 0) FROM investments"
+    ).fetchone()[0]
+
+    # Expenses by category (only P&L expenses)
     expense_breakdown = db.execute(
         "SELECT category, SUM(amount) as total FROM expenses "
-        "WHERE created_at LIKE ? GROUP BY category ORDER BY total DESC",
+        "WHERE include_in_pl = 1 AND created_at LIKE ? GROUP BY category ORDER BY total DESC",
         (date_filter,),
     ).fetchall()
 
@@ -1803,6 +1881,7 @@ def profit_loss():
         inventory_cost=inventory_cost,
         inventory_retail=inventory_retail,
         period=period,
+        total_investment=total_investment,
     )
 
 
@@ -1831,10 +1910,10 @@ def export_expenses():
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["ID", "Title", "Vendor", "Description", "Category", "Amount (₹)", "Date"])
+    writer.writerow(["ID", "Title", "Vendor", "Description", "Category", "Amount (₹)", "In P&L", "Date"])
     for r in rows:
         writer.writerow([r["id"], r["title"], r["vendor"] or "", r["description"] or "",
-                         r["category"], r["amount"], r["created_at"]])
+                         r["category"], r["amount"], "Yes" if r["include_in_pl"] else "No", r["created_at"]])
 
     filename = f"expenses_{date or 'all'}.csv"
     return Response(

@@ -52,6 +52,13 @@
                 <input type="file" id="bill_image" name="bill_image" class="input" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" style="padding:0.35rem;" onchange="previewImage(event)">
                 <small class="page-desc">Upload a new image to replace existing bill image.</small>
             </div>
+            <div class="form-group" style="grid-column: 1/-1;">
+                <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                    <input type="checkbox" name="include_in_pl" value="1" {% if expense.include_in_pl %}checked{% endif %} style="width:auto;">
+                    <span>Include in Profit & Loss calculation</span>
+                </label>
+                <small class="page-desc">Uncheck to track this expense without affecting P&L reports.</small>
+            </div>
         </div>
 
         <div class="form-actions">
