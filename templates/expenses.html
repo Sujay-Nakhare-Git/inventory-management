@@ -107,12 +107,8 @@
                     <td><strong>{{ e.title }}</strong></td>
                     <td>{{ e.vendor or '—' }}</td>
                     <td><span class="badge badge-info">{{ e.category }}</span></td>
-                    <td>
-                        {% if e.include_in_pl %}
-                        <span class="badge badge-info" style="background:#27ae60;color:#fff;" title="Included in Profit & Loss">📊 P&L</span>
-                        {% else %}
-                        <span class="badge" style="background:#95a5a6;color:#fff;" title="Tracking only — not in P&L">📋 Track</span>
-                        {% endif %}
+                    <td style="text-align:center;">
+                        {% if e.include_in_pl %}✅{% else %}☐{% endif %}
                     </td>
                     <td>{{ e.description or '—' }}</td>
                     <td>
