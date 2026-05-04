@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bill {{ bill.id }} Thermal Print</title>
+    <style>
+        @page { margin: 0; }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 58mm;
+            background: #fff;
+            color: #000;
+            font-family: "Courier New", monospace;
+            font-size: 11px;
+            line-height: 1.25;
+        }
+        .receipt {
+            box-sizing: border-box;
+            width: 58mm;
+            padding: 2mm;
+        }
+        .center { text-align: center; }
+        .line { border-top: 1px dashed #000; margin: 1mm 0; }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            gap: 2mm;
+        }
+        .small { font-size: 10px; }
+        .total { font-weight: 700; font-size: 12px; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 0.5mm 0;
+            vertical-align: top;
+            word-break: break-word;
+        }
+        th { border-bottom: 1px solid #000; }
+        .right { text-align: right; }
+        .noprint {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+            font-family: sans-serif;
+        }
+        @media print {
+            .noprint { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="noprint">
+        <button onclick="window.print()">Print</button>
+    </div>
+
+    <div class="receipt">
+        <div class="center"><strong>Gulmohar by Ankita</strong></div>
+        <div class="center small">Handpicked Apparel</div>
+        <div class="center small">Shop C-23, Azure by Paranjape</div>
+        <div class="center small">Tathawade, Pune - 411033</div>
+        <div class="center small">gulmoharbyankita@gmail.com</div>
+        <div class="center small">7620 563 984</div>
+
+        <div class="line"></div>
+
+        <div class="row"><span>Bill</span><span>{{ bill.id }}</span></div>
+        <div class="row"><span>Date</span><span>{{ bill.created_at }}</span></div>
+        <div class="row"><span>Pay</span><span>{{ bill.payment_method }}</span></div>
+        {% if bill.customer_name %}<div class="row"><span>Cust</span><span>{{ bill.customer_name }}</span></div>{% endif %}
+        {% if bill.customer_phone %}<div class="row"><span>Phone</span><span>{{ bill.customer_phone }}</span></div>{% endif %}
+
+        <div class="line"></div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th class="right">Qty</th>
+                    <th class="right">Amt</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.product_name }}</td>
+                    <td class="right">{{ item.quantity }}</td>
+                    <td class="right">{{ "%.2f"|format(item.total_price) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="line"></div>
+
+        <div class="row"><span>Subtotal</span><span>{{ "%.2f"|format(bill.subtotal) }}</span></div>
+        {% if bill.discount_amount > 0 %}
+        <div class="row"><span>Disc {{ bill.discount_percent }}%</span><span>-{{ "%.2f"|format(bill.discount_amount) }}</span></div>
+        {% endif %}
+        {% if bill.tax_amount > 0 %}
+        <div class="row"><span>Tax {{ bill.tax_percent }}%</span><span>+{{ "%.2f"|format(bill.tax_amount) }}</span></div>
+        {% endif %}
+
+        <div class="line"></div>
+
+        <div class="row total"><span>TOTAL</span><span>Rs {{ "%.2f"|format(bill.total) }}</span></div>
+        <div class="line"></div>
+        <div class="center small">Thank you</div>
+        <div class="center small">Visit again</div>
+    </div>
+
+    <script>
+        window.addEventListener('load', function () {
+            setTimeout(function () {
+                window.print();
+            }, 250);
+        });
+    </script>
+</body>
+</html>

@@ -787,113 +787,18 @@ def bill_detail(bill_id):
     return render_template("bill_detail.html", bill=bill, items=items, refunds=refunds)
 
 
-@app.route("/bills/<int:bill_id>/print/escpos")
-def bill_print_escpos(bill_id):
-    """Generate ESC/POS formatted thermal receipt"""
+@app.route("/bills/<int:bill_id>/thermal")
+def bill_thermal_print(bill_id):
     db = get_db()
     bill = db.execute("SELECT * FROM bills WHERE id = ?", (bill_id,)).fetchone()
     if not bill:
-        return "Bill not found", 404
-    
+        flash("Bill not found.", "error")
+        return redirect(url_for("bills_list"))
+
     items = db.execute(
         "SELECT * FROM bill_items WHERE bill_id = ?", (bill_id,)
     ).fetchall()
-    
-    # ESC/POS command codes
-    ESC = b'\x1b'
-    GS = b'\x1d'
-    NL = b'\n'
-    SEP = b'-' * 42
-    
-    receipt = b''
-    
-    # Initialize printer
-    receipt += ESC + b'@'
-    
-    # Center alignment
-    receipt += ESC + b'a' + b'\x01'
-    
-    # Store name (large)
-    receipt += ESC + b'!' + b'\x38'  # Double height and width
-    receipt += "Gulmohar by Ankita".encode('utf-8') + NL
-    receipt += ESC + b'!' + b'\x00'  # Reset
-    
-    # Subtitle
-    receipt += "Handpicked Apparel".encode('utf-8') + NL
-    
-    # Store details
-    receipt += SEP + NL
-    receipt += "Shop C-23, Azure by Paranjape".encode('utf-8') + NL
-    receipt += "Tathawade, Pune - 411033".encode('utf-8') + NL
-    receipt += "gulmoharbyankita@gmail.com".encode('utf-8') + NL
-    receipt += "7620 563 984".encode('utf-8') + NL
-    receipt += SEP + NL + NL
-    
-    # Left alignment for details
-    receipt += ESC + b'a' + b'\x00'
-    
-    # Bill info
-    receipt += f"Bill #: {bill['id']}".encode('utf-8') + NL
-    receipt += f"Date: {bill['created_at']}".encode('utf-8') + NL
-    receipt += f"Payment: {bill['payment_method']}".encode('utf-8') + NL
-    if bill['customer_name']:
-        receipt += f"Customer: {bill['customer_name']}".encode('utf-8') + NL
-    if bill['customer_phone']:
-        receipt += f"Phone: {bill['customer_phone']}".encode('utf-8') + NL
-    receipt += NL
-    
-    # Items header
-    receipt += b"Item" + b" " * 24 + b"Qty    Rate    Amt" + NL
-    receipt += SEP + NL
-    
-    # Items
-    for item in items:
-        # Product name
-        name = item['product_name'][:30].ljust(30)
-        receipt += name.encode('utf-8') + NL
-        
-        # Qty, rate, amount
-        qty = str(item['quantity']).rjust(5)
-        rate = f"{item['unit_price']:.2f}".rjust(7)
-        amt = f"{item['total_price']:.2f}".rjust(7)
-        receipt += (qty + rate + amt).encode('utf-8') + NL + NL
-    
-    receipt += SEP + NL
-    
-    # Totals
-    subtotal_line = "Subtotal".ljust(24) + f"{bill['subtotal']:>7.2f}".rjust(10)
-    receipt += subtotal_line.encode('utf-8') + NL
-    
-    if bill['discount_amount'] > 0:
-        discount_line = f"Discount ({bill['discount_percent']}%)".ljust(24) + f"-{bill['discount_amount']:>6.2f}".rjust(10)
-        receipt += discount_line.encode('utf-8') + NL
-    
-    if bill['tax_amount'] > 0:
-        tax_line = f"Tax/GST ({bill['tax_percent']}%)".ljust(24) + f"+{bill['tax_amount']:>6.2f}".rjust(10)
-        receipt += tax_line.encode('utf-8') + NL
-    
-    receipt += SEP + NL
-    
-    # Total (bold and centered)
-    receipt += ESC + b'!' + b'\x08'  # Bold
-    receipt += ESC + b'a' + b'\x01'  # Center
-    total_line = f"TOTAL: Rs.{bill['total']:.2f}"
-    receipt += total_line.encode('utf-8') + NL
-    receipt += ESC + b'!' + b'\x00'  # Reset
-    receipt += ESC + b'a' + b'\x00'  # Left align
-    
-    receipt += NL
-    receipt += ESC + b'a' + b'\x01'  # Center
-    receipt += "Thank you!".encode('utf-8') + NL
-    receipt += "Visit again".encode('utf-8') + NL
-    receipt += ESC + b'a' + b'\x00'  # Left align
-    receipt += NL + NL
-    
-    # Cut paper
-    receipt += GS + b'V' + b'\x00'
-    
-    return Response(receipt, mimetype='application/octet-stream', 
-                   headers={'Content-Disposition': f'attachment; filename="bill_{bill_id}.bin"'})
+    return render_template("bill_thermal.html", bill=bill, items=items)
 
 
 @app.route("/bills/delete/<int:bill_id>", methods=["POST"])
