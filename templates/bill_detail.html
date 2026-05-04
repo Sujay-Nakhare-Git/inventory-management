@@ -7,7 +7,8 @@
     <h2>Bill #{{ bill.id }}</h2>
     <div>
         <a href="{{ url_for('new_refund', bill_id=bill.id) }}" class="btn btn-outline">🔄 Refund / Exchange</a>
-        <button onclick="window.print()" class="btn btn-primary">🖨️ Print</button>
+        <button onclick="window.print()" class="btn btn-primary">🖨️ Print (HTML)</button>
+        <a href="{{ url_for('bill_print_escpos', bill_id=bill.id) }}" class="btn btn-primary" download="bill_{{ bill.id }}.bin">🖨️ Print (ESC/POS)</a>
         <form method="POST" action="{{ url_for('delete_bill', bill_id=bill.id) }}" style="display:inline" onsubmit="return confirm('Delete this bill? Stock will be restored.')">
             <button type="submit" class="btn btn-danger">Delete Bill</button>
         </form>
@@ -20,6 +21,10 @@
         <div>
             <h2 class="invoice-brand">Gulmohar by Ankita</h2>
             <p class="invoice-subtitle">Handpicked Apparel</p>
+            <p style="font-size: 0.9rem; color: #7f8c8d; margin-top: 0.5rem;">
+                Shop C-23, Azure by Paranjape, Tathawade, Pune - 411033<br>
+                Email: gulmoharbyankita@gmail.com | Phone: 7620 563 984
+            </p>
         </div>
         <div class="invoice-meta">
             <p><strong>Bill #{{ bill.id }}</strong></p>
@@ -79,6 +84,12 @@
 <div class="thermal-receipt" aria-hidden="true">
     <div class="t-center t-brand">Gulmohar by Ankita</div>
     <div class="t-center t-sub">Handpicked Apparel</div>
+    <div style="font-size: 9px; text-align: center; margin: 1mm 0; line-height: 1.2;">
+        Shop C-23, Azure by Paranjape
+        Tathawade, Pune - 411033
+        gulmoharbyankita@gmail.com
+        7620 563 984
+    </div>
     <div class="t-sep"></div>
     <div class="t-row"><span>Bill #</span><span>{{ bill.id }}</span></div>
     <div class="t-row"><span>Date</span><span>{{ bill.created_at }}</span></div>
@@ -98,25 +109,25 @@
             <tr>
                 <td class="t-l"></td>
                 <td class="t-r">{{ item.quantity }}</td>
-                <td class="t-r">{{ "%.2f"|format(item.unit_price) }}</td>
-                <td class="t-r">{{ "%.2f"|format(item.total_price) }}</td>
+                <td class="t-r">Rs.{{ "%.2f"|format(item.unit_price) }}</td>
+                <td class="t-r">Rs.{{ "%.2f"|format(item.total_price) }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     <div class="t-sep"></div>
-    <div class="t-row"><span>Subtotal</span><span>{{ "%.2f"|format(bill.subtotal) }}</span></div>
+    <div class="t-row"><span>Subtotal</span><span>Rs.{{ "%.2f"|format(bill.subtotal) }}</span></div>
     {% if bill.discount_amount > 0 %}
-    <div class="t-row"><span>Disc ({{ bill.discount_percent }}%)</span><span>-{{ "%.2f"|format(bill.discount_amount) }}</span></div>
+    <div class="t-row"><span>Disc ({{ bill.discount_percent }}%)</span><span>-Rs.{{ "%.2f"|format(bill.discount_amount) }}</span></div>
     {% endif %}
     {% if bill.tax_amount > 0 %}
-    <div class="t-row"><span>Tax ({{ bill.tax_percent }}%)</span><span>+{{ "%.2f"|format(bill.tax_amount) }}</span></div>
+    <div class="t-row"><span>Tax ({{ bill.tax_percent }}%)</span><span>+Rs.{{ "%.2f"|format(bill.tax_amount) }}</span></div>
     {% endif %}
     <div class="t-sep"></div>
     <div class="t-row t-total"><span>TOTAL</span><span>Rs.{{ "%.2f"|format(bill.total) }}</span></div>
     <div class="t-sep"></div>
     <div class="t-center t-thanks">Thank you!</div>
-    <div class="t-center t-thanks">Visit again ❤️</div>
+    <div class="t-center t-thanks">Visit again</div>
     <div class="t-feed">&nbsp;</div>
 </div>
 
