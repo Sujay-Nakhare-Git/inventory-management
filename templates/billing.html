@@ -14,7 +14,7 @@
             {% for p in products %}
             <div class="product-item" data-id="{{ p.id }}" data-name="{{ p.name }}" data-price="{{ p.selling_price }}" data-stock="{{ p.quantity }}" data-search="{{ p.name|lower }} {{ p.sku|lower if p.sku else '' }} {{ p.category_name|lower if p.category_name else '' }}">
                 <div class="product-info">
-                    <strong>{{ p.name }}</strong>
+                    <strong>{{ p.sku }}</strong>
                     <span class="product-meta">{{ p.category_name or '' }} {% if p.size %}| {{ p.size }}{% endif %} {% if p.color %}| {{ p.color }}{% endif %}</span>
                 </div>
                 <div class="product-price-stock">
