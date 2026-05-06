@@ -5,23 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Bill {{ bill.id }} Thermal Print</title>
     <style>
-        @page { size: 76mm 127mm; margin: 0; }
+        @page { size: 76mm auto; margin: 0; }
         html, body {
             margin: 0;
             padding: 0;
             width: 76mm;
-            height: 127mm;
             background: #fff;
             color: #000;
             font-family: "Courier New", monospace;
             font-size: 11px;
             line-height: 1.25;
+            writing-mode: horizontal-tb;
         }
         .receipt {
             box-sizing: border-box;
             width: 76mm;
-            min-height: 127mm;
             padding: 2mm 3mm;
+            transform: none;
         }
         .center { text-align: center; }
         .line { border-top: 1px dashed #000; margin: 1mm 0; }
@@ -43,21 +43,32 @@
         }
         th { border-bottom: 1px solid #000; }
         .right { text-align: right; }
-        .noprint {
-            padding: 8px;
-            border-bottom: 1px solid #ddd;
-            font-family: sans-serif;
-        }
         @media print {
-            .noprint { display: none; }
+            @page {
+                size: 76mm auto;
+                margin: 0;
+            }
+
+            html, body {
+                width: 76mm !important;
+                min-width: 76mm !important;
+                max-width: 76mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: visible !important;
+                transform: none !important;
+                writing-mode: horizontal-tb !important;
+            }
+
+            .receipt {
+                width: 76mm !important;
+                max-width: 76mm !important;
+                transform: none !important;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="noprint">
-        <button onclick="window.print()">Print</button>
-    </div>
-
     <div class="receipt">
         <div class="center"><strong>Gulmohar by Ankita</strong></div>
         <div class="center small">Handpicked Apparel</div>
