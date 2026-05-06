@@ -321,6 +321,9 @@ tbody tr:hover { background: rgba(27, 77, 62, 0.03); }
     font-family: inherit;
     transition: border-color 0.2s;
     background: var(--white);
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .input:focus {
@@ -329,7 +332,7 @@ tbody tr:hover { background: rgba(27, 77, 62, 0.03); }
     box-shadow: 0 0 0 3px rgba(27, 77, 62, 0.1);
 }
 
-.input-sm { width: 80px; padding: 0.4rem 0.6rem; }
+.input-sm { width: 80px; padding: 0.4rem 0.6rem; box-sizing: border-box; }
 
 textarea.input { resize: vertical; }
 
@@ -412,7 +415,7 @@ textarea.input { resize: vertical; }
 /* ── Billing Layout ──────────────────────────────────────────────────── */
 .billing-layout {
     display: grid;
-    grid-template-columns: 1fr 400px;
+    grid-template-columns: 1fr 1fr;
     gap: 1.5rem;
     align-items: start;
 }
