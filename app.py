@@ -796,7 +796,13 @@ def bill_thermal_print(bill_id):
         return redirect(url_for("bills_list"))
 
     items = db.execute(
-        "SELECT * FROM bill_items WHERE bill_id = ?", (bill_id,)
+        """
+        SELECT bi.*, COALESCE(p.sku, bi.product_name) AS item_label
+        FROM bill_items bi
+        LEFT JOIN products p ON p.id = bi.product_id
+        WHERE bi.bill_id = ?
+        """,
+        (bill_id,),
     ).fetchall()
     return render_template("bill_thermal.html", bill=bill, items=items)
 

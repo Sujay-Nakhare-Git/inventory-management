@@ -15,7 +15,10 @@
             font-family: "Courier New", monospace;
             font-size: 11px;
             line-height: 1.25;
+            font-weight: 600;
             writing-mode: horizontal-tb;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
         .receipt {
             box-sizing: border-box;
@@ -26,7 +29,7 @@
             overflow: hidden;
         }
         .center { text-align: center; }
-        .line { border-top: 1px dashed #000; margin: 1mm 0; }
+        .line { border-top: 1px solid #000; margin: 1mm 0; }
         .row {
             display: flex;
             justify-content: space-between;
@@ -41,7 +44,7 @@
             text-align: right;
             overflow-wrap: anywhere;
         }
-        .small { font-size: 10px; }
+        .small { font-size: 10px; font-weight: 600; }
         .total { font-weight: 700; font-size: 12px; }
         table {
             width: 100%;
@@ -116,7 +119,7 @@
             <tbody>
                 {% for item in items %}
                 <tr>
-                    <td>{{ item.product_name }}</td>
+                    <td>{{ item.item_label }}</td>
                     <td class="right">{{ item.quantity }}</td>
                     <td class="right">{{ "%.2f"|format(item.total_price) }}</td>
                 </tr>
