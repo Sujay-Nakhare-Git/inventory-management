@@ -20,6 +20,19 @@ except ImportError:
 app = Flask(__name__)
 app.secret_key = os.urandom(32)
 
+
+@app.template_filter("billdate")
+def _format_bill_date(value):
+    if not value:
+        return ""
+    text = str(value).strip()
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(text[: len(fmt) + 4], fmt).strftime("%d-%b-%Y")
+        except ValueError:
+            continue
+    return text
+
 DATABASE = os.path.join(app.root_path, "boutique.db")
 EXPENSE_BILL_UPLOAD_DIR = os.path.join(app.root_path, "static", "expense_bills")
 ALLOWED_BILL_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}

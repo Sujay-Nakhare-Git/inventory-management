@@ -29,6 +29,7 @@
             overflow: hidden;
         }
         .center { text-align: center; }
+        .left { text-align: left; }
         .line { border-top: 1px solid #000; margin: 1mm 0; }
         .row {
             display: flex;
@@ -46,6 +47,29 @@
         }
         .small { font-size: 10px; font-weight: 600; }
         .total { font-weight: 700; font-size: 12px; }
+        .brand-large {
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1.05;
+            letter-spacing: 0.3px;
+        }
+        .brand-sub {
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 0.5mm;
+        }
+        .section-title {
+            font-weight: 700;
+            margin-top: 1mm;
+        }
+        .feed { height: 6mm; }
+        .logo {
+            display: block;
+            margin: 0 auto 1mm auto;
+            max-width: 60mm;
+            width: 100%;
+            height: auto;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -91,20 +115,27 @@
 </head>
 <body>
     <div class="receipt">
-        <div class="center"><strong>Gulmohar by Ankita</strong></div>
-        <div class="center small">Handpicked Apparel</div>
-        <div class="center small">Shop C-23, Azure by Paranjape</div>
-        <div class="center small">Tathawade, Pune - 411033</div>
-        <div class="center small">gulmoharbyankita@gmail.com</div>
-        <div class="center small">7620 563 984</div>
+        <img src="{{ url_for('static', filename='logo-receipt.png') }}" alt="Gulmohar by Ankita" class="logo">
+
+        <div class="line"></div>
+
+        <div class="left small">Shop C-23, Azure by Paranjape</div>
+        <div class="left small">Tathawade, Pune - 411033</div>
+        <div class="left small">gulmoharbyankita@gmail.com</div>
+        <div class="left small">7620 563 984</div>
 
         <div class="line"></div>
 
         <div class="row"><span>Bill</span><span>{{ bill.id }}</span></div>
-        <div class="row"><span>Date</span><span>{{ bill.created_at }}</span></div>
+        <div class="row"><span>Date</span><span>{{ bill.created_at | billdate }}</span></div>
         <div class="row"><span>Pay</span><span>{{ bill.payment_method }}</span></div>
-        {% if bill.customer_name %}<div class="row"><span>Cust</span><span>{{ bill.customer_name }}</span></div>{% endif %}
-        {% if bill.customer_phone %}<div class="row"><span>Phone</span><span>{{ bill.customer_phone }}</span></div>{% endif %}
+
+        {% if bill.customer_name or bill.customer_phone %}
+        <div class="line"></div>
+        <div class="left section-title">Customer Details</div>
+        {% if bill.customer_name %}<div class="left small">Name: {{ bill.customer_name }}</div>{% endif %}
+        {% if bill.customer_phone %}<div class="left small">Phone: {{ bill.customer_phone }}</div>{% endif %}
+        {% endif %}
 
         <div class="line"></div>
 
@@ -145,6 +176,7 @@
         <div class="center small">Visit again</div>
         <div class="center small">No Returns, Exchange with 1 week.</div>
         <div class="center small">For exchange keep the tags on</div>
+        <div class="feed">&nbsp;</div>
     </div>
 
     <script>
