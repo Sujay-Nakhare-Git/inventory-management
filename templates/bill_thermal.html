@@ -19,9 +19,11 @@
         }
         .receipt {
             box-sizing: border-box;
-            width: 76mm;
-            padding: 2mm 3mm;
+            width: 72mm;
+            margin: 0 auto;
+            padding: 1.5mm 1.5mm;
             transform: none;
+            overflow: hidden;
         }
         .center { text-align: center; }
         .line { border-top: 1px dashed #000; margin: 1mm 0; }
@@ -30,17 +32,31 @@
             justify-content: space-between;
             gap: 2mm;
         }
+        .row span:first-child {
+            flex: 0 0 auto;
+            padding-right: 1mm;
+        }
+        .row span:last-child {
+            flex: 1 1 auto;
+            text-align: right;
+            overflow-wrap: anywhere;
+        }
         .small { font-size: 10px; }
         .total { font-weight: 700; font-size: 12px; }
         table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
         }
         th, td {
             padding: 0.5mm 0;
             vertical-align: top;
+            overflow-wrap: anywhere;
             word-break: break-word;
         }
+        th:first-child, td:first-child { width: 60%; }
+        th:nth-child(2), td:nth-child(2) { width: 14%; }
+        th:nth-child(3), td:nth-child(3) { width: 26%; }
         th { border-bottom: 1px solid #000; }
         .right { text-align: right; }
         @media print {
@@ -61,9 +77,11 @@
             }
 
             .receipt {
-                width: 76mm !important;
-                max-width: 76mm !important;
+                width: 72mm !important;
+                max-width: 72mm !important;
+                margin: 0 auto !important;
                 transform: none !important;
+                overflow: hidden !important;
             }
         }
     </style>

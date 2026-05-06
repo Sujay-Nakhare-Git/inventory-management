@@ -7,7 +7,7 @@
     <h2>Bill #{{ bill.id }}</h2>
     <div>
         <a href="{{ url_for('new_refund', bill_id=bill.id) }}" class="btn btn-outline">🔄 Refund / Exchange</a>
-        <a href="{{ url_for('bill_thermal_print', bill_id=bill.id) }}" class="btn btn-primary" target="_blank" rel="noopener">Print Thermal</a>
+        <a href="{{ url_for('bill_thermal_print', bill_id=bill.id) }}" class="btn btn-primary" target="_blank" rel="noopener">Print</a>
         <form method="POST" action="{{ url_for('delete_bill', bill_id=bill.id) }}" style="display:inline" onsubmit="return confirm('Delete this bill? Stock will be restored.')">
             <button type="submit" class="btn btn-danger">Delete Bill</button>
         </form>
