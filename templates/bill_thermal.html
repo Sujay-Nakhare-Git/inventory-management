@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Bill {{ bill.id }} Thermal Print</title>
     <style>
-        @page { margin: 0; }
+        @page { size: 76mm 127mm; margin: 0; }
         html, body {
             margin: 0;
             padding: 0;
-            width: 58mm;
+            width: 76mm;
+            height: 127mm;
             background: #fff;
             color: #000;
             font-family: "Courier New", monospace;
@@ -18,8 +19,9 @@
         }
         .receipt {
             box-sizing: border-box;
-            width: 58mm;
-            padding: 2mm;
+            width: 76mm;
+            min-height: 127mm;
+            padding: 2mm 3mm;
         }
         .center { text-align: center; }
         .line { border-top: 1px dashed #000; margin: 1mm 0; }
