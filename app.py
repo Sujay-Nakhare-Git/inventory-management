@@ -1705,10 +1705,38 @@ def expenses():
     query += " ORDER BY created_at DESC"
     all_expenses = db.execute(query, params).fetchall()
     total = sum(e["amount"] for e in all_expenses)
+
+    expense_count = len(all_expenses)
+    pl_total = sum(e["amount"] for e in all_expenses if e["include_in_pl"])
+    non_pl_total = total - pl_total
+
+    category_totals = {}
+    for expense in all_expenses:
+        expense_category = expense["category"] or "Uncategorized"
+        if expense_category not in category_totals:
+            category_totals[expense_category] = {"amount": 0.0, "count": 0}
+        category_totals[expense_category]["amount"] += expense["amount"]
+        category_totals[expense_category]["count"] += 1
+
+    category_breakdown = []
+    for expense_category, values in category_totals.items():
+        category_total = values["amount"]
+        category_breakdown.append(
+            {
+                "category": expense_category,
+                "amount": category_total,
+                "count": values["count"],
+                "share": (category_total / total * 100) if total else 0,
+            }
+        )
+    category_breakdown.sort(key=lambda item: item["amount"], reverse=True)
+
     return render_template(
         "expenses.html", expenses=all_expenses, total=total,
         search=search, selected_category=category, selected_date=selected_date,
         today_date=today_date,
+        expense_count=expense_count, pl_total=pl_total, non_pl_total=non_pl_total,
+        category_breakdown=category_breakdown,
     )
 
 

@@ -87,6 +87,50 @@
         <strong>Total Expenses Shown: ₹{{ "%.2f"|format(total) }}</strong>
     </div>
 
+    <div class="expense-summary-grid">
+        <div class="expense-summary-card summary-total">
+            <div class="summary-value">₹{{ "%.2f"|format(total) }}</div>
+            <div class="summary-label">Total Amount</div>
+        </div>
+        <div class="expense-summary-card summary-count">
+            <div class="summary-value">{{ expense_count }}</div>
+            <div class="summary-label">Expenses Count</div>
+        </div>
+        <div class="expense-summary-card summary-pl">
+            <div class="summary-value">₹{{ "%.2f"|format(pl_total) }}</div>
+            <div class="summary-label">Included In P&L</div>
+        </div>
+        <div class="expense-summary-card summary-non-pl">
+            <div class="summary-value">₹{{ "%.2f"|format(non_pl_total) }}</div>
+            <div class="summary-label">Not In P&L</div>
+        </div>
+    </div>
+
+    <div class="expense-category-division">
+        <h3 class="card-title">Category Wise Division</h3>
+        {% if category_breakdown %}
+        <div class="expense-category-list">
+            {% for entry in category_breakdown %}
+            <div class="expense-category-item">
+                <div class="expense-category-row">
+                    <span class="expense-category-name">{{ entry.category }}</span>
+                    <span class="expense-category-meta">{{ entry.count }} item{% if entry.count != 1 %}s{% endif %}</span>
+                </div>
+                <div class="expense-category-row">
+                    <span class="expense-category-amount">₹{{ "%.2f"|format(entry.amount) }}</span>
+                    <span class="expense-category-share">{{ "%.1f"|format(entry.share) }}%</span>
+                </div>
+                <div class="expense-share-track" role="presentation">
+                    <div class="expense-share-fill" style="width: {{ "%.1f"|format(entry.share) }}%;"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-state" style="padding: 0.5rem 0;">No categories to show yet.</p>
+        {% endif %}
+    </div>
+
     <div class="table-wrapper">
         <table>
             <thead>
