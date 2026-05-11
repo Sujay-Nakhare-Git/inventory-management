@@ -649,6 +649,117 @@ textarea.input { resize: vertical; }
     font-size: 0.95rem;
 }
 
+.expense-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.expense-summary-card {
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+}
+
+.expense-summary-card .summary-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.expense-summary-card .summary-label {
+    margin-top: 0.2rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.expense-summary-card.summary-total .summary-value { color: var(--emerald); }
+.expense-summary-card.summary-count .summary-value { color: var(--info); }
+.expense-summary-card.summary-pl .summary-value { color: var(--sage); }
+.expense-summary-card.summary-non-pl .summary-value { color: var(--danger); }
+
+.expense-category-division {
+    margin-bottom: 1.25rem;
+    border: 1px solid var(--gray-100);
+    border-radius: 10px;
+    padding: 1rem;
+    background: var(--gray-100);
+}
+
+.expense-category-division .card-title {
+    margin-bottom: 0.8rem;
+}
+
+.expense-category-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+}
+
+.expense-category-item {
+    background: var(--white);
+    border-radius: 10px;
+    border: 1px solid var(--gray-100);
+    padding: 0.8rem;
+}
+
+.expense-category-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.expense-category-row + .expense-category-row {
+    margin-top: 0.25rem;
+}
+
+.expense-category-name {
+    font-weight: 600;
+    color: var(--charcoal);
+}
+
+.expense-category-meta,
+.expense-category-share {
+    font-size: 0.8rem;
+    color: var(--gray-500);
+}
+
+.expense-category-amount {
+    font-weight: 700;
+    color: var(--emerald);
+}
+
+.expense-share-progress {
+    margin-top: 0.55rem;
+    width: 100%;
+    height: 8px;
+    border: none;
+    border-radius: 999px;
+    overflow: hidden;
+    appearance: none;
+}
+
+.expense-share-progress::-webkit-progress-bar {
+    background: var(--gray-100);
+    border-radius: 999px;
+}
+
+.expense-share-progress::-webkit-progress-value {
+    background: linear-gradient(90deg, var(--emerald), var(--gold));
+    border-radius: 999px;
+}
+
+.expense-share-progress::-moz-progress-bar {
+    background: linear-gradient(90deg, var(--emerald), var(--gold));
+    border-radius: 999px;
+}
+
 .update-expense { background: var(--gold-light); color: #b8860b; }
 
 .expense-bill-thumb-link {

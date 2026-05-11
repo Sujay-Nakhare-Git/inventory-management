@@ -120,9 +120,7 @@
                     <span class="expense-category-amount">₹{{ "%.2f"|format(entry.amount) }}</span>
                     <span class="expense-category-share">{{ "%.1f"|format(entry.share) }}%</span>
                 </div>
-                <div class="expense-share-track" role="presentation">
-                    <div class="expense-share-fill" style="width: {{ "%.1f"|format(entry.share) }}%;"></div>
-                </div>
+                <progress class="expense-share-progress" max="100" value="{{ entry.share|round(1) }}"></progress>
             </div>
             {% endfor %}
         </div>
