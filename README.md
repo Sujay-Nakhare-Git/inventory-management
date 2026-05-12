@@ -119,6 +119,32 @@ Example value:
 - Keep `debug` disabled in production environments.
 - Backup `boutique.db` regularly if used as primary production storage.
 
+## Utilities
+
+### Bulk Attach Product Images By SKU
+
+Use the helper script to scan a folder of images, detect SKU from file name (and optional OCR), and attach each image to the matching inventory product.
+Saved image filenames are SKU-based by default in dashed format when possible (example: `CS-001.jpg`).
+
+Run (filename matching only):
+
+```bash
+python tools/bulk_attach_images_local.py --folder "/path/to/images"
+```
+
+Run with OCR fallback:
+
+```bash
+python tools/bulk_attach_images_local.py --folder "/path/to/images" --ocr tesseract
+```
+
+Optional flags:
+
+- `--dry-run` to preview changes without writing DB/files.
+- `--overwrite` to replace existing product image mappings.
+- `--db` to use a custom SQLite DB path.
+- `--images-dir` to use a custom destination image folder.
+
 ## License
 
 Private project for Gulmohar by Ankita.

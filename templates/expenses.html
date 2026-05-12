@@ -89,38 +89,66 @@
 
     <div class="expense-summary-grid">
         <div class="expense-summary-card summary-total">
-            <div class="summary-value">₹{{ "%.2f"|format(total) }}</div>
-            <div class="summary-label">Total Amount</div>
+            <div class="summary-icon">₹</div>
+            <div class="summary-body">
+                <div class="summary-label">Total Amount</div>
+                <div class="summary-value">₹{{ "%.2f"|format(total) }}</div>
+            </div>
         </div>
         <div class="expense-summary-card summary-count">
-            <div class="summary-value">{{ expense_count }}</div>
-            <div class="summary-label">Expenses Count</div>
+            <div class="summary-icon">#</div>
+            <div class="summary-body">
+                <div class="summary-label">Expenses Count</div>
+                <div class="summary-value">{{ expense_count }}</div>
+            </div>
         </div>
         <div class="expense-summary-card summary-pl">
-            <div class="summary-value">₹{{ "%.2f"|format(pl_total) }}</div>
-            <div class="summary-label">Included In P&L</div>
+            <div class="summary-icon">✓</div>
+            <div class="summary-body">
+                <div class="summary-label">Included In P&amp;L</div>
+                <div class="summary-value">₹{{ "%.2f"|format(pl_total) }}</div>
+                {% if total > 0 %}
+                <div class="summary-sub">{{ "%.1f"|format(pl_total / total * 100) }}% of total</div>
+                {% endif %}
+            </div>
         </div>
         <div class="expense-summary-card summary-non-pl">
-            <div class="summary-value">₹{{ "%.2f"|format(non_pl_total) }}</div>
-            <div class="summary-label">Not In P&L</div>
+            <div class="summary-icon">⊘</div>
+            <div class="summary-body">
+                <div class="summary-label">Not In P&amp;L</div>
+                <div class="summary-value">₹{{ "%.2f"|format(non_pl_total) }}</div>
+                {% if total > 0 %}
+                <div class="summary-sub">{{ "%.1f"|format(non_pl_total / total * 100) }}% of total</div>
+                {% endif %}
+            </div>
         </div>
     </div>
 
     <div class="expense-category-division">
-        <h3 class="card-title">Category Wise Division</h3>
+        <div class="expense-category-header">
+            <h3 class="card-title">Category Wise Division</h3>
+            {% if category_breakdown %}
+            <span class="expense-category-count-pill">{{ category_breakdown|length }} categor{{ 'y' if category_breakdown|length == 1 else 'ies' }}</span>
+            {% endif %}
+        </div>
         {% if category_breakdown %}
         <div class="expense-category-list">
             {% for entry in category_breakdown %}
             <div class="expense-category-item">
                 <div class="expense-category-row">
-                    <span class="expense-category-name">{{ entry.category }}</span>
-                    <span class="expense-category-meta">{{ entry.count }} item{% if entry.count != 1 %}s{% endif %}</span>
+                    <div class="expense-category-left">
+                        <span class="expense-category-dot" style="background: hsl({{ (loop.index0 * 53) % 360 }}, 55%, 45%);"></span>
+                        <span class="expense-category-name">{{ entry.category }}</span>
+                        <span class="expense-category-meta">{{ entry.count }} item{% if entry.count != 1 %}s{% endif %}</span>
+                    </div>
+                    <div class="expense-category-right">
+                        <span class="expense-category-amount">₹{{ "%.2f"|format(entry.amount) }}</span>
+                        <span class="expense-category-share">{{ "%.1f"|format(entry.share) }}%</span>
+                    </div>
                 </div>
-                <div class="expense-category-row">
-                    <span class="expense-category-amount">₹{{ "%.2f"|format(entry.amount) }}</span>
-                    <span class="expense-category-share">{{ "%.1f"|format(entry.share) }}%</span>
+                <div class="expense-share-track">
+                    <div class="expense-share-fill" style="width: {{ entry.share|round(1) }}%; background: hsl({{ (loop.index0 * 53) % 360 }}, 55%, 45%);"></div>
                 </div>
-                <progress class="expense-share-progress" max="100" value="{{ entry.share|round(1) }}"></progress>
             </div>
             {% endfor %}
         </div>

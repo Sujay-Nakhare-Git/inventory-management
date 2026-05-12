@@ -48,7 +48,7 @@ import shutil
 import sqlite3
 import sys
 import tempfile
-from datetime import datetime
+import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -84,13 +84,35 @@ class PAClient:
                 if chunk:
                     fh.write(chunk)
 
-    def upload(self, remote_path: str, local_path: Path) -> None:
-        with open(local_path, "rb") as fh:
-            resp = self.session.post(
-                self._files_url(remote_path),
-                files={"content": (os.path.basename(remote_path), fh)},
-            )
-        if resp.status_code not in (200, 201):
+    def upload(self, remote_path: str, local_path: Path, max_retries: int = 8) -> None:
+        attempt = 0
+        while True:
+            with open(local_path, "rb") as fh:
+                resp = self.session.post(
+                    self._files_url(remote_path),
+                    files={"content": (os.path.basename(remote_path), fh)},
+                )
+            if resp.status_code in (200, 201):
+                return
+            if resp.status_code == 429 and attempt < max_retries:
+                # Respect Retry-After / parse "available in N seconds" message.
+                delay = 0.0
+                retry_after = resp.headers.get("Retry-After")
+                if retry_after:
+                    try:
+                        delay = float(retry_after)
+                    except ValueError:
+                        delay = 0.0
+                if delay <= 0:
+                    m = re.search(r"available in (\d+) seconds", resp.text or "")
+                    if m:
+                        delay = float(m.group(1))
+                if delay <= 0:
+                    delay = min(60.0, 2.0 * (2 ** attempt))
+                print(f"    (429) throttled; sleeping {delay:.1f}s before retry {attempt + 1}/{max_retries}")
+                time.sleep(delay + 0.5)
+                attempt += 1
+                continue
             raise RuntimeError(
                 f"Upload failed for {remote_path}: {resp.status_code} {resp.text}"
             )
@@ -102,6 +124,15 @@ class PAClient:
 def normalize(text: str) -> str:
     """Strip everything that isn't a letter/digit and uppercase."""
     return re.sub(r"[^A-Za-z0-9]", "", text or "").upper()
+
+
+def sku_filename_base(sku: str) -> str:
+    """Format SKU for file naming, forcing dash style like CS-001 when possible."""
+    norm = normalize(sku)
+    match = re.match(r"^([A-Z]+)(\d+)$", norm)
+    if match:
+        return f"{match.group(1)}-{match.group(2)}"
+    return secure_filename(sku) or norm or "SKU"
 
 
 def ocr_image_tesseract(path: Path) -> str:
@@ -150,6 +181,29 @@ def _parse_vision_response(content: str) -> str:
     return f"{data.get('sku', '')} {data.get('raw', '')}"
 
 
+def _post_with_retry(url: str, headers: dict, payload: dict, *, max_retries: int = 6,
+                     base_delay: float = 2.0, timeout: int = 60) -> requests.Response:
+    """POST with exponential backoff on 429/5xx, honoring Retry-After when present."""
+    delay = base_delay
+    for attempt in range(1, max_retries + 1):
+        resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
+        if resp.status_code < 400:
+            return resp
+        if resp.status_code in (429, 500, 502, 503, 504) and attempt < max_retries:
+            retry_after = resp.headers.get("Retry-After")
+            try:
+                wait = float(retry_after) if retry_after else delay
+            except ValueError:
+                wait = delay
+            print(f"    .. {resp.status_code} from API, retry {attempt}/{max_retries} in {wait:.1f}s")
+            time.sleep(wait)
+            delay = min(delay * 2, 30)
+            continue
+        resp.raise_for_status()
+    resp.raise_for_status()
+    return resp
+
+
 def ocr_image_github(path: Path, allowed_skus: List[str], model: str) -> str:
     """Use GitHub Models (free with a PAT that has 'models:read' scope)."""
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
@@ -173,17 +227,15 @@ def ocr_image_github(path: Path, allowed_skus: List[str], model: str) -> str:
         "temperature": 0,
         "max_tokens": 80,
     }
-    resp = requests.post(
+    resp = _post_with_retry(
         "https://models.github.ai/inference/chat/completions",
         headers={
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
         },
-        json=payload,
-        timeout=60,
+        payload=payload,
     )
-    resp.raise_for_status()
     content = resp.json()["choices"][0]["message"]["content"].strip()
     return _parse_vision_response(content)
 
@@ -234,8 +286,7 @@ def ocr_image_openai(path: Path, allowed_skus: List[str], model: str,
     if not use_azure:
         payload["model"] = model
 
-    resp = requests.post(url, headers=headers, json=payload, timeout=60)
-    resp.raise_for_status()
+    resp = _post_with_retry(url, headers=headers, payload=payload)
     content = resp.json()["choices"][0]["message"]["content"].strip()
     return _parse_vision_response(content)
 
@@ -248,6 +299,11 @@ def extract_candidates(text: str) -> List[str]:
     # Tokens of length 3-15 that contain at least one letter and one digit
     # OR fully-numeric of length >= 3.
     candidates: List[str] = []
+
+    # Explicitly capture patterns like "CS001", "CS-001", and "CS 001".
+    for alpha, digits in re.findall(r"\b([A-Za-z]{1,5})\s*[-_/]?\s*(\d{2,5})\b", text):
+        candidates.append(normalize(f"{alpha}{digits}"))
+
     for raw in re.findall(r"[A-Za-z0-9\-_/]{3,20}", text):
         norm = normalize(raw)
         if not norm:
@@ -333,9 +389,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--overwrite", action="store_true", help="Replace existing image_filename values.")
     p.add_argument(
         "--ocr",
-        choices=["tesseract", "openai", "github"],
+        choices=["filename", "tesseract", "openai", "github"],
         default="tesseract",
-        help="OCR backend. 'github' uses GitHub Models (free, needs GITHUB_TOKEN with models:read).",
+        help="OCR backend. 'filename' uses only the image filename (no model call). 'github' uses GitHub Models (free, needs GITHUB_TOKEN with models:read).",
     )
     p.add_argument(
         "--openai-model",
@@ -407,7 +463,9 @@ def main() -> int:
     for img_path in images:
         ext = img_path.suffix.lower().lstrip(".")
         try:
-            if args.ocr == "openai":
+            if args.ocr == "filename":
+                text = img_path.stem
+            elif args.ocr == "openai":
                 text = ocr_image_openai(
                     img_path, allowed_skus, args.openai_model,
                     azure_endpoint=args.azure_endpoint,
@@ -436,10 +494,21 @@ def main() -> int:
             skipped_existing.append((img_path.name, sku))
             continue
 
-        safe_name = secure_filename(product["name"] or sku) or "product"
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
-        new_filename = f"{safe_name}_{timestamp}.{ext}"
+        filename_sku = sku_filename_base(sku)
+        new_filename = f"{filename_sku}.{ext}"
         local_optimized = workdir / new_filename
+
+        if local_optimized.exists() and not args.overwrite:
+            index = 2
+            while True:
+                candidate_name = f"{filename_sku}_{index}.{ext}"
+                candidate_path = workdir / candidate_name
+                if not candidate_path.exists():
+                    new_filename = candidate_name
+                    local_optimized = candidate_path
+                    break
+                index += 1
+
         optimize_image(img_path, local_optimized, ext)
 
         remote_image_path = f"{args.remote_images_dir.rstrip('/')}/{new_filename}"
@@ -457,13 +526,13 @@ def main() -> int:
         updated_skus.append(sku)
 
         if args.rename_files:
-            safe_sku = secure_filename(sku) or sku.replace("/", "_")
-            target = img_path.with_name(f"{safe_sku}.{ext}")
+            filename_sku = sku_filename_base(sku)
+            target = img_path.with_name(f"{filename_sku}.{ext}")
             if target.exists() and target.resolve() != img_path.resolve():
                 # Avoid clobbering: append a counter.
                 i = 2
                 while True:
-                    alt = img_path.with_name(f"{safe_sku}_{i}.{ext}")
+                    alt = img_path.with_name(f"{filename_sku}_{i}.{ext}")
                     if not alt.exists():
                         target = alt
                         break
