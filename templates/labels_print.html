@@ -24,6 +24,9 @@
     <div class="label-card">
         <div class="label-inner">
             <div class="label-section label-top">
+                <div class="label-logo-wrap">
+                    <img src="{{ url_for('static', filename='logo-receipt.png') }}" alt="Gulmohar logo" class="label-logo-receipt">
+                </div>
                 <div class="label-row"><span class="label-field-name">Style Code:</span><strong class="label-field-value-sku">{{ p.sku or '—' }}</strong></div>
             </div>
             <div class="label-section">
@@ -46,7 +49,6 @@
             </div>
 
             <div class="label-divider"></div>
-            <div class="label-brand">Gulmohar <span class="label-brand-accent">By Ankita</span></div>
             <div class="label-address">Shop 23, Azure by Paranjape, Tathawade, Pune - 411033</div>
         </div>
     </div>

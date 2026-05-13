@@ -1132,6 +1132,18 @@ textarea.input { resize: vertical; }
 }
 .label-section { width: 100%; }
 .label-top { padding-top: 0.02in; }
+.label-logo-wrap {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.05in;
+}
+.label-logo-receipt {
+    max-height: 0.32in;
+    width: auto;
+    display: block;
+    object-fit: contain;
+}
 .label-row {
     display: flex;
     justify-content: space-between;
@@ -1151,18 +1163,6 @@ textarea.input { resize: vertical; }
     width: 0.28in;
     height: 0.28in;
     color: #222;
-}
-.label-brand {
-    font-size: 11pt;
-    font-weight: 700;
-    text-align: center;
-    color: #000;
-    font-family: Georgia, "Times New Roman", serif;
-    letter-spacing: 0.03em;
-}
-.label-brand-accent {
-    font-weight: 400;
-    font-style: italic;
 }
 .label-divider {
     border-top: 1px solid #000;
