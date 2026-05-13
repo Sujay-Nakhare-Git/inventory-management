@@ -1139,7 +1139,7 @@ textarea.input { resize: vertical; }
     margin-bottom: 0.05in;
 }
 .label-logo-receipt {
-    max-height: 0.32in;
+    max-height: 0.48in;
     width: auto;
     display: block;
     object-fit: contain;
