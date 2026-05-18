@@ -27,6 +27,19 @@
     border-bottom: 2.5px solid var(--gold);
     z-index: 2;
 }
+
+.dashboard-logo-card {
+    text-align: center;
+    padding: 1rem;
+    overflow: hidden;
+}
+
+.dashboard-logo-image {
+    width: min(100%, 420px);
+    display: block;
+    margin: 0 auto;
+    border-radius: 8px;
+}
 /* ── Gulmohar by Ankita — Boutique Management System ─────────────────── */
 :root {
     --emerald: #1B4D3E;

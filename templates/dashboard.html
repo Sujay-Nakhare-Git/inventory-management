@@ -3,10 +3,6 @@
 
 {% block content %}
 
-<div class="card" style="text-align:center;padding:0;overflow:hidden;">
-    <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Gulmohar by Ankita" style="width:100%;display:block;border-radius:8px;align-content: center;">
-</div>
-
 <div class="page-header">
     <h2>Dashboard</h2>
     <p class="page-desc">Welcome back! Here's your Boutique overview.</p>
@@ -34,6 +30,10 @@
         <div class="stat-value">{{ total_bills }}</div>
         <div class="stat-label">Total Bills</div>
     </div>
+</div>
+
+<div class="card dashboard-logo-card">
+    <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Gulmohar by Ankita" class="dashboard-logo-image">
 </div>
 
 {% endblock %}
