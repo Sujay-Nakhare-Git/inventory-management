@@ -26,7 +26,7 @@
                 {% for r in refunds %}
                 <tr>
                     <td><strong>#{{ r.id }}</strong></td>
-                    <td><a href="{{ url_for('bill_detail', bill_id=r.bill_id) }}">#{{ r.bill_id }}</a></td>
+                    <td><a href="{{ url_for('bill_detail', bill_id=r.bill_id) }}">{{ display_bill_ref(r) }}</a></td>
                     <td>{{ r.customer_name or 'Walk-in' }}</td>
                     <td>
                         <span class="badge {% if r.type == 'refund' %}badge-danger{% elif r.type == 'exchange' %}badge-info{% else %}badge-success{% endif %}">

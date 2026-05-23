@@ -52,7 +52,7 @@
             <tbody>
                 {% for b in bills %}
                 <tr>
-                    <td><strong>#{{ b.id }}</strong></td>
+                    <td><strong>{{ display_bill_ref(b) }}</strong></td>
                     <td>{{ b.customer_name or 'Walk-in' }}</td>
                     <td>{{ b.customer_phone or '—' }}</td>
                     <td>₹{{ "%.2f"|format(b.subtotal) }}</td>
@@ -64,7 +64,7 @@
                     <td class="actions">
                         <a href="{{ url_for('bill_detail', bill_id=b.id) }}" class="btn btn-sm">View</a>
                         <a href="{{ url_for('new_refund', bill_id=b.id) }}" class="btn btn-sm btn-outline" title="Refund/Exchange">🔄</a>
-                        <form method="POST" action="{{ url_for('delete_bill', bill_id=b.id) }}" style="display:inline" onsubmit="return confirm('Delete Bill #{{ b.id }}? Stock will be restored.')">
+                        <form method="POST" action="{{ url_for('delete_bill', bill_id=b.id) }}" style="display:inline" onsubmit="return confirm('Delete Bill {{ display_bill_ref(b) }}? Stock will be restored.')">
                             <button type="submit" class="btn btn-sm btn-danger">✕</button>
                         </form>
                     </td>

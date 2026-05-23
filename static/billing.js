@@ -194,8 +194,9 @@ async function submitBill() {
             return;
         }
 
+        const billRef = data.bill_number || `#${data.bill_id}`;
         document.getElementById('billMessage').textContent =
-            `Bill #${data.bill_id} created — Total: ₹${data.total.toFixed(2)}`;
+            `Bill ${billRef} created — Total: ₹${data.total.toFixed(2)}`;
         document.getElementById('viewBillLink').href = `/bills/${data.bill_id}`;
         document.getElementById('billModal').style.display = 'flex';
         cartItems = [];

@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Bill #{{ bill.id }} — Gulmohar by Ankita{% endblock %}
+{% block title %}Bill {{ display_bill_ref(bill) }} — Gulmohar by Ankita{% endblock %}
 {% block body_class %}print-receipt{% endblock %}
 
 {% block content %}
 <div class="page-header no-print">
-    <h2>Bill #{{ bill.id }}</h2>
+    <h2>Bill {{ display_bill_ref(bill) }}</h2>
     <div>
         <a href="{{ url_for('new_refund', bill_id=bill.id) }}" class="btn btn-outline">🔄 Refund / Exchange</a>
         <a href="{{ url_for('bill_thermal_print', bill_id=bill.id) }}" class="btn btn-primary" target="_blank" rel="noopener">Print</a>
@@ -26,7 +26,7 @@
             </p>
         </div>
         <div class="invoice-meta">
-            <p><strong>Bill #{{ bill.id }}</strong></p>
+            <p><strong>Bill {{ display_bill_ref(bill) }}</strong></p>
             <p>{{ bill.created_at }}</p>
             <p>Payment: {{ bill.payment_method }}</p>
         </div>
@@ -91,7 +91,7 @@
         7620 563 984
     </div>
     <div class="t-sep"></div>
-    <div class="t-row"><span>Bill #</span><span>{{ bill.id }}</span></div>
+    <div class="t-row"><span>Bill #</span><span>{{ display_bill_ref(bill) }}</span></div>
     <div class="t-row"><span>Date</span><span>{{ bill.created_at }}</span></div>
     <div class="t-row"><span>Pay</span><span>{{ bill.payment_method }}</span></div>
     {% if bill.customer_name %}<div class="t-row"><span>Cust</span><span>{{ bill.customer_name }}</span></div>{% endif %}

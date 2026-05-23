@@ -86,6 +86,7 @@ def init_db():
 
         CREATE TABLE IF NOT EXISTS bills (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bill_number TEXT UNIQUE,
             customer_name TEXT,
             customer_phone TEXT,
             subtotal REAL NOT NULL DEFAULT 0,
@@ -181,6 +182,11 @@ def init_db():
             investment_date TEXT NOT NULL,
             created_at TEXT DEFAULT (datetime('now','localtime'))
         );
+
+        CREATE TABLE IF NOT EXISTS counters (
+            name TEXT PRIMARY KEY,
+            value INTEGER NOT NULL DEFAULT 0
+        );
     """)
 
     # Seed default categories if empty
@@ -215,6 +221,12 @@ def init_db():
     }
     if "store_credit_used" not in bills_columns:
         db.execute("ALTER TABLE bills ADD COLUMN store_credit_used REAL DEFAULT 0")
+    if "bill_number" not in bills_columns:
+        db.execute("ALTER TABLE bills ADD COLUMN bill_number TEXT")
+
+    db.execute(
+        "INSERT OR IGNORE INTO counters (name, value) VALUES ('bill_number', 0)"
+    )
 
     if "include_in_pl" not in expense_columns:
         db.execute("ALTER TABLE expenses ADD COLUMN include_in_pl INTEGER NOT NULL DEFAULT 1")
@@ -224,6 +236,43 @@ def init_db():
 
 with app.app_context():
     init_db()
+
+
+def get_next_bill_number(db):
+    db.execute("UPDATE counters SET value = value + 1 WHERE name = 'bill_number'")
+    row = db.execute(
+        "SELECT value FROM counters WHERE name = 'bill_number'"
+    ).fetchone()
+    return f"G{row['value']:03d}"
+
+
+def display_bill_ref(bill):
+    bill_number = None
+    bill_id = None
+
+    if isinstance(bill, dict):
+        bill_number = bill.get("bill_number")
+        bill_id = bill.get("id")
+    else:
+        try:
+            bill_number = bill["bill_number"]
+        except (TypeError, KeyError, IndexError):
+            bill_number = None
+        try:
+            bill_id = bill["id"]
+        except (TypeError, KeyError, IndexError):
+            bill_id = None
+
+    if bill_number:
+        return bill_number
+    if bill_id is not None:
+        return f"#{bill_id}"
+    return "-"
+
+
+@app.context_processor
+def inject_bill_helpers():
+    return {"display_bill_ref": display_bill_ref}
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
@@ -711,11 +760,12 @@ def create_bill():
         store_credit_id = None
         store_credit_amount = 0
 
+    bill_number = get_next_bill_number(db)
     cursor = db.execute(
-        "INSERT INTO bills (customer_name, customer_phone, subtotal, "
+        "INSERT INTO bills (bill_number, customer_name, customer_phone, subtotal, "
         "discount_percent, discount_amount, tax_percent, tax_amount, "
-        "total, payment_method, store_credit_used) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (customer_name, customer_phone, subtotal, discount_percent,
+        "total, payment_method, store_credit_used) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (bill_number, customer_name, customer_phone, subtotal, discount_percent,
          discount_amount, tax_percent, tax_amount, total, payment_method, store_credit_amount),
     )
     bill_id = cursor.lastrowid
@@ -738,7 +788,7 @@ def create_bill():
         db.execute(
             "INSERT INTO credit_transactions (credit_id, bill_id, amount, transaction_type, notes) "
             "VALUES (?, ?, ?, ?, ?)",
-            (store_credit_id, bill_id, store_credit_amount, "debit", f"Used in Bill #{bill_id}"),
+            (store_credit_id, bill_id, store_credit_amount, "debit", f"Used in Bill {bill_number}"),
         )
         db.execute(
             "UPDATE store_credits SET balance = balance - ?, updated_at = datetime('now','localtime') WHERE id = ?",
@@ -748,13 +798,20 @@ def create_bill():
     db.commit()
     log_update(
         "New Bill Created",
-        f"Bill #{bill_id} — ₹{after_discount + tax_amount} ({payment_method})" +
+        f"Bill {bill_number} — ₹{after_discount + tax_amount} ({payment_method})" +
         (f" — Store Credit: ₹{store_credit_amount}" if store_credit_amount > 0 else "") +
         f" — {customer_name or 'Walk-in'}",
         "billing",
     )
 
-    return jsonify({"bill_id": bill_id, "total": total, "message": "Bill created!"})
+    return jsonify(
+        {
+            "bill_id": bill_id,
+            "bill_number": bill_number,
+            "total": total,
+            "message": "Bill created!",
+        }
+    )
 
 
 @app.route("/bills")
@@ -1054,9 +1111,11 @@ def delete_store_credit(credit_id):
 def refunds_list():
     db = get_db()
     all_refunds = db.execute(
-        "SELECT r.*, "
+        "SELECT r.*, b.bill_number, "
         "(SELECT GROUP_CONCAT(ri.product_name, ', ') FROM refund_items ri WHERE ri.refund_id = r.id) as products "
-        "FROM refunds r ORDER BY r.created_at DESC"
+        "FROM refunds r "
+        "LEFT JOIN bills b ON b.id = r.bill_id "
+        "ORDER BY r.created_at DESC"
     ).fetchall()
     return render_template("refunds.html", refunds=all_refunds)
 
@@ -1475,6 +1534,7 @@ def clean_all_data():
     db.execute("DELETE FROM refunds")
     db.execute("DELETE FROM expenses")
     db.execute("DELETE FROM updates")
+    db.execute("UPDATE counters SET value = 0 WHERE name = 'bill_number'")
     db.commit()
 
     log_update(
@@ -1995,7 +2055,7 @@ def export_sales():
     date = request.args.get("date", "").strip()
 
     query = (
-        "SELECT b.id, b.customer_name, b.customer_phone, b.subtotal, "
+        "SELECT b.id, b.bill_number, b.customer_name, b.customer_phone, b.subtotal, "
         "b.discount_percent, b.discount_amount, b.tax_percent, b.tax_amount, "
         "b.total, b.payment_method, b.created_at "
         "FROM bills b WHERE 1=1"
@@ -2024,7 +2084,7 @@ def export_sales():
             for it in items
         )
         writer.writerow([
-            b["id"], b["customer_name"] or "Walk-in", b["customer_phone"] or "",
+            b["bill_number"] or f"#{b['id']}", b["customer_name"] or "Walk-in", b["customer_phone"] or "",
             b["subtotal"], b["discount_percent"], b["discount_amount"],
             b["tax_percent"], b["tax_amount"], b["total"],
             b["payment_method"], b["created_at"], items_str,

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Bill {{ bill.id }} Thermal Print</title>
+    <title>Bill {{ display_bill_ref(bill) }} Thermal Print</title>
     <style>
         @page { size: 76mm auto; margin: 0; }
         html, body {
@@ -126,7 +126,7 @@
 
         <div class="line"></div>
 
-        <div class="row"><span>Bill</span><span>{{ bill.id }}</span></div>
+        <div class="row"><span>Bill</span><span>{{ display_bill_ref(bill) }}</span></div>
         <div class="row"><span>Date</span><span>{{ bill.created_at | billdate }}</span></div>
         <div class="row"><span>Pay</span><span>{{ bill.payment_method }}</span></div>
 

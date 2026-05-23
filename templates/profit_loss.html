@@ -147,7 +147,7 @@
             <tbody>
                 {% for b in recent_bills %}
                 <tr>
-                    <td><strong>#{{ b.id }}</strong></td>
+                    <td><strong>{{ display_bill_ref(b) }}</strong></td>
                     <td>{{ b.customer_name or 'Walk-in' }}</td>
                     <td>₹{{ "%.2f"|format(b.total) }}</td>
                     <td><span class="badge badge-info">{{ b.payment_method }}</span></td>

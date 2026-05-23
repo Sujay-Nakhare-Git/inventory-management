@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Refund / Exchange — Bill #{{ bill.id }} — Gulmohar by Ankita{% endblock %}
+{% block title %}Refund / Exchange — Bill {{ display_bill_ref(bill) }} — Gulmohar by Ankita{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h2>Refund / Exchange — Bill #{{ bill.id }}</h2>
+    <h2>Refund / Exchange — Bill {{ display_bill_ref(bill) }}</h2>
     <a href="{{ url_for('bill_detail', bill_id=bill.id) }}" class="btn btn-outline">← Back to Bill</a>
 </div>
 
