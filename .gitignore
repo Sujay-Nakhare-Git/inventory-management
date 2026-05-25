@@ -1,6 +1,9 @@
 boutique.db
 __pycache__/
+**/__pycache__/
 *.pyc
+*.pyo
+*.pyd
 static/product_images/
 .DS_Store
 **/.DS_Store

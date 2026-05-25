@@ -2,6 +2,19 @@
 
 A boutique management web application for inventory, billing, refunds/exchanges, expenses, and admin analytics.
 
+## Release Notes
+
+### 2026-05-25
+
+- Added G-series bill numbering (`G001`) with legacy fallback support.
+- Enabled direct thermal print popup immediately after bill generation.
+- Added backend WhatsApp Cloud API integration for auto-notifications on bill creation.
+- Added Admin Sales Summary:
+	- High selling category
+	- High selling size
+	- Detailed category x size sold report (descending)
+- Updated documentation for new environment variables and billing behavior.
+
 ## Quick Deploy Checklist
 
 ```
@@ -20,10 +33,12 @@ Inventory Management System helps manage day-to-day boutique operations in one p
 
 - Inventory and category management
 - Billing and bill history
+- Auto bill numbering in `G001` format
 - Refund and exchange workflow
 - Expense tracking
 - Daily Summary (admin-only)
 - Profit & Loss reporting (admin-only)
+- Sales Summary in Admin (top category/size + detailed descending breakdown)
 
 ## Tech Stack
 
@@ -46,6 +61,8 @@ Inventory Management System helps manage day-to-day boutique operations in one p
 - Add, edit, delete products
 - Category-wise organization
 - Generate bills with discount/tax/payment method
+- Auto-open thermal print window right after bill generation
+- Optional backend WhatsApp notification to billed customer (if phone is present and API is configured)
 - View bill history and bill details
 
 ### Returns Workflow
@@ -60,6 +77,10 @@ Inventory Management System helps manage day-to-day boutique operations in one p
 - Expenses page (with date filtering)
 - Profit & Loss dashboard
 - Daily Summary page (with date selection and Today quick action)
+- Sales Summary card with:
+	- High selling category
+	- High selling size
+	- Detailed category x size sold report in descending order
 
 ## Local Setup
 
@@ -110,9 +131,26 @@ Use a fixed secret key in production (instead of random restart-based key):
 
 - `FLASK_SECRET_KEY`
 
+For backend WhatsApp Cloud API sending:
+
+- `WHATSAPP_CLOUD_API_TOKEN`
+- `WHATSAPP_PHONE_NUMBER_ID`
+- `WHATSAPP_GRAPH_VERSION` (optional, default: `v22.0`)
+
 Example value:
 
 - `a-long-random-secret-string`
+
+Notes for WhatsApp Cloud API:
+
+- Messages are sent from backend when a bill is generated and a valid customer phone is available.
+- Destination phone numbers are normalized to Indian format (`91XXXXXXXXXX`).
+- Your WhatsApp Business sender must be properly configured in Meta for delivery.
+
+### Billing Counter Notes
+
+- Bill references are stored as `bill_number` and shown in `G001` style for new bills.
+- Legacy rows without `bill_number` continue to display using `#<id>` fallback.
 
 ## Notes
 

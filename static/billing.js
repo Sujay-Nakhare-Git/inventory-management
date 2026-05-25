@@ -163,6 +163,9 @@ async function submitBill() {
         return;
     }
 
+    // Open early so browsers treat it as a direct user-initiated popup.
+    const printWindow = window.open('', '_blank');
+
     const storeCreditAmt = document.getElementById('useStoreCredit').checked && currentStoreCredit 
         ? (parseFloat(document.getElementById('storeCreditAmount').value) || 0) 
         : 0;
@@ -190,20 +193,42 @@ async function submitBill() {
 
         const data = await resp.json();
         if (!resp.ok) {
+            if (printWindow && !printWindow.closed) {
+                printWindow.close();
+            }
             alert(data.error || 'Failed to create bill.');
             return;
         }
 
         const billRef = data.bill_number || `#${data.bill_id}`;
+        const thermalUrl = `/bills/${data.bill_id}/thermal`;
+
+        if (printWindow && !printWindow.closed) {
+            printWindow.location.href = thermalUrl;
+        }
+
+        const whatsappNote = data.whatsapp_sent
+            ? ' WhatsApp message sent.'
+            : (payload.customer_phone ? ' WhatsApp not sent (check backend WhatsApp config).' : '');
+
         document.getElementById('billMessage').textContent =
-            `Bill ${billRef} created — Total: ₹${data.total.toFixed(2)}`;
+            `Bill ${billRef} created — Total: ₹${data.total.toFixed(2)}.${whatsappNote}`;
         document.getElementById('viewBillLink').href = `/bills/${data.bill_id}`;
         document.getElementById('billModal').style.display = 'flex';
+
+        // Fallback when popup gets blocked by browser settings.
+        if (!printWindow) {
+            window.open(thermalUrl, '_blank');
+        }
+
         cartItems = [];
         currentStoreCredit = null;
         document.getElementById('useStoreCredit').checked = false;
         toggleStoreCredit();
     } catch (err) {
+        if (printWindow && !printWindow.closed) {
+            printWindow.close();
+        }
         alert('Network error. Please try again.');
     }
 }

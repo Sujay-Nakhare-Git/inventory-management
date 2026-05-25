@@ -4,6 +4,9 @@ import csv
 import sqlite3
 import hashlib
 import hmac
+import json
+import urllib.error
+import urllib.request
 from datetime import datetime
 from flask import (
     Flask, render_template, request, redirect, url_for,
@@ -39,6 +42,9 @@ ALLOWED_BILL_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 PRODUCT_IMAGE_UPLOAD_DIR = os.path.join(app.root_path, "static", "product_images")
 ALLOWED_PRODUCT_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
 MAX_IMAGE_SIZE = (1600, 1600)
+WHATSAPP_CLOUD_API_TOKEN = os.getenv("WHATSAPP_CLOUD_API_TOKEN", "").strip()
+WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "").strip()
+WHATSAPP_GRAPH_VERSION = os.getenv("WHATSAPP_GRAPH_VERSION", "v22.0").strip() or "v22.0"
 
 os.makedirs(EXPENSE_BILL_UPLOAD_DIR, exist_ok=True)
 os.makedirs(PRODUCT_IMAGE_UPLOAD_DIR, exist_ok=True)
@@ -268,6 +274,79 @@ def display_bill_ref(bill):
     if bill_id is not None:
         return f"#{bill_id}"
     return "-"
+
+
+def normalize_phone_for_whatsapp_cloud(raw_phone):
+    digits = "".join(ch for ch in str(raw_phone or "") if ch.isdigit())
+    if len(digits) == 10:
+        return f"91{digits}"
+    if len(digits) == 12 and digits.startswith("91"):
+        return digits
+    if len(digits) == 13 and digits.startswith("091"):
+        return digits[1:]
+    return None
+
+
+def send_whatsapp_bill_message(customer_phone, customer_name, bill_number, total):
+    if not customer_phone:
+        return {"sent": False, "reason": "missing_phone"}
+
+    to_phone = normalize_phone_for_whatsapp_cloud(customer_phone)
+    if not to_phone:
+        return {"sent": False, "reason": "invalid_phone"}
+
+    if not (WHATSAPP_CLOUD_API_TOKEN and WHATSAPP_PHONE_NUMBER_ID):
+        return {"sent": False, "reason": "not_configured"}
+
+    safe_name = (customer_name or "Customer").strip() or "Customer"
+    body = (
+        f"Namaste {safe_name}, your bill {bill_number} has been generated at "
+        f"Gulmohar by Ankita. Total amount: Rs {total:.2f}. Thank you for shopping with us."
+    )
+
+    payload = json.dumps(
+        {
+            "messaging_product": "whatsapp",
+            "to": to_phone,
+            "type": "text",
+            "text": {"preview_url": False, "body": body},
+        }
+    ).encode("utf-8")
+    endpoint = (
+        f"https://graph.facebook.com/{WHATSAPP_GRAPH_VERSION}/"
+        f"{WHATSAPP_PHONE_NUMBER_ID}/messages"
+    )
+    request_obj = urllib.request.Request(endpoint, data=payload, method="POST")
+    request_obj.add_header(
+        "Authorization",
+        f"Bearer {WHATSAPP_CLOUD_API_TOKEN}",
+    )
+    request_obj.add_header("Content-Type", "application/json")
+
+    try:
+        with urllib.request.urlopen(request_obj, timeout=12) as response:
+            response_body = response.read().decode("utf-8", errors="replace")
+            response_json = json.loads(response_body)
+            message_id = ""
+            messages = response_json.get("messages", [])
+            if messages and isinstance(messages, list):
+                message_id = messages[0].get("id", "")
+            return {
+                "sent": True,
+                "reason": "sent",
+                "sid": message_id,
+            }
+    except urllib.error.HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
+        app.logger.warning("WhatsApp API HTTP error for %s: %s", to_phone, error_body)
+        return {
+            "sent": False,
+            "reason": "send_failed",
+            "error": error_body,
+        }
+    except Exception as exc:
+        app.logger.warning("WhatsApp send failed for %s: %s", to_phone, exc)
+        return {"sent": False, "reason": "send_failed", "error": str(exc)}
 
 
 @app.context_processor
@@ -804,12 +883,21 @@ def create_bill():
         "billing",
     )
 
+    whatsapp_status = send_whatsapp_bill_message(
+        customer_phone=customer_phone,
+        customer_name=customer_name,
+        bill_number=bill_number,
+        total=total,
+    )
+
     return jsonify(
         {
             "bill_id": bill_id,
             "bill_number": bill_number,
             "total": total,
             "message": "Bill created!",
+            "whatsapp_sent": whatsapp_status.get("sent", False),
+            "whatsapp_reason": whatsapp_status.get("reason", "unknown"),
         }
     )
 
@@ -1369,6 +1457,9 @@ def admin():
     inventory_totals = None
     investments = []
     total_investment = 0
+    top_selling_category = None
+    top_selling_size = None
+    sales_breakdown = []
     if admin_authenticated():
         db = get_db()
         investments = db.execute(
@@ -1425,6 +1516,42 @@ def admin():
             size_params,
         ).fetchall()
 
+        top_selling_category = db.execute(
+            "SELECT COALESCE(c.name, 'Uncategorized') as name, "
+            "COALESCE(SUM(bi.quantity), 0) as sold_qty, "
+            "COALESCE(SUM(bi.total_price), 0) as sold_amount "
+            "FROM bill_items bi "
+            "LEFT JOIN products p ON p.id = bi.product_id "
+            "LEFT JOIN categories c ON c.id = p.category_id "
+            "GROUP BY c.name "
+            "ORDER BY sold_qty DESC, sold_amount DESC "
+            "LIMIT 1"
+        ).fetchone()
+
+        top_selling_size = db.execute(
+            "SELECT COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') as name, "
+            "COALESCE(SUM(bi.quantity), 0) as sold_qty, "
+            "COALESCE(SUM(bi.total_price), 0) as sold_amount "
+            "FROM bill_items bi "
+            "LEFT JOIN products p ON p.id = bi.product_id "
+            "GROUP BY COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') "
+            "ORDER BY sold_qty DESC, sold_amount DESC "
+            "LIMIT 1"
+        ).fetchone()
+
+        sales_breakdown = db.execute(
+            "SELECT COALESCE(c.name, 'Uncategorized') as category, "
+            "COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') as size, "
+            "COALESCE(SUM(bi.quantity), 0) as sold_qty, "
+            "COALESCE(SUM(bi.total_price), 0) as sold_amount, "
+            "COUNT(DISTINCT bi.bill_id) as bills_count "
+            "FROM bill_items bi "
+            "LEFT JOIN products p ON p.id = bi.product_id "
+            "LEFT JOIN categories c ON c.id = p.category_id "
+            "GROUP BY COALESCE(c.name, 'Uncategorized'), COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') "
+            "ORDER BY sold_qty DESC, sold_amount DESC, category, size"
+        ).fetchall()
+
     return render_template(
         "admin.html",
         locked=not admin_authenticated(),
@@ -1438,6 +1565,9 @@ def admin():
         inventory_totals=inventory_totals,
         investments=investments,
         total_investment=total_investment,
+        top_selling_category=top_selling_category,
+        top_selling_size=top_selling_size,
+        sales_breakdown=sales_breakdown,
     )
 
 

@@ -237,6 +237,64 @@
     </div>
 </div>
 
+<!-- Sales Summary -->
+<div style="margin-top:2rem;">
+    <h3 style="margin-bottom:1rem;">🧾 Sales Summary</h3>
+
+    {% if sales_breakdown %}
+    <div class="stats-grid" style="margin-bottom:1rem;">
+        <div class="card stat-card stat-coral" style="text-align:center;">
+            <div class="stat-value">{{ top_selling_category.name if top_selling_category else '—' }}</div>
+            <div class="stat-label">High Selling Category</div>
+            {% if top_selling_category %}
+            <p class="page-desc" style="margin-top:0.5rem;">{{ top_selling_category.sold_qty }} pcs • ₹{{ "{:,.2f}".format(top_selling_category.sold_amount) }}</p>
+            {% endif %}
+        </div>
+        <div class="card stat-card stat-gold" style="text-align:center;">
+            <div class="stat-value">{{ top_selling_size.name if top_selling_size else '—' }}</div>
+            <div class="stat-label">High Selling Size</div>
+            {% if top_selling_size %}
+            <p class="page-desc" style="margin-top:0.5rem;">{{ top_selling_size.sold_qty }} pcs • ₹{{ "{:,.2f}".format(top_selling_size.sold_amount) }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Category x Size Sold (Descending)</div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Category</th>
+                        <th>Size</th>
+                        <th>Sold Qty</th>
+                        <th>Sales Amount</th>
+                        <th>Bills Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in sales_breakdown %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td><strong>{{ row.category }}</strong></td>
+                        <td>{{ row.size }}</td>
+                        <td>{{ row.sold_qty }}</td>
+                        <td>₹{{ "{:,.2f}".format(row.sold_amount) }}</td>
+                        <td>{{ row.bills_count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <p style="color:#95a5a6;text-align:center;">No sales data available yet.</p>
+    </div>
+    {% endif %}
+</div>
+
 <!-- Clean All Data -->
 <div class="stats-grid" style="margin-top:2rem;">
     <div class="card stat-card" style="text-align:left;">
