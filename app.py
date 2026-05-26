@@ -1961,6 +1961,14 @@ def daily_summary():
         payment_map.values(),
         key=lambda x: (-x["total"], x["payment_method"]),
     )
+    cash_total = round(
+        sum(r["total"] for r in payment_split if r["payment_method"] == "Cash"),
+        2,
+    )
+    digital_total = round(
+        sum(r["total"] for r in payment_split if r["payment_method"] != "Cash"),
+        2,
+    )
     cash_total = round(sum(r["total"] for r in payment_split if r["payment_method"] == "Cash"), 2)
     digital_total = round(sum(r["total"] for r in payment_split if r["payment_method"] != "Cash"), 2)
 
@@ -2267,6 +2275,15 @@ def profit_loss():
     payment_split = sorted(
         payment_map.values(),
         key=lambda x: (-x["total"], x["payment_method"]),
+    )
+
+    cash_total = round(
+        sum(r["total"] for r in payment_split if r["payment_method"] == "Cash"),
+        2,
+    )
+    digital_total = round(
+        sum(r["total"] for r in payment_split if r["payment_method"] != "Cash"),
+        2,
     )
 
     # Recent expenses for period
