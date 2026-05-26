@@ -106,13 +106,48 @@
                 <span id="totalAmount">₹0.00</span>
             </div>
             <div class="form-group">
+                <label>Payment Type</label>
+                <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+                    <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
+                        <input type="radio" name="paymentMode" value="single" checked onchange="togglePaymentMode()">
+                        <span>Single</span>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
+                        <input type="radio" name="paymentMode" value="split" onchange="togglePaymentMode()">
+                        <span>Multiple / Split</span>
+                    </label>
+                </div>
+            </div>
+            <div class="form-group" id="singlePaymentSection">
                 <label>Payment Method</label>
-                <select id="paymentMethod" class="input">
-                    <option value="Cash">Cash</option>
+                <select id="paymentMethod" class="input" onchange="recalculate()">
                     <option value="UPI">UPI</option>
+                    <option value="Cash">Cash</option>
                     <option value="Card">Card</option>
                     <option value="Bank Transfer">Bank Transfer</option>
                 </select>
+            </div>
+            <div class="form-group" id="splitPaymentSection" style="display:none;">
+                <label>Split Payment Breakup</label>
+                <div class="form-grid" style="grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));">
+                    <div>
+                        <label style="font-size:0.8rem;color:#6b7280;">Cash (₹)</label>
+                        <input type="number" id="payCash" class="input" min="0" step="0.01" value="0" onchange="recalculate()">
+                    </div>
+                    <div>
+                        <label style="font-size:0.8rem;color:#6b7280;">UPI (₹)</label>
+                        <input type="number" id="payUPI" class="input" min="0" step="0.01" value="0" onchange="recalculate()">
+                    </div>
+                    <div>
+                        <label style="font-size:0.8rem;color:#6b7280;">Card (₹)</label>
+                        <input type="number" id="payCard" class="input" min="0" step="0.01" value="0" onchange="recalculate()">
+                    </div>
+                    <div>
+                        <label style="font-size:0.8rem;color:#6b7280;">Bank Transfer (₹)</label>
+                        <input type="number" id="payBankTransfer" class="input" min="0" step="0.01" value="0" onchange="recalculate()">
+                    </div>
+                </div>
+                <p id="splitPaymentHint" style="margin-top:0.5rem;font-size:0.85rem;color:#6b7280;">Remaining: ₹0.00</p>
             </div>
             <button class="btn btn-primary btn-block" onclick="submitBill()">Generate Bill</button>
         </div>

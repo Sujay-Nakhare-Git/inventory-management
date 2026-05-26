@@ -29,6 +29,13 @@
             <p><strong>Bill {{ display_bill_ref(bill) }}</strong></p>
             <p>{{ bill.created_at }}</p>
             <p>Payment: {{ bill.payment_method }}</p>
+            {% if payment_breakdown and payment_breakdown|length > 1 %}
+            <div style="margin-top:0.35rem; font-size:0.82rem; color:#6b7280;">
+                {% for part in payment_breakdown %}
+                <div>{{ part.method }}: ₹{{ "%.2f"|format(part.amount) }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -94,6 +101,11 @@
     <div class="t-row"><span>Bill #</span><span>{{ display_bill_ref(bill) }}</span></div>
     <div class="t-row"><span>Date</span><span>{{ bill.created_at }}</span></div>
     <div class="t-row"><span>Pay</span><span>{{ bill.payment_method }}</span></div>
+    {% if payment_breakdown and payment_breakdown|length > 1 %}
+    {% for part in payment_breakdown %}
+    <div class="t-row"><span>{{ part.method }}</span><span>Rs.{{ "%.2f"|format(part.amount) }}</span></div>
+    {% endfor %}
+    {% endif %}
     {% if bill.customer_name %}<div class="t-row"><span>Cust</span><span>{{ bill.customer_name }}</span></div>{% endif %}
     {% if bill.customer_phone %}<div class="t-row"><span>Ph</span><span>{{ bill.customer_phone }}</span></div>{% endif %}
     <div class="t-sep"></div>

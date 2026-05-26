@@ -129,6 +129,11 @@
         <div class="row"><span>Bill</span><span>{{ display_bill_ref(bill) }}</span></div>
         <div class="row"><span>Date</span><span>{{ bill.created_at | billdate }}</span></div>
         <div class="row"><span>Pay</span><span>{{ bill.payment_method }}</span></div>
+        {% if payment_breakdown and payment_breakdown|length > 1 %}
+        {% for part in payment_breakdown %}
+        <div class="row"><span>{{ part.method }}</span><span>{{ "%.2f"|format(part.amount) }}</span></div>
+        {% endfor %}
+        {% endif %}
 
         {% if bill.customer_name or bill.customer_phone %}
         <div class="line"></div>

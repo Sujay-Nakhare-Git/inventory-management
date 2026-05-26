@@ -2,6 +2,22 @@
 let cartItems = [];
 let currentStoreCredit = null;  // Store current credit info
 
+function round2(value) {
+    return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+}
+
+function getSelectedPaymentMode() {
+    const selected = document.querySelector('input[name="paymentMode"]:checked');
+    return selected ? selected.value : 'single';
+}
+
+function togglePaymentMode() {
+    const mode = getSelectedPaymentMode();
+    document.getElementById('singlePaymentSection').style.display = mode === 'single' ? 'block' : 'none';
+    document.getElementById('splitPaymentSection').style.display = mode === 'split' ? 'block' : 'none';
+    recalculate();
+}
+
 // Product search filter
 document.getElementById('productSearch').addEventListener('input', function() {
     const query = this.value.toLowerCase();
@@ -129,32 +145,89 @@ function renderCart() {
     recalculate();
 }
 
-function recalculate() {
+function calculateTotals() {
     const subtotal = cartItems.reduce((sum, i) => sum + i.total_price, 0);
     const discountPct = parseFloat(document.getElementById('discountPercent').value) || 0;
     const taxPct = parseFloat(document.getElementById('taxPercent').value) || 0;
 
-    const discountAmt = subtotal * discountPct / 100;
+    const discountAmt = round2(subtotal * discountPct / 100);
     const afterDiscount = subtotal - discountAmt;
-    const taxAmt = afterDiscount * taxPct / 100;
-    
+    const taxAmt = round2(afterDiscount * taxPct / 100);
+
     let storeCreditAmt = 0;
     if (document.getElementById('useStoreCredit').checked && currentStoreCredit) {
         storeCreditAmt = parseFloat(document.getElementById('storeCreditAmount').value) || 0;
         storeCreditAmt = Math.min(storeCreditAmt, currentStoreCredit.balance);
     }
-    
-    const total = Math.max(0, afterDiscount + taxAmt - storeCreditAmt);
 
-    document.getElementById('subtotal').textContent = `₹${subtotal.toFixed(2)}`;
-    document.getElementById('discountAmount').textContent = `-₹${discountAmt.toFixed(2)}`;
-    document.getElementById('taxAmount').textContent = `+₹${taxAmt.toFixed(2)}`;
-    document.getElementById('totalAmount').textContent = `₹${total.toFixed(2)}`;
-    document.getElementById('storeCreditUsed').textContent = `-₹${storeCreditAmt.toFixed(2)}`;
+    const total = Math.max(0, round2(afterDiscount + taxAmt - storeCreditAmt));
+    return { subtotal, discountPct, taxPct, discountAmt, taxAmt, storeCreditAmt, total };
+}
 
-    document.getElementById('discountRow').style.display = discountPct > 0 ? 'flex' : 'none';
-    document.getElementById('taxRow').style.display = taxPct > 0 ? 'flex' : 'none';
-    document.getElementById('storeCreditRow').style.display = storeCreditAmt > 0 ? 'flex' : 'none';
+function getPaymentBreakdownPayload(totalAmount) {
+    const mode = getSelectedPaymentMode();
+    if (totalAmount <= 0) {
+        return {
+            payment_method: 'Store Credit',
+            payment_breakdown: []
+        };
+    }
+
+    if (mode === 'single') {
+        const method = document.getElementById('paymentMethod').value;
+        return {
+            payment_method: method,
+            payment_breakdown: [{ method: method, amount: round2(totalAmount) }]
+        };
+    }
+
+    const splitRows = [
+        { method: 'Cash', amount: parseFloat(document.getElementById('payCash').value) || 0 },
+        { method: 'UPI', amount: parseFloat(document.getElementById('payUPI').value) || 0 },
+        { method: 'Card', amount: parseFloat(document.getElementById('payCard').value) || 0 },
+        { method: 'Bank Transfer', amount: parseFloat(document.getElementById('payBankTransfer').value) || 0 }
+    ].map(row => ({ method: row.method, amount: round2(Math.max(0, row.amount)) }))
+     .filter(row => row.amount > 0);
+
+    const splitTotal = round2(splitRows.reduce((sum, row) => sum + row.amount, 0));
+    if (splitRows.length === 0) {
+        throw new Error('Add at least one split payment amount.');
+    }
+    if (Math.abs(splitTotal - round2(totalAmount)) > 0.05) {
+        throw new Error('Split payment total must match bill total.');
+    }
+
+    return {
+        payment_method: splitRows.length > 1 ? 'Mixed' : splitRows[0].method,
+        payment_breakdown: splitRows
+    };
+}
+
+function recalculate() {
+    const totals = calculateTotals();
+
+    document.getElementById('subtotal').textContent = `₹${totals.subtotal.toFixed(2)}`;
+    document.getElementById('discountAmount').textContent = `-₹${totals.discountAmt.toFixed(2)}`;
+    document.getElementById('taxAmount').textContent = `+₹${totals.taxAmt.toFixed(2)}`;
+    document.getElementById('totalAmount').textContent = `₹${totals.total.toFixed(2)}`;
+    document.getElementById('storeCreditUsed').textContent = `-₹${totals.storeCreditAmt.toFixed(2)}`;
+
+    document.getElementById('discountRow').style.display = totals.discountPct > 0 ? 'flex' : 'none';
+    document.getElementById('taxRow').style.display = totals.taxPct > 0 ? 'flex' : 'none';
+    document.getElementById('storeCreditRow').style.display = totals.storeCreditAmt > 0 ? 'flex' : 'none';
+
+    if (getSelectedPaymentMode() === 'split') {
+        const splitTotal = round2(
+            (parseFloat(document.getElementById('payCash').value) || 0) +
+            (parseFloat(document.getElementById('payUPI').value) || 0) +
+            (parseFloat(document.getElementById('payCard').value) || 0) +
+            (parseFloat(document.getElementById('payBankTransfer').value) || 0)
+        );
+        const remaining = round2(totals.total - splitTotal);
+        const hint = document.getElementById('splitPaymentHint');
+        hint.textContent = `Remaining: ₹${remaining.toFixed(2)}`;
+        hint.style.color = Math.abs(remaining) <= 0.05 ? '#16a34a' : '#b45309';
+    }
 }
 
 async function submitBill() {
@@ -170,12 +243,22 @@ async function submitBill() {
         ? (parseFloat(document.getElementById('storeCreditAmount').value) || 0) 
         : 0;
 
+    const totals = calculateTotals();
+    let paymentPayload;
+    try {
+        paymentPayload = getPaymentBreakdownPayload(totals.total);
+    } catch (err) {
+        alert(err.message || 'Please fix payment breakup.');
+        return;
+    }
+
     const payload = {
         customer_name: document.getElementById('customerName').value.trim(),
         customer_phone: document.getElementById('customerPhone').value.trim(),
         discount_percent: parseFloat(document.getElementById('discountPercent').value) || 0,
         tax_percent: parseFloat(document.getElementById('taxPercent').value) || 0,
-        payment_method: document.getElementById('paymentMethod').value,
+        payment_method: paymentPayload.payment_method,
+        payment_breakdown: paymentPayload.payment_breakdown,
         store_credit_id: currentStoreCredit ? currentStoreCredit.id : null,
         store_credit_amount: storeCreditAmt,
         items: cartItems.map(i => ({
@@ -224,6 +307,12 @@ async function submitBill() {
         cartItems = [];
         currentStoreCredit = null;
         document.getElementById('useStoreCredit').checked = false;
+        document.querySelector('input[name="paymentMode"][value="single"]').checked = true;
+        document.getElementById('payCash').value = '0';
+        document.getElementById('payUPI').value = '0';
+        document.getElementById('payCard').value = '0';
+        document.getElementById('payBankTransfer').value = '0';
+        togglePaymentMode();
         toggleStoreCredit();
     } catch (err) {
         if (printWindow && !printWindow.closed) {

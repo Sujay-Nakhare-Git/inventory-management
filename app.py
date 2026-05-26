@@ -102,6 +102,7 @@ def init_db():
             tax_amount REAL NOT NULL DEFAULT 0,
             total REAL NOT NULL DEFAULT 0,
             payment_method TEXT DEFAULT 'Cash',
+            payment_breakdown_json TEXT,
             created_at TEXT DEFAULT (datetime('now','localtime'))
         );
 
@@ -229,6 +230,8 @@ def init_db():
         db.execute("ALTER TABLE bills ADD COLUMN store_credit_used REAL DEFAULT 0")
     if "bill_number" not in bills_columns:
         db.execute("ALTER TABLE bills ADD COLUMN bill_number TEXT")
+    if "payment_breakdown_json" not in bills_columns:
+        db.execute("ALTER TABLE bills ADD COLUMN payment_breakdown_json TEXT")
 
     db.execute(
         "INSERT OR IGNORE INTO counters (name, value) VALUES ('bill_number', 0)"
@@ -250,6 +253,51 @@ def get_next_bill_number(db):
         "SELECT value FROM counters WHERE name = 'bill_number'"
     ).fetchone()
     return f"G{row['value']:03d}"
+
+
+ALLOWED_PAYMENT_METHODS = {"Cash", "UPI", "Card", "Bank Transfer"}
+
+
+def _row_get(row, key, default=None):
+    if isinstance(row, dict):
+        return row.get(key, default)
+    try:
+        return row[key]
+    except (TypeError, KeyError, IndexError):
+        return default
+
+
+def parse_bill_payment_breakdown(bill):
+    breakdown_text = _row_get(bill, "payment_breakdown_json", "")
+    parsed = []
+    if breakdown_text:
+        try:
+            raw = json.loads(breakdown_text)
+            if isinstance(raw, list):
+                for entry in raw:
+                    if not isinstance(entry, dict):
+                        continue
+                    method = str(entry.get("method", "")).strip()
+                    if method not in ALLOWED_PAYMENT_METHODS:
+                        continue
+                    try:
+                        amount = round(float(entry.get("amount", 0)), 2)
+                    except (TypeError, ValueError):
+                        continue
+                    if amount <= 0:
+                        continue
+                    parsed.append({"method": method, "amount": amount})
+        except (TypeError, ValueError, json.JSONDecodeError):
+            parsed = []
+
+    if parsed:
+        return parsed
+
+    total = round(float(_row_get(bill, "total", 0) or 0), 2)
+    payment_method = str(_row_get(bill, "payment_method", "") or "").strip()
+    if total > 0 and payment_method:
+        return [{"method": payment_method, "amount": total}]
+    return []
 
 
 def display_bill_ref(bill):
@@ -787,6 +835,7 @@ def create_bill():
     discount_percent = float(data.get("discount_percent", 0))
     tax_percent = float(data.get("tax_percent", 0))
     payment_method = data.get("payment_method", "Cash")
+    payment_breakdown_raw = data.get("payment_breakdown", [])
     store_credit_id = data.get("store_credit_id")
     store_credit_amount = float(data.get("store_credit_amount", 0))
 
@@ -839,13 +888,59 @@ def create_bill():
         store_credit_id = None
         store_credit_amount = 0
 
+    payment_breakdown = []
+    normalized_payment_method = (
+        str(payment_method).strip() if str(payment_method).strip() in ALLOWED_PAYMENT_METHODS else "Cash"
+    )
+
+    if total > 0 and isinstance(payment_breakdown_raw, list):
+        method_totals = {}
+        for row in payment_breakdown_raw:
+            if not isinstance(row, dict):
+                continue
+            method = str(row.get("method", "")).strip()
+            if method not in ALLOWED_PAYMENT_METHODS:
+                continue
+            try:
+                amount = round(float(row.get("amount", 0)), 2)
+            except (TypeError, ValueError):
+                continue
+            if amount <= 0:
+                continue
+            method_totals[method] = round(method_totals.get(method, 0) + amount, 2)
+
+        payment_breakdown = [
+            {"method": method, "amount": amount}
+            for method, amount in method_totals.items()
+            if amount > 0
+        ]
+
+    if total > 0 and not payment_breakdown:
+        payment_breakdown = [{"method": normalized_payment_method, "amount": round(total, 2)}]
+
+    if total > 0:
+        breakdown_total = round(sum(item["amount"] for item in payment_breakdown), 2)
+        if abs(breakdown_total - round(total, 2)) > 0.05:
+            return jsonify({"error": "Payment breakup must match bill total."}), 400
+
+        if len(payment_breakdown) == 1:
+            normalized_payment_method = payment_breakdown[0]["method"]
+        else:
+            normalized_payment_method = "Mixed"
+    else:
+        normalized_payment_method = "Store Credit"
+        payment_breakdown = []
+
+    payment_breakdown_json = json.dumps(payment_breakdown) if payment_breakdown else None
+
     bill_number = get_next_bill_number(db)
     cursor = db.execute(
         "INSERT INTO bills (bill_number, customer_name, customer_phone, subtotal, "
         "discount_percent, discount_amount, tax_percent, tax_amount, "
-        "total, payment_method, store_credit_used) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "total, payment_method, payment_breakdown_json, store_credit_used) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (bill_number, customer_name, customer_phone, subtotal, discount_percent,
-         discount_amount, tax_percent, tax_amount, total, payment_method, store_credit_amount),
+         discount_amount, tax_percent, tax_amount, total, normalized_payment_method,
+         payment_breakdown_json, store_credit_amount),
     )
     bill_id = cursor.lastrowid
 
@@ -877,7 +972,7 @@ def create_bill():
     db.commit()
     log_update(
         "New Bill Created",
-        f"Bill {bill_number} — ₹{after_discount + tax_amount} ({payment_method})" +
+        f"Bill {bill_number} — ₹{after_discount + tax_amount} ({normalized_payment_method})" +
         (f" — Store Credit: ₹{store_credit_amount}" if store_credit_amount > 0 else "") +
         f" — {customer_name or 'Walk-in'}",
         "billing",
@@ -942,7 +1037,14 @@ def bill_detail(bill_id):
     refunds = db.execute(
         "SELECT * FROM refunds WHERE bill_id = ? ORDER BY created_at DESC", (bill_id,)
     ).fetchall()
-    return render_template("bill_detail.html", bill=bill, items=items, refunds=refunds)
+    payment_breakdown = parse_bill_payment_breakdown(bill)
+    return render_template(
+        "bill_detail.html",
+        bill=bill,
+        items=items,
+        refunds=refunds,
+        payment_breakdown=payment_breakdown,
+    )
 
 
 @app.route("/bills/<int:bill_id>/thermal")
@@ -962,7 +1064,13 @@ def bill_thermal_print(bill_id):
         """,
         (bill_id,),
     ).fetchall()
-    return render_template("bill_thermal.html", bill=bill, items=items)
+    payment_breakdown = parse_bill_payment_breakdown(bill)
+    return render_template(
+        "bill_thermal.html",
+        bill=bill,
+        items=items,
+        payment_breakdown=payment_breakdown,
+    )
 
 
 @app.route("/bills/delete/<int:bill_id>", methods=["POST"])
@@ -1824,12 +1932,35 @@ def daily_summary():
     gross_profit = sales_total - cogs_total
     net_after_expenses = gross_profit - expense_total - refund_total
 
-    payment_split = db.execute(
-        "SELECT payment_method, COUNT(*) as bill_count, COALESCE(SUM(total), 0) as total "
-        "FROM bills WHERE created_at LIKE ? "
-        "GROUP BY payment_method ORDER BY total DESC",
+    payment_rows = db.execute(
+        "SELECT payment_method, payment_breakdown_json, total "
+        "FROM bills WHERE created_at LIKE ?",
         (date_filter,),
     ).fetchall()
+    payment_map = {}
+    for row in payment_rows:
+        breakdown = parse_bill_payment_breakdown(row)
+        if not breakdown:
+            continue
+        methods_seen = set()
+        for item in breakdown:
+            method = item["method"]
+            amount = item["amount"]
+            if method not in payment_map:
+                payment_map[method] = {
+                    "payment_method": method,
+                    "bill_count": 0,
+                    "total": 0.0,
+                }
+            payment_map[method]["total"] = round(payment_map[method]["total"] + amount, 2)
+            if method not in methods_seen:
+                payment_map[method]["bill_count"] += 1
+                methods_seen.add(method)
+
+    payment_split = sorted(
+        payment_map.values(),
+        key=lambda x: (-x["total"], x["payment_method"]),
+    )
 
     top_products = db.execute(
         "SELECT bi.product_name, SUM(bi.quantity) as qty, COALESCE(SUM(bi.total_price), 0) as revenue "
