@@ -1961,6 +1961,8 @@ def daily_summary():
         payment_map.values(),
         key=lambda x: (-x["total"], x["payment_method"]),
     )
+    cash_total = round(sum(r["total"] for r in payment_split if r["payment_method"] == "Cash"), 2)
+    digital_total = round(sum(r["total"] for r in payment_split if r["payment_method"] != "Cash"), 2)
 
     top_products = db.execute(
         "SELECT bi.product_name, SUM(bi.quantity) as qty, COALESCE(SUM(bi.total_price), 0) as revenue "
@@ -2236,6 +2238,37 @@ def profit_loss():
         (date_filter,),
     ).fetchall()
 
+    # Payment breakup for period (supports mixed/split payments)
+    payment_rows = db.execute(
+        "SELECT payment_method, payment_breakdown_json, total "
+        "FROM bills WHERE created_at LIKE ?",
+        (date_filter,),
+    ).fetchall()
+    payment_map = {}
+    for row in payment_rows:
+        breakdown = parse_bill_payment_breakdown(row)
+        if not breakdown:
+            continue
+        methods_seen = set()
+        for item in breakdown:
+            method = item["method"]
+            amount = item["amount"]
+            if method not in payment_map:
+                payment_map[method] = {
+                    "payment_method": method,
+                    "bill_count": 0,
+                    "total": 0.0,
+                }
+            payment_map[method]["total"] = round(payment_map[method]["total"] + amount, 2)
+            if method not in methods_seen:
+                payment_map[method]["bill_count"] += 1
+                methods_seen.add(method)
+
+    payment_split = sorted(
+        payment_map.values(),
+        key=lambda x: (-x["total"], x["payment_method"]),
+    )
+
     # Recent expenses for period
     recent_expenses = db.execute(
         "SELECT * FROM expenses WHERE created_at LIKE ? ORDER BY created_at DESC LIMIT 20",
@@ -2259,6 +2292,9 @@ def profit_loss():
         net_profit=net_profit,
         expense_breakdown=expense_breakdown,
         recent_bills=recent_bills,
+        payment_split=payment_split,
+        cash_total=cash_total,
+        digital_total=digital_total,
         recent_expenses=recent_expenses,
         inventory_cost=inventory_cost,
         inventory_retail=inventory_retail,

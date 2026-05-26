@@ -45,6 +45,14 @@
         <div class="stat-label">Total Investment</div>
     </div>
     {% endif %}
+    <div class="stat-card stat-blue">
+        <div class="stat-value">₹{{ "%.2f"|format(cash_total) }}</div>
+        <div class="stat-label">Cash Collection</div>
+    </div>
+    <div class="stat-card stat-coral">
+        <div class="stat-value">₹{{ "%.2f"|format(digital_total) }}</div>
+        <div class="stat-label">Digital Collection</div>
+    </div>
 </div>
 
 <!-- P&L Breakdown -->
@@ -126,6 +134,32 @@
             </div>
             {% endfor %}
         </div>
+        {% endif %}
+
+        <h3 class="card-title" style="margin-top: 1.5rem;">💳 Payment Breakup</h3>
+        {% if payment_split %}
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Method</th>
+                        <th>Bills</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in payment_split %}
+                    <tr>
+                        <td>{{ row.payment_method }}</td>
+                        <td>{{ row.bill_count }}</td>
+                        <td>₹{{ "%.2f"|format(row.total) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="empty-state">No payments recorded for this period.</p>
         {% endif %}
     </div>
 </div>
