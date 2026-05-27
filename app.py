@@ -1820,7 +1820,7 @@ def inventory_labels():
         params.extend([f"%{search}%", f"%{search}%"])
     if where:
         query += " WHERE " + " AND ".join(where)
-    query += " ORDER BY c.name, p.sku"
+    query += " ORDER BY datetime(p.created_at) DESC, p.id DESC"
 
     products = db.execute(query, params).fetchall()
     all_categories = db.execute(
