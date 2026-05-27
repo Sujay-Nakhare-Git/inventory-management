@@ -8,6 +8,7 @@ import json
 import urllib.error
 import urllib.request
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from flask import (
     Flask, render_template, request, redirect, url_for,
     flash, jsonify, g, session, Response
@@ -22,6 +23,11 @@ except ImportError:
 
 app = Flask(__name__)
 app.secret_key = os.urandom(32)
+IST = ZoneInfo("Asia/Kolkata")
+
+
+def now_ist():
+    return datetime.now(IST)
 
 
 @app.template_filter("billdate")
@@ -85,8 +91,8 @@ def init_db():
             selling_price REAL NOT NULL DEFAULT 0,
             quantity INTEGER NOT NULL DEFAULT 0,
             low_stock_threshold INTEGER NOT NULL DEFAULT 5,
-            created_at TEXT DEFAULT (datetime('now','localtime')),
-            updated_at TEXT DEFAULT (datetime('now','localtime')),
+            created_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes')),
+            updated_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes')),
             FOREIGN KEY (category_id) REFERENCES categories(id)
         );
 
@@ -103,7 +109,7 @@ def init_db():
             total REAL NOT NULL DEFAULT 0,
             payment_method TEXT DEFAULT 'Cash',
             payment_breakdown_json TEXT,
-            created_at TEXT DEFAULT (datetime('now','localtime'))
+            created_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes'))
         );
 
         CREATE TABLE IF NOT EXISTS bill_items (
@@ -123,7 +129,7 @@ def init_db():
             title TEXT NOT NULL,
             description TEXT,
             type TEXT NOT NULL DEFAULT 'general',
-            created_at TEXT DEFAULT (datetime('now','localtime'))
+            created_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes'))
         );
 
         CREATE TABLE IF NOT EXISTS expenses (
@@ -133,7 +139,7 @@ def init_db():
             description TEXT,
             category TEXT NOT NULL DEFAULT 'General',
             amount REAL NOT NULL DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now','localtime'))
+            created_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes'))
         );
 
         CREATE TABLE IF NOT EXISTS refunds (
@@ -143,7 +149,7 @@ def init_db():
             type TEXT NOT NULL DEFAULT 'refund',
             reason TEXT,
             refund_amount REAL NOT NULL DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now','localtime')),
+            created_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes')),
             FOREIGN KEY (bill_id) REFERENCES bills(id)
         );
 
@@ -166,8 +172,8 @@ def init_db():
             customer_name TEXT NOT NULL,
             customer_phone TEXT NOT NULL UNIQUE,
             balance REAL NOT NULL DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now','localtime')),
-            updated_at TEXT DEFAULT (datetime('now','localtime'))
+            created_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes')),
+            updated_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes'))
         );
 
         CREATE TABLE IF NOT EXISTS credit_transactions (
@@ -177,7 +183,7 @@ def init_db():
             amount REAL NOT NULL DEFAULT 0,
             transaction_type TEXT NOT NULL,
             notes TEXT,
-            created_at TEXT DEFAULT (datetime('now','localtime')),
+            created_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes')),
             FOREIGN KEY (credit_id) REFERENCES store_credits(id),
             FOREIGN KEY (bill_id) REFERENCES bills(id)
         );
@@ -187,7 +193,7 @@ def init_db():
             description TEXT NOT NULL,
             amount REAL NOT NULL DEFAULT 0,
             investment_date TEXT NOT NULL,
-            created_at TEXT DEFAULT (datetime('now','localtime'))
+            created_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes'))
         );
 
         CREATE TABLE IF NOT EXISTS counters (
@@ -298,6 +304,51 @@ def parse_bill_payment_breakdown(bill):
     if total > 0 and payment_method:
         return [{"method": payment_method, "amount": total}]
     return []
+
+
+def _insert_exchange_bill(db, source_bill, exchange_items):
+    exchange_subtotal = round(
+        sum(item["exchange_line_total"] for item in exchange_items),
+        2,
+    )
+    exchange_bill_number = get_next_bill_number(db)
+    cursor = db.execute(
+        "INSERT INTO bills (bill_number, customer_name, customer_phone, subtotal, "
+        "discount_percent, discount_amount, tax_percent, tax_amount, total, "
+        "payment_method, payment_breakdown_json, store_credit_used) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            exchange_bill_number,
+            source_bill["customer_name"],
+            source_bill["customer_phone"],
+            exchange_subtotal,
+            0,
+            0,
+            0,
+            0,
+            exchange_subtotal,
+            "Exchange",
+            None,
+            0,
+        ),
+    )
+    exchange_bill_id = cursor.lastrowid
+
+    for item in exchange_items:
+        db.execute(
+            "INSERT INTO bill_items (bill_id, product_id, product_name, "
+            "quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                exchange_bill_id,
+                item["exchange_product_id"],
+                item["exchange_product_name"],
+                item["quantity"],
+                item["exchange_unit_price"],
+                item["exchange_line_total"],
+            ),
+        )
+
+    return exchange_bill_id, exchange_bill_number, exchange_subtotal
 
 
 def display_bill_ref(bill):
@@ -428,7 +479,7 @@ def save_expense_bill_image(uploaded_file, title):
 
     safe_title = secure_filename(title) or "expense"
     extension = uploaded_file.filename.rsplit(".", 1)[1].lower()
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
+    timestamp = now_ist().strftime("%Y%m%d%H%M%S%f")
     filename = f"{safe_title}_{timestamp}.{extension}"
     saved_path = os.path.join(EXPENSE_BILL_UPLOAD_DIR, filename)
     save_optimized_image(uploaded_file, saved_path, extension)
@@ -451,7 +502,7 @@ def save_product_image(uploaded_file, product_name):
 
     safe_name = secure_filename(product_name) or "product"
     extension = uploaded_file.filename.rsplit(".", 1)[1].lower()
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
+    timestamp = now_ist().strftime("%Y%m%d%H%M%S%f")
     filename = f"{safe_name}_{timestamp}.{extension}"
     saved_path = os.path.join(PRODUCT_IMAGE_UPLOAD_DIR, filename)
     save_optimized_image(uploaded_file, saved_path, extension)
@@ -515,7 +566,7 @@ def dashboard():
     low_stock = db.execute(
         "SELECT COUNT(*) FROM products WHERE quantity <= low_stock_threshold"
     ).fetchone()[0]
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = now_ist().strftime("%Y-%m-%d")
     today_sales = db.execute(
         "SELECT COALESCE(SUM(total),0) FROM bills WHERE created_at LIKE ?",
         (f"{today}%",),
@@ -669,7 +720,7 @@ def edit_product(product_id):
         db.execute(
             "UPDATE products SET name=?, category_id=?, sku=?, size=?, color=?, "
             "cost_price=?, selling_price=?, quantity=?, low_stock_threshold=?, image_filename=?, "
-            "updated_at=datetime('now','localtime') WHERE id=?",
+            "updated_at=datetime('now','+5 hours','+30 minutes') WHERE id=?",
             (name, category_id, sku, size, color, cost_price,
              selling_price, quantity, low_stock_threshold, image_filename, product_id),
         )
@@ -832,7 +883,8 @@ def create_bill():
     db = get_db()
     customer_name = data.get("customer_name", "").strip()
     customer_phone = data.get("customer_phone", "").strip()
-    discount_percent = float(data.get("discount_percent", 0))
+    discount_amount_input = data.get("discount_amount", None)
+    discount_percent_input = data.get("discount_percent", 0)
     tax_percent = float(data.get("tax_percent", 0))
     payment_method = data.get("payment_method", "Cash")
     payment_breakdown_raw = data.get("payment_breakdown", [])
@@ -862,7 +914,18 @@ def create_bill():
             "total_price": line_total,
         })
 
-    discount_amount = round(subtotal * discount_percent / 100, 2)
+    try:
+        if discount_amount_input in (None, ""):
+            discount_percent = float(discount_percent_input or 0)
+            discount_amount = round(subtotal * discount_percent / 100, 2)
+        else:
+            discount_amount = round(float(discount_amount_input), 2)
+            discount_amount = max(0, min(discount_amount, subtotal))
+            discount_percent = round((discount_amount / subtotal) * 100, 2) if subtotal else 0
+    except (TypeError, ValueError):
+        discount_percent = 0
+        discount_amount = 0
+
     after_discount = subtotal - discount_amount
     tax_amount = round(after_discount * tax_percent / 100, 2)
     total = round(after_discount + tax_amount, 2)
@@ -953,7 +1016,7 @@ def create_bill():
         )
         db.execute(
             "UPDATE products SET quantity = quantity - ?, "
-            "updated_at = datetime('now','localtime') WHERE id = ?",
+            "updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
             (it["quantity"], it["product_id"]),
         )
 
@@ -965,7 +1028,7 @@ def create_bill():
             (store_credit_id, bill_id, store_credit_amount, "debit", f"Used in Bill {bill_number}"),
         )
         db.execute(
-            "UPDATE store_credits SET balance = balance - ?, updated_at = datetime('now','localtime') WHERE id = ?",
+            "UPDATE store_credits SET balance = balance - ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
             (store_credit_amount, store_credit_id),
         )
 
@@ -1086,7 +1149,7 @@ def delete_bill(bill_id):
     for item in items:
         db.execute(
             "UPDATE products SET quantity = quantity + ?, "
-            "updated_at = datetime('now','localtime') WHERE id = ?",
+            "updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
             (item["quantity"], item["product_id"]),
         )
 
@@ -1099,7 +1162,7 @@ def delete_bill(bill_id):
         if transaction:
             credit_id = transaction["credit_id"]
             db.execute(
-                "UPDATE store_credits SET balance = balance + ?, updated_at = datetime('now','localtime') WHERE id = ?",
+                "UPDATE store_credits SET balance = balance + ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
                 (bill["store_credit_used"], credit_id),
             )
             db.execute(
@@ -1230,7 +1293,7 @@ def add_credit_balance(credit_id):
         return redirect(url_for("store_credits"))
 
     db.execute(
-        "UPDATE store_credits SET balance = balance + ?, updated_at = datetime('now','localtime') WHERE id = ?",
+        "UPDATE store_credits SET balance = balance + ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
         (round(amount, 2), credit_id),
     )
     db.execute(
@@ -1352,6 +1415,8 @@ def process_refund():
 
     refund_amount = 0
     store_credit_refund = 0
+    exchange_bill_id = None
+    exchange_bill_number = None
     processed_items = []
 
     for bi in bill_items:
@@ -1366,12 +1431,14 @@ def process_refund():
         item_refund = bi["unit_price"] * qty
         exchange_product_id = None
         exchange_product_name = None
+        exchange_unit_price = None
+        exchange_line_total = 0
 
         if action == "refund":
             # Return stock
             db.execute(
                 "UPDATE products SET quantity = quantity + ?, "
-                "updated_at = datetime('now','localtime') WHERE id = ?",
+                "updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
                 (qty, bi["product_id"]),
             )
             refund_amount += item_refund
@@ -1380,7 +1447,7 @@ def process_refund():
             # Return stock
             db.execute(
                 "UPDATE products SET quantity = quantity + ?, "
-                "updated_at = datetime('now','localtime') WHERE id = ?",
+                "updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
                 (qty, bi["product_id"]),
             )
             store_credit_refund += item_refund
@@ -1400,22 +1467,23 @@ def process_refund():
             # Return original product to stock
             db.execute(
                 "UPDATE products SET quantity = quantity + ?, "
-                "updated_at = datetime('now','localtime') WHERE id = ?",
+                "updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
                 (qty, bi["product_id"]),
             )
             # Deduct exchange product from stock
             db.execute(
                 "UPDATE products SET quantity = quantity - ?, "
-                "updated_at = datetime('now','localtime') WHERE id = ?",
+                "updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
                 (qty, exchange_product_id),
             )
             exchange_product_name = exchange_product["name"]
+            exchange_unit_price = exchange_product["selling_price"]
+            exchange_line_total = round(exchange_unit_price * qty, 2)
 
-            # Calculate price difference for refund/charge
-            price_diff = bi["unit_price"] - exchange_product["selling_price"]
+            # Cheaper exchanges become store credit; the replacement bill is created below.
+            price_diff = bi["unit_price"] - exchange_unit_price
             if price_diff > 0:
-                refund_amount += price_diff * qty  # Customer gets money back
-            # If exchange product costs more, we note it but don't auto-charge
+                store_credit_refund += round(price_diff * qty, 2)
 
         processed_items.append({
             "product_id": bi["product_id"],
@@ -1425,6 +1493,8 @@ def process_refund():
             "action": action,
             "exchange_product_id": exchange_product_id,
             "exchange_product_name": exchange_product_name,
+            "exchange_unit_price": exchange_unit_price,
+            "exchange_line_total": exchange_line_total,
         })
 
     if not processed_items:
@@ -1433,7 +1503,7 @@ def process_refund():
 
     # Handle store credit refund
     if store_credit_refund > 0:
-        sc_phone = request.form.get("store_credit_phone", "").strip()
+        sc_phone = (bill["customer_phone"] or request.form.get("store_credit_phone", "")).strip()
         sc_name = request.form.get("store_credit_name", "").strip() or bill["customer_name"] or "Walk-in"
         if not sc_phone or len(sc_phone) != 10:
             flash("Please provide a valid 10-digit phone number for store credit.", "error")
@@ -1446,7 +1516,7 @@ def process_refund():
         if credit:
             credit_id = credit["id"]
             db.execute(
-                "UPDATE store_credits SET balance = balance + ?, updated_at = datetime('now','localtime') WHERE id = ?",
+                "UPDATE store_credits SET balance = balance + ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
                 (round(store_credit_refund, 2), credit_id),
             )
         else:
@@ -1462,6 +1532,10 @@ def process_refund():
             (credit_id, bill_id, round(store_credit_refund, 2), "credit",
              f"Refund from Bill #{bill_id}"),
         )
+
+    exchange_items = [item for item in processed_items if item["action"] == "exchange"]
+    if exchange_items:
+        exchange_bill_id, exchange_bill_number, _ = _insert_exchange_bill(db, bill, exchange_items)
 
     actions = set(i["action"] for i in processed_items)
     if actions == {"exchange"}:
@@ -1507,7 +1581,8 @@ def process_refund():
         f"{type_label} Processed",
         f"Bill #{bill_id} — {'; '.join(desc_parts)}" +
         (f" — Cash Refund: ₹{round(refund_amount, 2)}" if refund_amount > 0 else "") +
-        (f" — Store Credit: ₹{round(store_credit_refund, 2)}" if store_credit_refund > 0 else ""),
+        (f" — Store Credit: ₹{round(store_credit_refund, 2)}" if store_credit_refund > 0 else "") +
+        (f" — Exchange Bill: {exchange_bill_number}" if exchange_bill_number else ""),
         "billing",
     )
 
@@ -1516,7 +1591,11 @@ def process_refund():
         flash_msg += f" Cash refund: ₹{round(refund_amount, 2)}"
     if store_credit_refund > 0:
         flash_msg += f" Store credit: ₹{round(store_credit_refund, 2)}"
+    if exchange_bill_number:
+        flash_msg += f" Exchange bill: {exchange_bill_number}"
     flash(flash_msg, "success")
+    if exchange_bill_id and refund_type == "exchange":
+        return redirect(url_for("bill_detail", bill_id=exchange_bill_id))
     return redirect(url_for("bill_detail", bill_id=bill_id))
 
 
@@ -1885,7 +1964,7 @@ def daily_summary():
         return redirect(url_for("admin", next=url_for("daily_summary")))
 
     db = get_db()
-    today_date = datetime.now().strftime("%Y-%m-%d")
+    today_date = now_ist().strftime("%Y-%m-%d")
     selected_date = request.args.get("date", today_date).strip() or today_date
     try:
         datetime.strptime(selected_date, "%Y-%m-%d")
@@ -2018,7 +2097,7 @@ def expenses():
         return redirect(url_for("admin", next=url_for("expenses")))
 
     db = get_db()
-    today_date = datetime.now().strftime("%Y-%m-%d")
+    today_date = now_ist().strftime("%Y-%m-%d")
     search = request.args.get("search", "").strip()
     category = request.args.get("category", "")
     selected_date = request.args.get("date", "").strip()
@@ -2193,8 +2272,8 @@ def profit_loss():
 
     db = get_db()
     period = request.args.get("period", "all")
-    today = datetime.now().strftime("%Y-%m-%d")
-    month = datetime.now().strftime("%Y-%m")
+    today = now_ist().strftime("%Y-%m-%d")
+    month = now_ist().strftime("%Y-%m")
 
     if period == "today":
         date_filter = f"{today}%"
@@ -2385,7 +2464,7 @@ def export_sales():
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["Bill #", "Customer", "Phone", "Subtotal (₹)",
-                     "Discount %", "Discount (₹)", "Tax %", "Tax (₹)",
+                     "Discount (₹)", "Discount Rate %", "Tax %", "Tax (₹)",
                      "Total (₹)", "Payment Method", "Date", "Items"])
 
     for b in bills:
@@ -2399,7 +2478,7 @@ def export_sales():
         )
         writer.writerow([
             b["bill_number"] or f"#{b['id']}", b["customer_name"] or "Walk-in", b["customer_phone"] or "",
-            b["subtotal"], b["discount_percent"], b["discount_amount"],
+            b["subtotal"], b["discount_amount"], b["discount_percent"],
             b["tax_percent"], b["tax_amount"], b["total"],
             b["payment_method"], b["created_at"], items_str,
         ])

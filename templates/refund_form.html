@@ -63,7 +63,7 @@
     <!-- Store Credit Phone (shown when store_credit action selected) -->
     <div class="card form-card" id="storeCreditSection" style="display:none;">
         <h3 class="card-title">💳 Store Credit Details</h3>
-        <p style="color:#7f8c8d;margin-bottom:1rem;">The refund amount will be added to the customer's store credit balance.</p>
+        <p style="color:#7f8c8d;margin-bottom:1rem;">The refund amount will be added to the customer's store credit balance, including any lower-price exchange difference.</p>
         <div class="form-group">
             <label>Customer Phone Number *</label>
             <input type="tel" name="store_credit_phone" id="storeCreditPhone" class="input" placeholder="10-digit phone number" pattern="[0-9]{10}" value="{{ bill.customer_phone or '' }}">

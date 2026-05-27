@@ -73,7 +73,7 @@
     <div class="invoice-totals">
         <div class="summary-row"><span>Subtotal</span><span>₹{{ "%.2f"|format(bill.subtotal) }}</span></div>
         {% if bill.discount_amount > 0 %}
-        <div class="summary-row"><span>Discount ({{ bill.discount_percent }}%)</span><span>-₹{{ "%.2f"|format(bill.discount_amount) }}</span></div>
+        <div class="summary-row"><span>Discount (₹)</span><span>-₹{{ "%.2f"|format(bill.discount_amount) }}</span></div>
         {% endif %}
         {% if bill.tax_amount > 0 %}
         <div class="summary-row"><span>Tax/GST ({{ bill.tax_percent }}%)</span><span>+₹{{ "%.2f"|format(bill.tax_amount) }}</span></div>
@@ -101,6 +101,9 @@
     <div class="t-row"><span>Bill #</span><span>{{ display_bill_ref(bill) }}</span></div>
     <div class="t-row"><span>Date</span><span>{{ bill.created_at }}</span></div>
     <div class="t-row"><span>Pay</span><span>{{ bill.payment_method }}</span></div>
+    {% if bill.discount_amount > 0 %}
+    <div class="t-row"><span>Disc</span><span>-₹{{ "%.2f"|format(bill.discount_amount) }}</span></div>
+    {% endif %}
     {% if payment_breakdown and payment_breakdown|length > 1 %}
     {% for part in payment_breakdown %}
     <div class="t-row"><span>{{ part.method }}</span><span>Rs.{{ "%.2f"|format(part.amount) }}</span></div>
@@ -130,7 +133,7 @@
     <div class="t-sep"></div>
     <div class="t-row"><span>Subtotal</span><span>Rs.{{ "%.2f"|format(bill.subtotal) }}</span></div>
     {% if bill.discount_amount > 0 %}
-    <div class="t-row"><span>Disc ({{ bill.discount_percent }}%)</span><span>-Rs.{{ "%.2f"|format(bill.discount_amount) }}</span></div>
+    <div class="t-row"><span>Disc (₹)</span><span>-Rs.{{ "%.2f"|format(bill.discount_amount) }}</span></div>
     {% endif %}
     {% if bill.tax_amount > 0 %}
     <div class="t-row"><span>Tax ({{ bill.tax_percent }}%)</span><span>+Rs.{{ "%.2f"|format(bill.tax_amount) }}</span></div>

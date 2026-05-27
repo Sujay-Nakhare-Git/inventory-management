@@ -167,7 +167,7 @@
 
         <div class="row"><span>Subtotal</span><span>{{ "%.2f"|format(bill.subtotal) }}</span></div>
         {% if bill.discount_amount > 0 %}
-        <div class="row"><span>Disc {{ bill.discount_percent }}%</span><span>-{{ "%.2f"|format(bill.discount_amount) }}</span></div>
+        <div class="row"><span>Disc (₹)</span><span>-{{ "%.2f"|format(bill.discount_amount) }}</span></div>
         {% endif %}
         {% if bill.tax_amount > 0 %}
         <div class="row"><span>Tax {{ bill.tax_percent }}%</span><span>+{{ "%.2f"|format(bill.tax_amount) }}</span></div>

@@ -147,10 +147,10 @@ function renderCart() {
 
 function calculateTotals() {
     const subtotal = cartItems.reduce((sum, i) => sum + i.total_price, 0);
-    const discountPct = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const discountInput = parseFloat(document.getElementById('discountAmountInput').value) || 0;
     const taxPct = parseFloat(document.getElementById('taxPercent').value) || 0;
 
-    const discountAmt = round2(subtotal * discountPct / 100);
+    const discountAmt = round2(Math.min(Math.max(0, discountInput), subtotal));
     const afterDiscount = subtotal - discountAmt;
     const taxAmt = round2(afterDiscount * taxPct / 100);
 
@@ -161,7 +161,7 @@ function calculateTotals() {
     }
 
     const total = Math.max(0, round2(afterDiscount + taxAmt - storeCreditAmt));
-    return { subtotal, discountPct, taxPct, discountAmt, taxAmt, storeCreditAmt, total };
+    return { subtotal, discountAmt, taxPct, taxAmt, storeCreditAmt, total };
 }
 
 function getPaymentBreakdownPayload(totalAmount) {
@@ -212,7 +212,7 @@ function recalculate() {
     document.getElementById('totalAmount').textContent = `₹${totals.total.toFixed(2)}`;
     document.getElementById('storeCreditUsed').textContent = `-₹${totals.storeCreditAmt.toFixed(2)}`;
 
-    document.getElementById('discountRow').style.display = totals.discountPct > 0 ? 'flex' : 'none';
+    document.getElementById('discountRow').style.display = totals.discountAmt > 0 ? 'flex' : 'none';
     document.getElementById('taxRow').style.display = totals.taxPct > 0 ? 'flex' : 'none';
     document.getElementById('storeCreditRow').style.display = totals.storeCreditAmt > 0 ? 'flex' : 'none';
 
@@ -255,7 +255,7 @@ async function submitBill() {
     const payload = {
         customer_name: document.getElementById('customerName').value.trim(),
         customer_phone: document.getElementById('customerPhone').value.trim(),
-        discount_percent: parseFloat(document.getElementById('discountPercent').value) || 0,
+        discount_amount: parseFloat(document.getElementById('discountAmountInput').value) || 0,
         tax_percent: parseFloat(document.getElementById('taxPercent').value) || 0,
         payment_method: paymentPayload.payment_method,
         payment_breakdown: paymentPayload.payment_breakdown,
