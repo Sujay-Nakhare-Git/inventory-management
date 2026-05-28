@@ -625,8 +625,9 @@ def add_product():
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         category_id = request.form.get("category_id") or None
-        sku = generate_sku(db, category_id) if category_id else None
-        size = request.form.get("size", "").strip()
+        # Multi-size selection: if checkboxes selected, create one entry per size
+        selected_sizes = request.form.getlist("sizes")
+        custom_size = request.form.get("size", "").strip()
         color = request.form.get("color", "").strip()
         cost_price = float(request.form.get("cost_price", 0))
         selling_price = float(request.form.get("selling_price", 0))
@@ -634,31 +635,64 @@ def add_product():
         low_stock_threshold = int(request.form.get("low_stock_threshold", 5))
         product_image = request.files.get("image")
 
-        # Use SKU as the display name if no name provided
-        if not name and sku:
-            name = sku
-
-        image_filename = None
+        # Validate image once if provided
+        image_bytes_cache = None
         if product_image and product_image.filename:
             if not allowed_product_image(product_image.filename):
                 flash("Product image must be PNG, JPG, JPEG, WEBP, or GIF.", "error")
                 return redirect(url_for("add_product"))
-            image_filename = save_product_image(product_image, name)
 
-        db.execute(
-            "INSERT INTO products (name, category_id, sku, size, color, "
-            "cost_price, selling_price, quantity, low_stock_threshold, image_filename) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (name, category_id, sku, size, color, cost_price,
-             selling_price, quantity, low_stock_threshold, image_filename),
-        )
+        # Decide list of sizes to create entries for
+        if selected_sizes:
+            sizes_to_create = selected_sizes
+        else:
+            sizes_to_create = [custom_size]  # may be empty string
+
+        created_skus = []
+        first_image_filename = None
+        for idx, size in enumerate(sizes_to_create):
+            sku = generate_sku(db, category_id) if category_id else None
+            entry_name = name if name else (sku or "")
+
+            # Save image for first entry; reuse same filename for subsequent
+            image_filename = None
+            if product_image and product_image.filename:
+                if idx == 0:
+                    # Reset stream pointer (Flask FileStorage)
+                    try:
+                        product_image.stream.seek(0)
+                    except Exception:
+                        pass
+                    first_image_filename = save_product_image(product_image, entry_name)
+                image_filename = first_image_filename
+
+            db.execute(
+                "INSERT INTO products (name, category_id, sku, size, color, "
+                "cost_price, selling_price, quantity, low_stock_threshold, image_filename) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (entry_name, category_id, sku, size, color, cost_price,
+                 selling_price, quantity, low_stock_threshold, image_filename),
+            )
+            created_skus.append(sku or entry_name)
         db.commit()
-        log_update(
-            "Product Added",
-            f"Added '{name}' — Qty: {quantity}, Price: ₹{selling_price}",
-            "inventory",
-        )
-        flash(f"Product '{name}' added successfully!", "success")
+
+        if len(created_skus) > 1:
+            log_update(
+                "Products Added",
+                f"Added {len(created_skus)} sized entries: {', '.join(created_skus)} — Qty each: {quantity}",
+                "inventory",
+            )
+            flash(
+                f"Created {len(created_skus)} inventory entries ({', '.join(created_skus)}).",
+                "success",
+            )
+        else:
+            log_update(
+                "Product Added",
+                f"Added '{created_skus[0]}' — Qty: {quantity}, Price: ₹{selling_price}",
+                "inventory",
+            )
+            flash(f"Product '{created_skus[0]}' added successfully!", "success")
         return redirect(url_for("inventory"))
 
     categories = db.execute("SELECT * FROM categories ORDER BY name").fetchall()

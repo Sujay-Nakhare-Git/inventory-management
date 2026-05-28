@@ -31,7 +31,19 @@
             </div>
             <div class="form-group">
                 <label for="size">Size</label>
-                <input type="text" id="size" name="size" class="input" placeholder="e.g. S, M, L, XL, Free Size" value="{{ product.size if product and product.size else '' }}">
+                {% if product %}
+                <input type="text" id="size" name="size" class="input" placeholder="e.g. S, M, L, XL, Free Size" value="{{ product.size if product.size else '' }}">
+                {% else %}
+                <div id="size-chips" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem;">
+                    {% for sz in ['S','M','L','XL','XXL','3XL'] %}
+                    <label class="size-chip" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.35rem 0.7rem;border:1px solid #d1d5db;border-radius:999px;cursor:pointer;background:#f9fafb;font-size:0.9rem;user-select:none;">
+                        <input type="checkbox" name="sizes" value="{{ sz }}" style="margin:0;" onchange="onSizeChipChange()"> {{ sz }}
+                    </label>
+                    {% endfor %}
+                </div>
+                <input type="text" id="size" name="size" class="input" placeholder="Or type custom size (e.g. Free Size, 28, 30)" value="">
+                <small style="color:#6b7280;">Select one or more sizes above to create separate inventory entries (one per size). Or type a single custom size.</small>
+                {% endif %}
             </div>
             <div class="form-group">
                 <label for="cost_price">Cost Price (₹) *</label>
@@ -149,5 +161,53 @@ document.addEventListener('DOMContentLoaded', function() {
         generateSku();
     }
 });
+
+// Multi-size chip handling (Add form only)
+function onSizeChipChange() {
+    const checked = document.querySelectorAll('#size-chips input[name="sizes"]:checked');
+    const sizeInput = document.getElementById('size');
+    const skuInput = document.getElementById('sku');
+
+    // Highlight selected chips
+    document.querySelectorAll('#size-chips .size-chip').forEach(label => {
+        const cb = label.querySelector('input[type="checkbox"]');
+        if (cb.checked) {
+            label.style.background = '#dbeafe';
+            label.style.borderColor = '#3b82f6';
+            label.style.color = '#1e40af';
+            label.style.fontWeight = '600';
+        } else {
+            label.style.background = '#f9fafb';
+            label.style.borderColor = '#d1d5db';
+            label.style.color = '';
+            label.style.fontWeight = '';
+        }
+    });
+
+    if (checked.length > 0) {
+        // Disable & clear custom size text input
+        sizeInput.value = '';
+        sizeInput.disabled = true;
+        sizeInput.style.background = '#f3f4f6';
+        sizeInput.placeholder = `${checked.length} size(s) selected — will create ${checked.length} entries`;
+        // SKU preview note
+        if (checked.length > 1 && skuInput) {
+            skuInput.value = '(auto — ' + checked.length + ' sequential SKUs)';
+            skuInput.style.color = '#6b7280';
+            skuInput.style.fontStyle = 'italic';
+        } else {
+            skuInput.style.color = '';
+            skuInput.style.fontStyle = '';
+            generateSku();
+        }
+    } else {
+        sizeInput.disabled = false;
+        sizeInput.style.background = '';
+        sizeInput.placeholder = 'Or type custom size (e.g. Free Size, 28, 30)';
+        skuInput.style.color = '';
+        skuInput.style.fontStyle = '';
+        generateSku();
+    }
+}
 </script>
 {% endblock %}
