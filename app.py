@@ -908,6 +908,63 @@ def api_products():
     return jsonify([dict(p) for p in products])
 
 
+@app.route("/api/customers/search")
+def api_customers_search():
+    q = request.args.get("q", "").strip()
+    if len(q) < 2:
+        return jsonify([])
+    db = get_db()
+    like = f"%{q}%"
+    rows = db.execute(
+        """
+        WITH all_customers AS (
+            SELECT
+                TRIM(COALESCE(customer_name, '')) AS name,
+                TRIM(COALESCE(customer_phone, '')) AS phone,
+                created_at AS last_seen
+            FROM bills
+            WHERE customer_phone IS NOT NULL AND TRIM(customer_phone) != ''
+            UNION ALL
+            SELECT
+                TRIM(COALESCE(customer_name, '')) AS name,
+                TRIM(COALESCE(customer_phone, '')) AS phone,
+                updated_at AS last_seen
+            FROM store_credits
+            WHERE customer_phone IS NOT NULL AND TRIM(customer_phone) != ''
+        ),
+        agg AS (
+            SELECT
+                phone,
+                MAX(name) AS name,
+                MAX(last_seen) AS last_seen,
+                COUNT(*) AS visit_count
+            FROM all_customers
+            GROUP BY phone
+        )
+        SELECT agg.phone, agg.name, agg.last_seen, agg.visit_count,
+               sc.id AS credit_id, sc.balance AS credit_balance
+        FROM agg
+        LEFT JOIN store_credits sc ON sc.customer_phone = agg.phone
+        WHERE agg.phone LIKE ? OR agg.name LIKE ?
+        ORDER BY agg.last_seen DESC
+        LIMIT 8
+        """,
+        (like, like),
+    ).fetchall()
+
+    return jsonify([
+        {
+            "name": r["name"] or "",
+            "phone": r["phone"],
+            "visit_count": r["visit_count"],
+            "last_seen": r["last_seen"],
+            "credit_id": r["credit_id"],
+            "credit_balance": r["credit_balance"] or 0,
+        }
+        for r in rows
+    ])
+
+
 @app.route("/api/billing", methods=["POST"])
 def create_bill():
     data = request.get_json()
@@ -1142,6 +1199,84 @@ def bill_detail(bill_id):
         refunds=refunds,
         payment_breakdown=payment_breakdown,
     )
+
+
+@app.route("/bills/<int:bill_id>/edit", methods=["GET", "POST"])
+def edit_bill(bill_id):
+    db = get_db()
+    bill = db.execute("SELECT * FROM bills WHERE id = ?", (bill_id,)).fetchone()
+    if not bill:
+        flash("Bill not found.", "error")
+        return redirect(url_for("bills_list"))
+
+    if request.method == "GET":
+        payment_breakdown = parse_bill_payment_breakdown(bill)
+        breakdown_map = {m: 0.0 for m in ALLOWED_PAYMENT_METHODS}
+        for entry in payment_breakdown:
+            breakdown_map[entry["method"]] = entry["amount"]
+        return render_template(
+            "bill_edit.html",
+            bill=bill,
+            payment_breakdown=payment_breakdown,
+            breakdown_map=breakdown_map,
+            allowed_methods=sorted(ALLOWED_PAYMENT_METHODS),
+        )
+
+    customer_name = request.form.get("customer_name", "").strip()
+    customer_phone = request.form.get("customer_phone", "").strip()
+    mode = request.form.get("payment_mode", "single")
+    total = round(float(bill["total"] or 0), 2)
+
+    payment_breakdown = []
+    if total > 0:
+        if mode == "split":
+            method_totals = {}
+            for method in ALLOWED_PAYMENT_METHODS:
+                try:
+                    amount = round(float(request.form.get(f"pay_{method}", 0) or 0), 2)
+                except (TypeError, ValueError):
+                    amount = 0
+                if amount > 0:
+                    method_totals[method] = round(method_totals.get(method, 0) + amount, 2)
+            payment_breakdown = [
+                {"method": m, "amount": a} for m, a in method_totals.items() if a > 0
+            ]
+            if not payment_breakdown:
+                flash("Add at least one split payment amount.", "error")
+                return redirect(url_for("edit_bill", bill_id=bill_id))
+            breakdown_total = round(sum(r["amount"] for r in payment_breakdown), 2)
+            if abs(breakdown_total - total) > 0.05:
+                flash(
+                    f"Split payment total (₹{breakdown_total:.2f}) must match bill total (₹{total:.2f}).",
+                    "error",
+                )
+                return redirect(url_for("edit_bill", bill_id=bill_id))
+            payment_method = payment_breakdown[0]["method"] if len(payment_breakdown) == 1 else "Mixed"
+        else:
+            payment_method = request.form.get("payment_method", "Cash").strip()
+            if payment_method not in ALLOWED_PAYMENT_METHODS:
+                payment_method = "Cash"
+            payment_breakdown = [{"method": payment_method, "amount": total}]
+    else:
+        payment_method = "Store Credit"
+        payment_breakdown = []
+
+    payment_breakdown_json = json.dumps(payment_breakdown) if payment_breakdown else None
+
+    db.execute(
+        "UPDATE bills SET customer_name = ?, customer_phone = ?, "
+        "payment_method = ?, payment_breakdown_json = ? WHERE id = ?",
+        (customer_name, customer_phone, payment_method, payment_breakdown_json, bill_id),
+    )
+    db.commit()
+
+    log_update(
+        "Bill Edited",
+        f"Bill {bill['bill_number'] or '#' + str(bill_id)} — payment updated to {payment_method}",
+        "billing",
+    )
+    flash("Bill details updated.", "success")
+    return redirect(url_for("bill_detail", bill_id=bill_id))
 
 
 @app.route("/bills/<int:bill_id>/thermal")

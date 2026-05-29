@@ -500,6 +500,38 @@ textarea.input { resize: vertical; }
     margin-bottom: 1rem;
 }
 
+.customer-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    z-index: 50;
+    max-height: 260px;
+    overflow-y: auto;
+    margin-top: 4px;
+}
+
+.customer-suggestion-item {
+    padding: 0.6rem 0.8rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.customer-suggestion-item:last-child { border-bottom: none; }
+.customer-suggestion-item:hover,
+.customer-suggestion-item.active { background: #faf5ff; }
+
+.customer-suggestion-item .cs-name { font-weight: 600; color: #1f2937; }
+.customer-suggestion-item .cs-meta { font-size: 0.8rem; color: #6b7280; display: flex; justify-content: space-between; gap: 0.5rem; }
+.customer-suggestion-item .cs-credit { color: #9b59b6; font-weight: 600; }
+
 .bill-items {
     min-height: 100px;
     margin-bottom: 1rem;

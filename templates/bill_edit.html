@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Edit Bill {{ bill.bill_number or bill.id }} — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Edit Bill {{ bill.bill_number or '#' ~ bill.id }}</h2>
+    <a href="{{ url_for('bill_detail', bill_id=bill.id) }}" class="btn btn-outline">← Back to Bill</a>
+</div>
+
+<div class="card" style="max-width: 720px;">
+    <p style="color:#6b7280; font-size:0.9rem; margin-bottom:1rem;">
+        You can update customer details and how this bill was paid. Item list, totals,
+        discounts, taxes and store credit usage cannot be edited here — delete &amp; recreate
+        the bill if those need changes.
+    </p>
+
+    <form method="POST" action="{{ url_for('edit_bill', bill_id=bill.id) }}">
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+            <div class="form-group">
+                <label>Customer Name</label>
+                <input type="text" name="customer_name" class="input"
+                       value="{{ bill.customer_name or '' }}" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label>Customer Phone</label>
+                <input type="text" name="customer_phone" class="input"
+                       value="{{ bill.customer_phone or '' }}" autocomplete="off">
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-top:0.5rem;">
+            <label><strong>Bill Total:</strong> ₹{{ "%.2f"|format(bill.total) }}</label>
+        </div>
+
+        {% if bill.total > 0 %}
+        {% set is_split = payment_breakdown|length > 1 %}
+        <div class="form-group">
+            <label>Payment Type</label>
+            <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+                <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
+                    <input type="radio" name="payment_mode" value="single"
+                           {% if not is_split %}checked{% endif %}
+                           onchange="toggleEditPayMode()">
+                    <span>Single</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
+                    <input type="radio" name="payment_mode" value="split"
+                           {% if is_split %}checked{% endif %}
+                           onchange="toggleEditPayMode()">
+                    <span>Multiple / Split</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-group" id="singlePayBlock"
+             style="{% if is_split %}display:none;{% endif %}">
+            <label>Payment Method</label>
+            <select name="payment_method" class="input">
+                {% for m in allowed_methods %}
+                <option value="{{ m }}"
+                    {% if not is_split and bill.payment_method == m %}selected{% endif %}>
+                    {{ m }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group" id="splitPayBlock"
+             style="{% if not is_split %}display:none;{% endif %}">
+            <label>Split Payment Breakup</label>
+            <div class="form-grid" style="grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));">
+                {% for m in allowed_methods %}
+                <div>
+                    <label style="font-size:0.8rem;color:#6b7280;">{{ m }} (₹)</label>
+                    <input type="number" name="pay_{{ m }}" class="input"
+                           min="0" step="0.01"
+                           value="{{ '%.2f'|format(breakdown_map.get(m, 0)) }}"
+                           oninput="updateSplitHint()">
+                </div>
+                {% endfor %}
+            </div>
+            <p id="splitHint" style="margin-top:0.5rem;font-size:0.85rem;color:#6b7280;">
+                Must total ₹{{ "%.2f"|format(bill.total) }}.
+            </p>
+        </div>
+        {% else %}
+        <p style="color:#6b7280;">This bill total is ₹0 (paid fully by store credit). No payment edits needed.</p>
+        {% endif %}
+
+        <div style="margin-top:1rem; display:flex; gap:0.5rem;">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <a href="{{ url_for('bill_detail', bill_id=bill.id) }}" class="btn btn-outline">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+const billTotal = {{ bill.total|float }};
+
+function toggleEditPayMode() {
+    const mode = document.querySelector('input[name="payment_mode"]:checked').value;
+    document.getElementById('singlePayBlock').style.display = mode === 'single' ? 'block' : 'none';
+    document.getElementById('splitPayBlock').style.display = mode === 'split' ? 'block' : 'none';
+    if (mode === 'split') updateSplitHint();
+}
+
+function updateSplitHint() {
+    const inputs = document.querySelectorAll('#splitPayBlock input[type="number"]');
+    let sum = 0;
+    inputs.forEach(i => { sum += parseFloat(i.value) || 0; });
+    const remaining = (billTotal - sum);
+    const hint = document.getElementById('splitHint');
+    hint.textContent = `Entered: ₹${sum.toFixed(2)} · Remaining: ₹${remaining.toFixed(2)} (must total ₹${billTotal.toFixed(2)}).`;
+    hint.style.color = Math.abs(remaining) <= 0.05 ? '#16a34a' : '#b45309';
+}
+
+if (document.getElementById('splitPayBlock')) updateSplitHint();
+</script>
+{% endblock %}

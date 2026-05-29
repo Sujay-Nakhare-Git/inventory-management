@@ -31,9 +31,14 @@
 
     <div class="card billing-cart">
         <h3 class="card-title">Current Bill</h3>
-        <div class="customer-fields">
-            <input type="text" id="customerName" class="input" placeholder="Customer Name">
-            <input type="text" id="customerPhone" class="input" placeholder="Phone Number">
+        <div class="customer-fields" style="position: relative;">
+            <input type="text" id="customerName" class="input" placeholder="Customer Name" autocomplete="off">
+            <input type="text" id="customerPhone" class="input" placeholder="Phone Number" autocomplete="off">
+            <div id="customerSuggestions" class="customer-suggestions" style="display:none;"></div>
+        </div>
+        <div id="customerCreditBanner" style="display:none; margin-top:0.5rem; padding:0.6rem 0.8rem; background:#f3e8ff; border-left:4px solid #9b59b6; border-radius:6px; font-size:0.9rem;">
+            💳 Store credit available: <strong id="customerCreditBalanceText">₹0.00</strong>
+            <button type="button" class="btn btn-sm btn-outline" style="margin-left:0.5rem;" onclick="applyCustomerStoreCredit()">Apply</button>
         </div>
 
         <!-- Store Credit Section -->

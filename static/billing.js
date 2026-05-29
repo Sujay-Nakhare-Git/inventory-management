@@ -1,6 +1,7 @@
 // Billing cart state
 let cartItems = [];
 let currentStoreCredit = null;  // Store current credit info
+let pendingCustomerCredit = null;  // Credit info detected from customer autocomplete
 
 function round2(value) {
     return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
@@ -26,6 +27,127 @@ document.getElementById('productSearch').addEventListener('input', function() {
         item.style.display = searchText.includes(query) ? 'flex' : 'none';
     });
 });
+
+// ---------- Customer autocomplete ----------
+let customerSearchTimer = null;
+let customerSearchSeq = 0;
+
+function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
+async function fetchCustomerSuggestions(query) {
+    const seq = ++customerSearchSeq;
+    const box = document.getElementById('customerSuggestions');
+    if (!query || query.length < 2) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+    }
+    try {
+        const resp = await fetch(`/api/customers/search?q=${encodeURIComponent(query)}`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (seq !== customerSearchSeq) return; // stale
+        renderCustomerSuggestions(data);
+    } catch (e) {
+        // silent fail
+    }
+}
+
+function renderCustomerSuggestions(results) {
+    const box = document.getElementById('customerSuggestions');
+    if (!results || results.length === 0) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+    }
+    box.innerHTML = results.map((c, idx) => {
+        const credit = c.credit_balance > 0
+            ? `<span class="cs-credit">💳 ₹${Number(c.credit_balance).toFixed(2)}</span>`
+            : '';
+        const visits = c.visit_count > 1 ? `${c.visit_count} visits` : 'Repeat customer';
+        return `
+            <div class="customer-suggestion-item" data-idx="${idx}">
+                <div class="cs-name">${escapeHtml(c.name) || '(no name)'}</div>
+                <div class="cs-meta">
+                    <span>${escapeHtml(c.phone)} · ${visits}</span>
+                    ${credit}
+                </div>
+            </div>`;
+    }).join('');
+    box.style.display = 'block';
+
+    box.querySelectorAll('.customer-suggestion-item').forEach(el => {
+        el.addEventListener('mousedown', (ev) => {
+            ev.preventDefault();
+            const idx = parseInt(el.dataset.idx);
+            selectCustomer(results[idx]);
+        });
+    });
+}
+
+function selectCustomer(customer) {
+    document.getElementById('customerName').value = customer.name || '';
+    document.getElementById('customerPhone').value = customer.phone || '';
+    document.getElementById('customerSuggestions').style.display = 'none';
+
+    const banner = document.getElementById('customerCreditBanner');
+    if (customer.credit_id && customer.credit_balance > 0) {
+        pendingCustomerCredit = {
+            id: customer.credit_id,
+            customer_name: customer.name,
+            customer_phone: customer.phone,
+            balance: customer.credit_balance,
+        };
+        document.getElementById('customerCreditBalanceText').textContent =
+            `₹${Number(customer.credit_balance).toFixed(2)}`;
+        banner.style.display = 'block';
+    } else {
+        pendingCustomerCredit = null;
+        banner.style.display = 'none';
+    }
+}
+
+function applyCustomerStoreCredit() {
+    if (!pendingCustomerCredit) return;
+    const checkbox = document.getElementById('useStoreCredit');
+    checkbox.checked = true;
+    document.getElementById('storeCreditFields').style.display = 'block';
+    document.getElementById('storeCreditPhone').value = pendingCustomerCredit.customer_phone;
+
+    currentStoreCredit = pendingCustomerCredit;
+    document.getElementById('storeCreditCustomerName').textContent = pendingCustomerCredit.customer_name || '—';
+    document.getElementById('storeCreditBalance').textContent = `₹${pendingCustomerCredit.balance.toFixed(2)}`;
+    document.getElementById('storeCreditAmount').max = pendingCustomerCredit.balance;
+    document.getElementById('storeCreditAmount').value = '0';
+    document.getElementById('storeCreditInfo').style.display = 'block';
+    document.getElementById('storeCreditError').style.display = 'none';
+    document.getElementById('customerCreditBanner').style.display = 'none';
+    recalculate();
+}
+
+function bindCustomerAutocomplete() {
+    const nameEl = document.getElementById('customerName');
+    const phoneEl = document.getElementById('customerPhone');
+    const trigger = (val) => {
+        clearTimeout(customerSearchTimer);
+        customerSearchTimer = setTimeout(() => fetchCustomerSuggestions(val.trim()), 200);
+    };
+    nameEl.addEventListener('input', (e) => trigger(e.target.value));
+    phoneEl.addEventListener('input', (e) => trigger(e.target.value));
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.customer-fields')) {
+            document.getElementById('customerSuggestions').style.display = 'none';
+        }
+    });
+}
+
+bindCustomerAutocomplete();
+// ---------- /Customer autocomplete ----------
 
 function toggleStoreCredit() {
     const useCredit = document.getElementById('useStoreCredit').checked;
@@ -306,6 +428,8 @@ async function submitBill() {
 
         cartItems = [];
         currentStoreCredit = null;
+        pendingCustomerCredit = null;
+        document.getElementById('customerCreditBanner').style.display = 'none';
         document.getElementById('useStoreCredit').checked = false;
         document.querySelector('input[name="paymentMode"][value="single"]').checked = true;
         document.getElementById('payCash').value = '0';
