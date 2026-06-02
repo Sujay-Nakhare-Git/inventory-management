@@ -220,6 +220,8 @@ def init_db():
     }
     if "image_filename" not in product_columns:
         db.execute("ALTER TABLE products ADD COLUMN image_filename TEXT")
+    if "product_group_id" not in product_columns:
+        db.execute("ALTER TABLE products ADD COLUMN product_group_id INTEGER")
 
     expense_columns = {
         row["name"] for row in db.execute("PRAGMA table_info(expenses)").fetchall()
@@ -649,6 +651,7 @@ def add_product():
             sizes_to_create = [custom_size]  # may be empty string
 
         created_skus = []
+        created_ids = []
         first_image_filename = None
         for idx, size in enumerate(sizes_to_create):
             sku = generate_sku(db, category_id) if category_id else None
@@ -666,14 +669,24 @@ def add_product():
                     first_image_filename = save_product_image(product_image, entry_name)
                 image_filename = first_image_filename
 
-            db.execute(
+            cur = db.execute(
                 "INSERT INTO products (name, category_id, sku, size, color, "
                 "cost_price, selling_price, quantity, low_stock_threshold, image_filename) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (entry_name, category_id, sku, size, color, cost_price,
                  selling_price, quantity, low_stock_threshold, image_filename),
             )
+            created_ids.append(cur.lastrowid)
             created_skus.append(sku or entry_name)
+
+        # Auto-group all sizes together when multiple entries were created
+        if len(created_ids) > 1:
+            group_id = created_ids[0]
+            for pid in created_ids:
+                db.execute(
+                    "UPDATE products SET product_group_id = ? WHERE id = ?",
+                    (group_id, pid),
+                )
         db.commit()
 
         if len(created_skus) > 1:
@@ -764,7 +777,16 @@ def edit_product(product_id):
         return redirect(url_for("inventory"))
 
     categories = db.execute("SELECT * FROM categories ORDER BY name").fetchall()
-    return render_template("product_form.html", product=product, categories=categories)
+    # Fetch current size variants for display in edit form
+    variants = []
+    if product and product["product_group_id"]:
+        variants = db.execute(
+            "SELECT id, sku, name, size, color, quantity FROM products "
+            "WHERE product_group_id = ? AND id != ? ORDER BY size",
+            (product["product_group_id"], product_id),
+        ).fetchall()
+    return render_template("product_form.html", product=product, categories=categories,
+                           variants=variants)
 
 
 @app.route("/inventory/delete/<int:product_id>", methods=["POST"])
@@ -821,7 +843,111 @@ def next_sku(category_id):
     return jsonify({"sku": sku or ""})
 
 
-# ── Categories ───────────────────────────────────────────────────────────
+@app.route("/api/product/<int:product_id>/variants")
+def product_variants(product_id):
+    db = get_db()
+    product = db.execute(
+        "SELECT product_group_id FROM products WHERE id = ?", (product_id,)
+    ).fetchone()
+    if not product or not product["product_group_id"]:
+        return jsonify({"variants": []})
+    variants = db.execute(
+        "SELECT p.id, p.sku, p.name, p.size, p.color, p.quantity, p.low_stock_threshold "
+        "FROM products p WHERE p.product_group_id = ? AND p.id != ? ORDER BY p.size",
+        (product["product_group_id"], product_id),
+    ).fetchall()
+    return jsonify({"variants": [dict(v) for v in variants]})
+
+
+@app.route("/inventory/<int:product_id>/link-variant", methods=["POST"])
+def link_variant(product_id):
+    db = get_db()
+    target_id_raw = request.form.get("link_product_id", "").strip()
+    if not target_id_raw:
+        flash("No product selected to link.", "error")
+        return redirect(url_for("edit_product", product_id=product_id))
+
+    # Accept SKU or numeric ID
+    if target_id_raw.isdigit():
+        target = db.execute(
+            "SELECT id, product_group_id FROM products WHERE id = ?", (int(target_id_raw),)
+        ).fetchone()
+    else:
+        target = db.execute(
+            "SELECT id, product_group_id FROM products WHERE sku = ?", (target_id_raw,)
+        ).fetchone()
+
+    if not target:
+        flash("Product not found.", "error")
+        return redirect(url_for("edit_product", product_id=product_id))
+    if target["id"] == product_id:
+        flash("Cannot link a product to itself.", "error")
+        return redirect(url_for("edit_product", product_id=product_id))
+
+    current = db.execute(
+        "SELECT product_group_id FROM products WHERE id = ?", (product_id,)
+    ).fetchone()
+
+    # Determine the group_id to use: prefer existing group, else use current product's id
+    existing_group = current["product_group_id"] or target["product_group_id"]
+    new_group_id = existing_group if existing_group else product_id
+
+    # If both already have groups, merge — move all members of target's group into current's group
+    if current["product_group_id"] and target["product_group_id"] and \
+            current["product_group_id"] != target["product_group_id"]:
+        db.execute(
+            "UPDATE products SET product_group_id = ? WHERE product_group_id = ?",
+            (new_group_id, target["product_group_id"]),
+        )
+
+    # Set group on both products (and all current group members)
+    if current["product_group_id"]:
+        db.execute(
+            "UPDATE products SET product_group_id = ? WHERE product_group_id = ?",
+            (new_group_id, current["product_group_id"]),
+        )
+    db.execute(
+        "UPDATE products SET product_group_id = ? WHERE id = ?",
+        (new_group_id, product_id),
+    )
+    db.execute(
+        "UPDATE products SET product_group_id = ? WHERE id = ?",
+        (new_group_id, target["id"]),
+    )
+    db.commit()
+    flash("Products linked as size variants.", "success")
+    return redirect(url_for("edit_product", product_id=product_id))
+
+
+@app.route("/inventory/<int:product_id>/unlink-variant", methods=["POST"])
+def unlink_variant(product_id):
+    db = get_db()
+    product = db.execute(
+        "SELECT product_group_id FROM products WHERE id = ?", (product_id,)
+    ).fetchone()
+    if not product or not product["product_group_id"]:
+        flash("Product is not in a variant group.", "error")
+        return redirect(url_for("edit_product", product_id=product_id))
+
+    group_id = product["product_group_id"]
+    db.execute(
+        "UPDATE products SET product_group_id = NULL WHERE id = ?", (product_id,)
+    )
+    # If only one member remains, clear their group too
+    remaining = db.execute(
+        "SELECT id FROM products WHERE product_group_id = ?", (group_id,)
+    ).fetchall()
+    if len(remaining) == 1:
+        db.execute(
+            "UPDATE products SET product_group_id = NULL WHERE id = ?",
+            (remaining[0]["id"],),
+        )
+    db.commit()
+    flash("Product removed from variant group.", "success")
+    return redirect(url_for("edit_product", product_id=product_id))
+
+
+
 @app.route("/categories", methods=["GET", "POST"])
 def categories():
     db = get_db()

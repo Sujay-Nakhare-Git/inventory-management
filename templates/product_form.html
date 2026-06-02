@@ -86,6 +86,43 @@
         </div>
     </form>
 </div>
+
+{% if product %}
+<div class="card" style="margin-top:1.5rem;">
+    <h3 style="margin-bottom:1rem;">Size Variants (Same Product, Different Sizes)</h3>
+    {% if variants %}
+    <div style="margin-bottom:1rem;">
+        <p style="color:#6b7280;font-size:0.9rem;margin-bottom:0.75rem;">Products linked as size variants of this item:</p>
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+            {% for v in variants %}
+            <div style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0.75rem;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;font-size:0.9rem;">
+                <span style="font-weight:600;">{{ v.size or '—' }}</span>
+                <span style="color:#6b7280;">{{ v.sku or v.name }}</span>
+                <span class="badge {% if v.quantity <= 0 %}badge-danger{% else %}badge-success{% endif %}" style="font-size:0.75rem;">Qty: {{ v.quantity }}</span>
+                <form method="POST" action="{{ url_for('unlink_variant', product_id=v.id) }}" style="display:inline;" onsubmit="return confirm('Remove this product from the variant group?')">
+                    <button type="submit" class="btn btn-sm btn-danger" style="padding:0.15rem 0.4rem;font-size:0.75rem;" title="Unlink this variant">✕</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <form method="POST" action="{{ url_for('unlink_variant', product_id=product.id) }}" style="display:inline;" onsubmit="return confirm('Remove this product from its variant group?')">
+        <button type="submit" class="btn btn-sm btn-outline" style="margin-bottom:1rem;">Remove this product from group</button>
+    </form>
+    {% else %}
+    <p style="color:#6b7280;font-size:0.9rem;margin-bottom:1rem;">This product is not linked to any other size variants.</p>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('link_variant', product_id=product.id) }}" style="display:flex;gap:0.5rem;align-items:flex-end;flex-wrap:wrap;">
+        <div class="form-group" style="margin:0;flex:1;min-width:200px;">
+            <label style="font-size:0.85rem;">Link another product as a size variant</label>
+            <input type="text" name="link_product_id" class="input" placeholder="Enter SKU or Product ID" required style="margin-top:0.3rem;">
+            <small style="color:#6b7280;">Type the SKU (e.g. KUR-001) or numeric ID of the product to link</small>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-bottom:1.4rem;">Link Variant</button>
+    </form>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}

@@ -38,7 +38,7 @@
             </thead>
             <tbody>
                 {% for p in products %}
-                <tr>
+                <tr class="inventory-row{% if p.product_group_id %} has-variants{% endif %}" data-product-id="{{ p.id }}" {% if p.product_group_id %}style="cursor:pointer;" title="Click to see size variants"{% endif %}>
                     <td>
                         {% if p.image_filename %}
                         <button type="button" class="inventory-thumb-button image-preview-trigger" data-image-src="{{ url_for('static', filename='product_images/' ~ p.image_filename) }}" data-image-alt="{{ p.name }}" data-image-title="{{ p.name }}">
@@ -49,7 +49,10 @@
                         <div class="inventory-thumb-placeholder">&#128247;</div>
                         {% endif %}
                     </td>
-                    <td>{{ p.sku or '—' }}</td>
+                    <td>
+                        {{ p.sku or '—' }}
+                        {% if p.product_group_id %}<span style="font-size:0.7rem;color:#3b82f6;margin-left:4px;" title="Has size variants">⬡</span>{% endif %}
+                    </td>
                     <td>{{ p.category_name or '—' }}</td>
                     <td>{{ p.size or '—' }}</td>
                     <td>{{ "%.2f"|format(p.cost_price) }}</td>
@@ -66,6 +69,15 @@
                         <form method="POST" action="{{ url_for('delete_product', product_id=p.id) }}" style="display:inline" onsubmit="return confirm('Delete this product?')">
                             <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                         </form>
+                    </td>
+                </tr>
+                <tr class="variant-detail-row" id="variants-{{ p.id }}" style="display:none;">
+                    <td colspan="8" style="padding:0;">
+                        <div class="variant-detail-panel" style="background:#f0f9ff;border-top:2px solid #bfdbfe;padding:0.75rem 1rem;">
+                            <div class="variant-detail-inner" id="variants-inner-{{ p.id }}">
+                                <span style="color:#6b7280;font-size:0.9rem;">Loading variants…</span>
+                            </div>
+                        </div>
                     </td>
                 </tr>
                 {% else %}
@@ -166,6 +178,61 @@
                 return ascending ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
             });
             rows.forEach(r => tbody.appendChild(r));
+        });
+    });
+})();
+</script>
+<script>
+(() => {
+    // Variant panel toggle: click a row with variants to expand/collapse
+    document.querySelectorAll('.inventory-row.has-variants').forEach(row => {
+        row.addEventListener('click', (e) => {
+            // Don't intercept clicks on buttons/links/forms
+            if (e.target.closest('button, a, form, input')) return;
+
+            const productId = row.dataset.productId;
+            const detailRow = document.getElementById('variants-' + productId);
+            const inner = document.getElementById('variants-inner-' + productId);
+            if (!detailRow) return;
+
+            const isOpen = detailRow.style.display !== 'none';
+            if (isOpen) {
+                detailRow.style.display = 'none';
+                row.style.background = '';
+                return;
+            }
+
+            // Show panel
+            detailRow.style.display = '';
+            row.style.background = '#eff6ff';
+            inner.innerHTML = '<span style="color:#6b7280;font-size:0.9rem;">Loading…</span>';
+
+            fetch('/api/product/' + productId + '/variants')
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.variants || data.variants.length === 0) {
+                        inner.innerHTML = '<span style="color:#6b7280;font-size:0.9rem;">No other size variants found.</span>';
+                        return;
+                    }
+                    let html = '<div style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:center;">';
+                    html += '<span style="font-size:0.85rem;font-weight:600;color:#1d4ed8;margin-right:0.25rem;">Other sizes:</span>';
+                    data.variants.forEach(v => {
+                        const low = v.quantity <= v.low_stock_threshold;
+                        const badgeColor = v.quantity <= 0 ? '#fee2e2' : low ? '#fef3c7' : '#dcfce7';
+                        const badgeText = v.quantity <= 0 ? '#dc2626' : low ? '#b45309' : '#16a34a';
+                        html += `<div style="display:flex;align-items:center;gap:0.4rem;padding:0.35rem 0.65rem;background:#fff;border:1px solid #bfdbfe;border-radius:8px;font-size:0.88rem;">`;
+                        html += `<span style="font-weight:700;">${v.size || '—'}</span>`;
+                        html += `<span style="color:#6b7280;">${v.sku || v.name}</span>`;
+                        html += `<span style="background:${badgeColor};color:${badgeText};padding:0.1rem 0.4rem;border-radius:999px;font-size:0.78rem;font-weight:600;">Qty: ${v.quantity}</span>`;
+                        html += `<a href="/inventory/edit/${v.id}" style="font-size:0.75rem;color:#3b82f6;" title="Edit">✏️</a>`;
+                        html += `</div>`;
+                    });
+                    html += '</div>';
+                    inner.innerHTML = html;
+                })
+                .catch(() => {
+                    inner.innerHTML = '<span style="color:#dc2626;font-size:0.9rem;">Failed to load variants.</span>';
+                });
         });
     });
 })();
