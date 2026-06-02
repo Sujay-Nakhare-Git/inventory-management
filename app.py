@@ -48,12 +48,30 @@ ALLOWED_BILL_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 PRODUCT_IMAGE_UPLOAD_DIR = os.path.join(app.root_path, "static", "product_images")
 ALLOWED_PRODUCT_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
 MAX_IMAGE_SIZE = (1600, 1600)
-WHATSAPP_CLOUD_API_TOKEN = os.getenv("WHATSAPP_CLOUD_API_TOKEN", "").strip()
-WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "").strip()
-WHATSAPP_GRAPH_VERSION = os.getenv("WHATSAPP_GRAPH_VERSION", "v22.0").strip() or "v22.0"
+WHATSAPP_CONFIG_PATH = os.path.join(app.root_path, "instance", "whatsapp_config.json")
+
+
+def load_whatsapp_cloud_config():
+    token = os.getenv("WHATSAPP_CLOUD_API_TOKEN", "").strip()
+    phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "").strip()
+    graph_version = os.getenv("WHATSAPP_GRAPH_VERSION", "v22.0").strip() or "v22.0"
+    if token and phone_number_id:
+        return token, phone_number_id, graph_version
+
+    try:
+        with open(WHATSAPP_CONFIG_PATH, "r", encoding="utf-8") as fh:
+            data = json.load(fh) or {}
+    except (OSError, json.JSONDecodeError):
+        data = {}
+
+    file_token = str(data.get("token", "")).strip()
+    file_phone_number_id = str(data.get("phone_number_id", "")).strip()
+    file_graph_version = str(data.get("graph_version", "v22.0")).strip() or "v22.0"
+    return file_token, file_phone_number_id, file_graph_version
 
 os.makedirs(EXPENSE_BILL_UPLOAD_DIR, exist_ok=True)
 os.makedirs(PRODUCT_IMAGE_UPLOAD_DIR, exist_ok=True)
+os.makedirs(os.path.dirname(WHATSAPP_CONFIG_PATH), exist_ok=True)
 
 
 def get_db():
@@ -396,7 +414,8 @@ def send_whatsapp_bill_message(customer_phone, customer_name, bill_number, total
     if not to_phone:
         return {"sent": False, "reason": "invalid_phone"}
 
-    if not (WHATSAPP_CLOUD_API_TOKEN and WHATSAPP_PHONE_NUMBER_ID):
+    cloud_api_token, phone_number_id, graph_version = load_whatsapp_cloud_config()
+    if not (cloud_api_token and phone_number_id):
         return {"sent": False, "reason": "not_configured"}
 
     safe_name = (customer_name or "Customer").strip() or "Customer"
@@ -414,13 +433,13 @@ def send_whatsapp_bill_message(customer_phone, customer_name, bill_number, total
         }
     ).encode("utf-8")
     endpoint = (
-        f"https://graph.facebook.com/{WHATSAPP_GRAPH_VERSION}/"
-        f"{WHATSAPP_PHONE_NUMBER_ID}/messages"
+        f"https://graph.facebook.com/{graph_version}/"
+        f"{phone_number_id}/messages"
     )
     request_obj = urllib.request.Request(endpoint, data=payload, method="POST")
     request_obj.add_header(
         "Authorization",
-        f"Bearer {WHATSAPP_CLOUD_API_TOKEN}",
+        f"Bearer {cloud_api_token}",
     )
     request_obj.add_header("Content-Type", "application/json")
 

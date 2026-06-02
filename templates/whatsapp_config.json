@@ -1,0 +1,5 @@
+{
+  "token": "YOUR_LONG_ACCESS_TOKEN",
+  "phone_number_id": "YOUR_PHONE_NUMBER_ID",
+  "graph_version": "v22.0"
+}
