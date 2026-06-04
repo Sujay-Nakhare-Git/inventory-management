@@ -412,26 +412,8 @@ async function submitBill() {
             printWindow.location.href = thermalUrl;
         }
 
-        let whatsappNote = '';
-        if (data.whatsapp_sent) {
-            whatsappNote = ' WhatsApp message sent.';
-        } else if (payload.customer_phone) {
-            if (data.whatsapp_reason === 'invalid_phone') {
-                whatsappNote = ' WhatsApp not sent (invalid phone format).';
-            } else if (data.whatsapp_reason === 'not_configured') {
-                whatsappNote = ' WhatsApp not sent (backend config missing on server).';
-            } else if (data.whatsapp_reason === 'send_failed') {
-                const shortError = (data.whatsapp_error || '').trim();
-                whatsappNote = shortError
-                    ? ` WhatsApp send failed (${shortError}).`
-                    : ' WhatsApp send failed (API/network issue on server).';
-            } else {
-                whatsappNote = ' WhatsApp not sent.';
-            }
-        }
-
         document.getElementById('billMessage').textContent =
-            `Bill ${billRef} created — Total: ₹${data.total.toFixed(2)}.${whatsappNote}`;
+            `Bill ${billRef} created — Total: ₹${data.total.toFixed(2)}.`;
         document.getElementById('viewBillLink').href = `/bills/${data.bill_id}`;
         document.getElementById('billModal').style.display = 'flex';
 
