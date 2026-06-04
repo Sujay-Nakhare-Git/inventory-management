@@ -406,23 +406,10 @@ def normalize_phone_for_whatsapp_cloud(raw_phone):
     return None
 
 
-def send_whatsapp_bill_message(customer_phone, customer_name, bill_number, total):
-    if not customer_phone:
-        return {"sent": False, "reason": "missing_phone"}
-
-    to_phone = normalize_phone_for_whatsapp_cloud(customer_phone)
-    if not to_phone:
-        return {"sent": False, "reason": "invalid_phone"}
-
+def send_whatsapp_text_message(to_phone, body):
     cloud_api_token, phone_number_id, graph_version = load_whatsapp_cloud_config()
     if not (cloud_api_token and phone_number_id):
         return {"sent": False, "reason": "not_configured"}
-
-    safe_name = (customer_name or "Customer").strip() or "Customer"
-    body = (
-        f"Namaste {safe_name}, your bill {bill_number} has been generated at "
-        f"Gulmohar by Ankita. Total amount: Rs {total:.2f}. Thank you for shopping with us."
-    )
 
     payload = json.dumps(
         {
@@ -467,6 +454,22 @@ def send_whatsapp_bill_message(customer_phone, customer_name, bill_number, total
     except Exception as exc:
         app.logger.warning("WhatsApp send failed for %s: %s", to_phone, exc)
         return {"sent": False, "reason": "send_failed", "error": str(exc)}
+
+
+def send_whatsapp_bill_message(customer_phone, customer_name, bill_number, total):
+    if not customer_phone:
+        return {"sent": False, "reason": "missing_phone"}
+
+    to_phone = normalize_phone_for_whatsapp_cloud(customer_phone)
+    if not to_phone:
+        return {"sent": False, "reason": "invalid_phone"}
+
+    safe_name = (customer_name or "Customer").strip() or "Customer"
+    body = (
+        f"Namaste {safe_name}, your bill {bill_number} has been generated at "
+        f"Gulmohar by Ankita. Total amount: Rs {total:.2f}. Thank you for shopping with us."
+    )
+    return send_whatsapp_text_message(to_phone, body)
 
 
 @app.context_processor
@@ -1292,12 +1295,17 @@ def create_bill():
             "message": "Bill created!",
             "whatsapp_sent": whatsapp_status.get("sent", False),
             "whatsapp_reason": whatsapp_status.get("reason", "unknown"),
+            "whatsapp_error": (whatsapp_status.get("error", "") or "")[:220],
         }
     )
 
 
 @app.route("/bills")
 def bills_list():
+    if not admin_authenticated():
+        flash("Please unlock Admin to access Bill History.", "error")
+        return redirect(url_for("admin", next=url_for("bills_list")))
+
     db = get_db()
     search = request.args.get("search", "").strip()
     search_type = request.args.get("search_type", "all")
@@ -1325,6 +1333,10 @@ def bills_list():
 
 @app.route("/bills/<int:bill_id>")
 def bill_detail(bill_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to view bill details.", "error")
+        return redirect(url_for("admin", next=url_for("bill_detail", bill_id=bill_id)))
+
     db = get_db()
     bill = db.execute("SELECT * FROM bills WHERE id = ?", (bill_id,)).fetchone()
     if not bill:
@@ -1348,6 +1360,10 @@ def bill_detail(bill_id):
 
 @app.route("/bills/<int:bill_id>/edit", methods=["GET", "POST"])
 def edit_bill(bill_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to edit bills.", "error")
+        return redirect(url_for("admin", next=url_for("bill_detail", bill_id=bill_id)))
+
     db = get_db()
     bill = db.execute("SELECT * FROM bills WHERE id = ?", (bill_id,)).fetchone()
     if not bill:
@@ -1426,6 +1442,10 @@ def edit_bill(bill_id):
 
 @app.route("/bills/<int:bill_id>/thermal")
 def bill_thermal_print(bill_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to print bill history.", "error")
+        return redirect(url_for("admin", next=url_for("bill_detail", bill_id=bill_id)))
+
     db = get_db()
     bill = db.execute("SELECT * FROM bills WHERE id = ?", (bill_id,)).fetchone()
     if not bill:
@@ -1452,6 +1472,10 @@ def bill_thermal_print(bill_id):
 
 @app.route("/bills/delete/<int:bill_id>", methods=["POST"])
 def delete_bill(bill_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to delete bills.", "error")
+        return redirect(url_for("admin", next=url_for("bills_list")))
+
     db = get_db()
     bill = db.execute("SELECT * FROM bills WHERE id = ?", (bill_id,)).fetchone()
     if not bill:
@@ -1682,6 +1706,10 @@ def delete_store_credit(credit_id):
 # ── Refunds & Exchanges ──────────────────────────────────────────────────
 @app.route("/refunds")
 def refunds_list():
+    if not admin_authenticated():
+        flash("Please unlock Admin to access refund details.", "error")
+        return redirect(url_for("admin", next=url_for("refunds_list")))
+
     db = get_db()
     all_refunds = db.execute(
         "SELECT r.*, b.bill_number, "
@@ -1695,6 +1723,10 @@ def refunds_list():
 
 @app.route("/refunds/new/<int:bill_id>")
 def new_refund(bill_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to process refunds.", "error")
+        return redirect(url_for("admin", next=url_for("refunds_list")))
+
     db = get_db()
     bill = db.execute("SELECT * FROM bills WHERE id = ?", (bill_id,)).fetchone()
     if not bill:
@@ -1714,6 +1746,10 @@ def new_refund(bill_id):
 
 @app.route("/refunds/process", methods=["POST"])
 def process_refund():
+    if not admin_authenticated():
+        flash("Please unlock Admin to process refunds.", "error")
+        return redirect(url_for("admin", next=url_for("refunds_list")))
+
     db = get_db()
     bill_id = int(request.form["bill_id"])
     reason = request.form.get("reason", "").strip()
@@ -2078,6 +2114,29 @@ def admin_logout():
     session.pop("pl_authenticated", None)
     flash("Admin area locked.", "success")
     return redirect(url_for("dashboard"))
+
+
+@app.route("/admin/whatsapp-test", methods=["POST"])
+def admin_whatsapp_test():
+    if not admin_authenticated():
+        return jsonify({"sent": False, "reason": "forbidden", "error": "Admin access required."}), 403
+
+    payload = request.get_json(silent=True) or {}
+    customer_phone = str(payload.get("phone", "")).strip()
+    if not customer_phone:
+        return jsonify({"sent": False, "reason": "missing_phone", "error": "Enter a phone number."}), 400
+
+    to_phone = normalize_phone_for_whatsapp_cloud(customer_phone)
+    if not to_phone:
+        return jsonify({"sent": False, "reason": "invalid_phone", "error": "Use a valid 10-digit Indian mobile number."}), 400
+
+    test_message = (
+        "Namaste! This is a WhatsApp test message from Gulmohar by Ankita billing system. "
+        "If you received this, WhatsApp integration is working."
+    )
+    result = send_whatsapp_text_message(to_phone, test_message)
+    status_code = 200 if result.get("sent") else 400
+    return jsonify(result), status_code
 
 
 @app.route("/admin/investments/add", methods=["POST"])

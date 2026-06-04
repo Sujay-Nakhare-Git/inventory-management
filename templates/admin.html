@@ -42,6 +42,22 @@
         </div>
     </div>
 
+    <div class="card stat-card stat-blue" style="text-align:left;">
+        <div class="card-title">📋 Bill History</div>
+        <p class="page-desc">View and search all previously generated bills.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('bills_list') }}" class="btn btn-primary">Open Bill History</a>
+        </div>
+    </div>
+
+    <div class="card stat-card stat-coral" style="text-align:left;">
+        <div class="card-title">🔄 Refund Details</div>
+        <p class="page-desc">Review refunds and exchanges processed across bills.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('refunds_list') }}" class="btn btn-primary">Open Refund Details</a>
+        </div>
+    </div>
+
     <div class="card stat-card stat-gold" style="text-align:left;">
         <div class="card-title">💸 Expenses</div>
         <p class="page-desc">Manage operational expenses and keep business costs updated.</p>
@@ -64,6 +80,16 @@
         <div style="margin-top:1rem;">
             <a href="{{ url_for('store_credits') }}" class="btn btn-primary" style="background:#9b59b6;border-color:#9b59b6;">Open Store Credits</a>
         </div>
+    </div>
+
+    <div class="card stat-card" style="text-align:left;border:2px solid #2c3e50;">
+        <div class="card-title">📲 WhatsApp Test</div>
+        <p class="page-desc">Send one fixed test message and show exact API error instantly.</p>
+        <div style="margin-top:0.75rem;display:flex;gap:0.5rem;align-items:center;">
+            <input type="text" id="waTestPhone" class="input" placeholder="10-digit phone" style="flex:1;" maxlength="15">
+            <button type="button" id="waTestBtn" class="btn btn-primary" onclick="runWhatsappTest()">Test</button>
+        </div>
+        <p id="waTestResult" style="margin-top:0.6rem;color:#555;min-height:1.2em;"></p>
     </div>
 </div>
 
@@ -334,5 +360,61 @@
         </form>
     </div>
 </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if not locked %}
+<script>
+async function runWhatsappTest() {
+    const phoneInput = document.getElementById('waTestPhone');
+    const resultEl = document.getElementById('waTestResult');
+    const btn = document.getElementById('waTestBtn');
+    if (!phoneInput || !resultEl || !btn) {
+        return;
+    }
+
+    const phone = (phoneInput.value || '').trim();
+    if (!phone) {
+        resultEl.style.color = '#c0392b';
+        resultEl.textContent = 'Enter a phone number first.';
+        return;
+    }
+
+    btn.disabled = true;
+    const oldText = btn.textContent;
+    btn.textContent = 'Testing...';
+    resultEl.style.color = '#555';
+    resultEl.textContent = 'Sending test message...';
+
+    try {
+        const response = await fetch('/admin/whatsapp-test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone })
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (data.sent) {
+            resultEl.style.color = '#1e8449';
+            resultEl.textContent = 'Success: test message sent.' + (data.sid ? ` SID: ${data.sid}` : '');
+            return;
+        }
+
+        resultEl.style.color = '#c0392b';
+        const reason = data.reason || `http_${response.status}`;
+        const error = (data.error || '').toString().trim();
+        resultEl.textContent = error
+            ? `Failed (${reason}): ${error}`
+            : `Failed (${reason}).`;
+    } catch (err) {
+        resultEl.style.color = '#c0392b';
+        resultEl.textContent = 'Request failed: ' + err;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = oldText;
+    }
+}
+</script>
 {% endif %}
 {% endblock %}

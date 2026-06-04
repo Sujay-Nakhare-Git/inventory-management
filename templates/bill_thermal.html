@@ -172,6 +172,9 @@
         {% if bill.tax_amount > 0 %}
         <div class="row"><span>Tax {{ bill.tax_percent }}%</span><span>+{{ "%.2f"|format(bill.tax_amount) }}</span></div>
         {% endif %}
+        {% if bill.store_credit_used and bill.store_credit_used > 0 %}
+        <div class="row"><span>Store Credit</span><span>-{{ "%.2f"|format(bill.store_credit_used) }}</span></div>
+        {% endif %}
 
         <div class="line"></div>
 

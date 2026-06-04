@@ -7,3 +7,4 @@ __pycache__/
 static/product_images/
 .DS_Store
 **/.DS_Store
+instance/whatsapp_config.json

@@ -28,13 +28,7 @@
             <li><a href="{{ url_for('billing') }}" class="{% if request.endpoint == 'billing' %}active{% endif %}">
                 <span class="nav-icon">🧾</span> New Bill
             </a></li>
-            <li><a href="{{ url_for('bills_list') }}" class="{% if request.endpoint in ['bills_list', 'bill_detail'] %}active{% endif %}">
-                <span class="nav-icon">📋</span> Bills History
-            </a></li>
-            <li><a href="{{ url_for('refunds_list') }}" class="{% if request.endpoint in ['refunds_list', 'new_refund'] %}active{% endif %}">
-                <span class="nav-icon">🔄</span> Refunds
-            </a></li>
-            <li><a href="{{ url_for('admin') }}" class="{% if request.endpoint in ['admin', 'expenses', 'profit_loss', 'daily_summary'] %}active{% endif %}">
+            <li><a href="{{ url_for('admin') }}" class="{% if request.endpoint in ['admin', 'expenses', 'profit_loss', 'daily_summary', 'bills_list', 'bill_detail', 'edit_bill', 'bill_thermal_print', 'delete_bill', 'refunds_list', 'new_refund', 'process_refund'] %}active{% endif %}">
                 <span class="nav-icon">🔒</span> Admin
             </a></li>
         </ul>

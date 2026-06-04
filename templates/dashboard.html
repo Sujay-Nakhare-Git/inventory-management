@@ -10,10 +10,8 @@
     <div class="dashboard-tabs">
         <a href="{{ url_for('dashboard') }}" class="tab-btn{% if request.endpoint == 'dashboard' %} active{% endif %}">Dashboard</a>
         <a href="{{ url_for('billing') }}" class="tab-btn{% if request.endpoint == 'billing' %} active{% endif %}">New Bill</a>
-        <a href="{{ url_for('bills_list') }}" class="tab-btn{% if request.endpoint in ['bills_list', 'bill_detail'] %} active{% endif %}">Bills History</a>
         <a href="{{ url_for('categories') }}" class="tab-btn{% if request.endpoint == 'categories' %} active{% endif %}">Categories</a>
-        <a href="{{ url_for('refunds_list') }}" class="tab-btn{% if request.endpoint in ['refunds_list', 'new_refund'] %} active{% endif %}">Refunds</a>
-        <a href="{{ url_for('admin') }}" class="tab-btn{% if request.endpoint in ['admin', 'expenses', 'profit_loss', 'daily_summary'] %} active{% endif %}">Admin</a>
+        <a href="{{ url_for('admin') }}" class="tab-btn{% if request.endpoint in ['admin', 'expenses', 'profit_loss', 'daily_summary', 'bills_list', 'bill_detail', 'edit_bill', 'bill_thermal_print', 'delete_bill', 'refunds_list', 'new_refund', 'process_refund'] %} active{% endif %}">Admin</a>
     </div>
 </div>
 
