@@ -587,6 +587,29 @@ def dashboard():
     db = get_db()
     total_products = db.execute("SELECT COUNT(*) FROM products").fetchone()[0]
     total_stock = db.execute("SELECT COALESCE(SUM(quantity),0) FROM products").fetchone()[0]
+    available_items = db.execute(
+        "SELECT COALESCE(SUM(quantity),0) FROM products WHERE quantity > 0"
+    ).fetchone()[0]
+    total_sizes = db.execute(
+        "SELECT COUNT(DISTINCT COALESCE(NULLIF(TRIM(size), ''), 'No Size')) "
+        "FROM products WHERE quantity > 0"
+    ).fetchone()[0]
+    size_wise_summary = db.execute(
+        "SELECT COALESCE(NULLIF(TRIM(size), ''), 'No Size') as size, "
+        "COUNT(id) as product_count, COALESCE(SUM(quantity), 0) as total_stock "
+        "FROM products WHERE quantity > 0 "
+        "GROUP BY COALESCE(NULLIF(TRIM(size), ''), 'No Size') "
+        "ORDER BY total_stock DESC, size"
+    ).fetchall()
+    category_wise_summary = db.execute(
+        "SELECT COALESCE(c.name, 'Uncategorized') as category, "
+        "COUNT(p.id) as product_count, COALESCE(SUM(p.quantity), 0) as total_stock "
+        "FROM products p "
+        "LEFT JOIN categories c ON c.id = p.category_id "
+        "WHERE p.quantity > 0 "
+        "GROUP BY COALESCE(c.name, 'Uncategorized') "
+        "ORDER BY total_stock DESC, category"
+    ).fetchall()
     low_stock = db.execute(
         "SELECT COUNT(*) FROM products WHERE quantity <= low_stock_threshold"
     ).fetchone()[0]
@@ -609,6 +632,10 @@ def dashboard():
         "dashboard.html",
         total_products=total_products,
         total_stock=total_stock,
+        available_items=available_items,
+        total_sizes=total_sizes,
+        size_wise_summary=size_wise_summary,
+        category_wise_summary=category_wise_summary,
         low_stock=low_stock,
         today_sales=today_sales,
         total_bills=total_bills,
