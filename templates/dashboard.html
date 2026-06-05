@@ -35,68 +35,6 @@
         <div class="stat-value">{{ available_items }}</div>
         <div class="stat-label">Available Items</div>
     </div>
-    <div class="stat-card stat-blue">
-        <div class="stat-value">{{ total_sizes }}</div>
-        <div class="stat-label">Total Sizes</div>
-    </div>
-</div>
-
-<div class="stats-grid" style="margin-top:1rem;">
-    <div class="card" style="text-align:left;">
-        <h3 class="card-title">Size Wise Summary</h3>
-        {% if size_wise_summary %}
-        <div class="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Size</th>
-                        <th>Products</th>
-                        <th>Stock</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in size_wise_summary %}
-                    <tr>
-                        <td>{{ row.size }}</td>
-                        <td>{{ row.product_count }}</td>
-                        <td><strong>{{ row.total_stock }}</strong></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <p class="empty-state">No size-wise stock available.</p>
-        {% endif %}
-    </div>
-
-    <div class="card" style="text-align:left;">
-        <h3 class="card-title">Category Wise Summary</h3>
-        {% if category_wise_summary %}
-        <div class="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Category</th>
-                        <th>Products</th>
-                        <th>Stock</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in category_wise_summary %}
-                    <tr>
-                        <td>{{ row.category }}</td>
-                        <td>{{ row.product_count }}</td>
-                        <td><strong>{{ row.total_stock }}</strong></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <p class="empty-state">No category-wise stock available.</p>
-        {% endif %}
-    </div>
 </div>
 
 <div class="card dashboard-logo-card">
