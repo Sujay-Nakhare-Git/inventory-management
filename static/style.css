@@ -1169,35 +1169,29 @@ textarea.input { resize: vertical; }
     .thermal-receipt { display: none !important; }
 }
 
-/* ── Inventory labels (3"W x 2"H) ────────────────────────────────────── */
+/* ── Inventory labels (2"W x 3"H portrait) ─────────────────────────── */
 .labels-page {
     display: grid;
-    grid-template-columns: repeat(auto-fill, 3in);
+    grid-template-columns: repeat(auto-fill, 50mm);
     gap: 0.25in;
     margin-top: 1rem;
 }
 .label-card {
-    width: 76mm;
-    height: 50mm;
+    width: 50mm;
+    height: 76mm;
     box-sizing: border-box;
     border: 1px dashed #aaa;
     background: #fff;
     color: #000;
-    position: relative;
     overflow: hidden;
     page-break-inside: avoid;
     break-inside: avoid;
 }
 .label-inner {
-    width: 50mm;
-    height: 76mm;
+    width: 100%;
+    height: 100%;
     box-sizing: border-box;
     padding: 3mm 4mm;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(-90deg);
-    transform-origin: center center;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -1337,11 +1331,11 @@ textarea.input { resize: vertical; }
     .thermal-receipt .t-items tr { page-break-inside: avoid; }
 }
 
-/* ── Print Styles: Inventory Labels (3"W x 2"H) ──────────────────────── */
+/* ── Print Styles: Inventory Labels (2"W x 3"H portrait) ─────────────── */
 @media print {
     body.print-labels { page: label; }
 }
-@page label { size: 76mm 50mm; margin: 0; }
+@page label { size: 50mm 76mm; margin: 0; }
 
 @media print {
     body.print-labels {
@@ -1362,8 +1356,8 @@ textarea.input { resize: vertical; }
     body.print-labels .content {
         margin: 0 !important;
         padding: 0 !important;
-        width: 76mm !important;
-        max-width: 76mm !important;
+        width: 50mm !important;
+        max-width: 50mm !important;
     }
     body.print-labels .labels-page {
         display: block;
@@ -1372,8 +1366,8 @@ textarea.input { resize: vertical; }
         gap: 0;
     }
     body.print-labels .label-card {
-        width: 76mm;
-        height: 50mm;
+        width: 50mm;
+        height: 76mm;
         border: none;
         margin: 0;
         padding: 0;
