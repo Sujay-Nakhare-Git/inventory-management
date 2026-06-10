@@ -42,6 +42,84 @@ def _format_bill_date(value):
             continue
     return text
 
+
+@app.template_filter("istdatetime")
+def _format_ist_datetime(value):
+    if not value:
+        return ""
+
+    dt = None
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        text = str(value).strip()
+        if not text:
+            return ""
+        if text.endswith("Z"):
+            text = f"{text[:-1]}+00:00"
+
+        try:
+            dt = datetime.fromisoformat(text)
+        except ValueError:
+            for fmt in (
+                "%Y-%m-%d %H:%M:%S.%f",
+                "%Y-%m-%d %H:%M:%S",
+                "%Y-%m-%d %H:%M",
+                "%Y-%m-%d",
+            ):
+                try:
+                    dt = datetime.strptime(text, fmt)
+                    break
+                except ValueError:
+                    continue
+
+    if dt is None:
+        return str(value)
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=IST)
+
+    return dt.astimezone(IST).strftime("%d-%b-%Y %I:%M %p IST")
+
+
+@app.template_filter("istdate")
+def _format_ist_date(value):
+    if not value:
+        return ""
+
+    dt = None
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        text = str(value).strip()
+        if not text:
+            return ""
+        if text.endswith("Z"):
+            text = f"{text[:-1]}+00:00"
+
+        try:
+            dt = datetime.fromisoformat(text)
+        except ValueError:
+            for fmt in (
+                "%Y-%m-%d %H:%M:%S.%f",
+                "%Y-%m-%d %H:%M:%S",
+                "%Y-%m-%d %H:%M",
+                "%Y-%m-%d",
+            ):
+                try:
+                    dt = datetime.strptime(text, fmt)
+                    break
+                except ValueError:
+                    continue
+
+    if dt is None:
+        return str(value)
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=IST)
+
+    return dt.astimezone(IST).strftime("%d-%b-%Y")
+
 DATABASE = os.path.join(app.root_path, "boutique.db")
 EXPENSE_BILL_UPLOAD_DIR = os.path.join(app.root_path, "static", "expense_bills")
 ALLOWED_BILL_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}

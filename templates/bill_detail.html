@@ -28,7 +28,7 @@
         </div>
         <div class="invoice-meta">
             <p><strong>Bill {{ display_bill_ref(bill) }}</strong></p>
-            <p>{{ bill.created_at }}</p>
+            <p>{{ bill.created_at | istdatetime }}</p>
             <p>Payment: {{ bill.payment_method }}</p>
             {% if payment_breakdown and payment_breakdown|length > 1 %}
             <div style="margin-top:0.35rem; font-size:0.82rem; color:#6b7280;">
@@ -100,7 +100,7 @@
     </div>
     <div class="t-sep"></div>
     <div class="t-row"><span>Bill #</span><span>{{ display_bill_ref(bill) }}</span></div>
-    <div class="t-row"><span>Date</span><span>{{ bill.created_at }}</span></div>
+    <div class="t-row"><span>Date</span><span>{{ bill.created_at | istdatetime }}</span></div>
     <div class="t-row"><span>Pay</span><span>{{ bill.payment_method }}</span></div>
     {% if bill.discount_amount > 0 %}
     <div class="t-row"><span>Disc</span><span>-₹{{ "%.2f"|format(bill.discount_amount) }}</span></div>
@@ -170,7 +170,7 @@
                     <td><span class="badge {% if r.type == 'refund' %}badge-danger{% elif r.type == 'exchange' %}badge-info{% else %}badge-success{% endif %}">{{ r.type|capitalize }}</span></td>
                     <td>{{ r.reason or '—' }}</td>
                     <td>{% if r.refund_amount > 0 %}₹{{ "%.2f"|format(r.refund_amount) }}{% else %}—{% endif %}</td>
-                    <td>{{ r.created_at }}</td>
+                    <td>{{ r.created_at | istdatetime }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

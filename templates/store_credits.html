@@ -67,10 +67,10 @@
                 <td style="font-weight:bold; color:#27ae60;">₹{{ "%.2f" | format(credit.balance) }}</td>
                 <td>
                     <span class="badge" style="background:#3498db;color:#fff;padding:0.25rem 0.75rem;border-radius:4px;font-size:0.85rem;">
-                        {{ credit.created_at[:10] }}
+                        {{ credit.created_at | istdate }}
                     </span>
                 </td>
-                <td>{{ credit.updated_at[:10] }}</td>
+                <td>{{ credit.updated_at | istdate }}</td>
                 <td>
                     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
                         <a href="{{ url_for('credit_transactions', credit_id=credit.id) }}" class="btn btn-small btn-outline" title="View transactions">📊</a>

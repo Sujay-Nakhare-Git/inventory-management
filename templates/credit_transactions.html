@@ -20,11 +20,11 @@
         </div>
         <div>
             <div style="color:#7f8c8d;font-size:0.9rem;">📅 Created</div>
-            <div style="font-size:1.2rem;font-weight:bold;">{{ credit.created_at[:10] }}</div>
+            <div style="font-size:1.2rem;font-weight:bold;">{{ credit.created_at | istdate }}</div>
         </div>
         <div>
             <div style="color:#7f8c8d;font-size:0.9rem;">🔄 Updated</div>
-            <div style="font-size:1.2rem;font-weight:bold;">{{ credit.updated_at[:10] }}</div>
+            <div style="font-size:1.2rem;font-weight:bold;">{{ credit.updated_at | istdate }}</div>
         </div>
     </div>
 </div>
@@ -45,7 +45,7 @@
         <tbody>
             {% for txn in transactions %}
             <tr>
-                <td>{{ txn.created_at }}</td>
+                <td>{{ txn.created_at | istdatetime }}</td>
                 <td>
                     {% if txn.transaction_type == 'debit' %}
                     <span class="badge" style="background:#e74c3c;color:#fff;padding:0.25rem 0.75rem;border-radius:4px;font-size:0.85rem;">↓ Used</span>

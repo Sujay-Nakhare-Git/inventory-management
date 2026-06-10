@@ -12,7 +12,7 @@
         <h4>Bill Details</h4>
         <p><strong>Customer:</strong> {{ bill.customer_name or 'Walk-in' }}
            {% if bill.customer_phone %} | <strong>Phone:</strong> {{ bill.customer_phone }}{% endif %}</p>
-        <p><strong>Total:</strong> ₹{{ "%.2f"|format(bill.total) }} | <strong>Date:</strong> {{ bill.created_at }}</p>
+        <p><strong>Total:</strong> ₹{{ "%.2f"|format(bill.total) }} | <strong>Date:</strong> {{ bill.created_at | istdatetime }}</p>
     </div>
 </div>
 

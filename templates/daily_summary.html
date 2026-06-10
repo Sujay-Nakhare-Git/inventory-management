@@ -145,7 +145,7 @@
                     <td>{{ b.customer_name or 'Walk-in' }}</td>
                     <td>₹{{ "%.2f"|format(b.total) }}</td>
                     <td><span class="badge badge-info">{{ b.payment_method }}</span></td>
-                    <td>{{ b.created_at }}</td>
+                    <td>{{ b.created_at | istdatetime }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -175,7 +175,7 @@
                     <td>{{ e.title }}</td>
                     <td><span class="badge badge-info">{{ e.category }}</span></td>
                     <td>₹{{ "%.2f"|format(e.amount) }}</td>
-                    <td>{{ e.created_at }}</td>
+                    <td>{{ e.created_at | istdatetime }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

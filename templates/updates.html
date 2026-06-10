@@ -44,7 +44,7 @@
                 <strong>{{ u.title }}</strong>
                 {% if u.description %}<p>{{ u.description }}</p>{% endif %}
             </div>
-            <span class="update-time">{{ u.created_at }}</span>
+            <span class="update-time">{{ u.created_at | istdatetime }}</span>
         </div>
         {% else %}
         <p class="empty-state">No updates yet.</p>

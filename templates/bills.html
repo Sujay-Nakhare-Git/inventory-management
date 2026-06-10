@@ -60,7 +60,7 @@
                     <td>{% if b.tax_amount > 0 %}+₹{{ "%.2f"|format(b.tax_amount) }}{% else %}—{% endif %}</td>
                     <td><strong>₹{{ "%.2f"|format(b.total) }}</strong></td>
                     <td><span class="badge badge-info">{{ b.payment_method }}</span></td>
-                    <td>{{ b.created_at }}</td>
+                    <td>{{ b.created_at | istdatetime }}</td>
                     <td class="actions">
                         <a href="{{ url_for('bill_detail', bill_id=b.id) }}" class="btn btn-sm">View</a>
                         <a href="{{ url_for('new_refund', bill_id=b.id) }}" class="btn btn-sm btn-outline" title="Refund/Exchange">🔄</a>

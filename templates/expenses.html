@@ -175,7 +175,7 @@
             <tbody>
                 {% for e in expenses %}
                 <tr>
-                    <td>{{ e.created_at }}</td>
+                    <td>{{ e.created_at | istdatetime }}</td>
                     <td><strong>{{ e.title }}</strong></td>
                     <td>{{ e.vendor or '—' }}</td>
                     <td><span class="badge badge-info">{{ e.category }}</span></td>

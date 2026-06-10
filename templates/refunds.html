@@ -36,7 +36,7 @@
                     <td>{{ r.products or '—' }}</td>
                     <td>{{ r.reason or '—' }}</td>
                     <td>{% if r.refund_amount > 0 %}<strong>₹{{ "%.2f"|format(r.refund_amount) }}</strong>{% else %}—{% endif %}</td>
-                    <td>{{ r.created_at }}</td>
+                    <td>{{ r.created_at | istdatetime }}</td>
                     <td><a href="{{ url_for('bill_detail', bill_id=r.bill_id) }}" class="btn btn-sm">View Bill</a></td>
                 </tr>
                 {% else %}
