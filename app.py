@@ -413,8 +413,8 @@ def _insert_exchange_bill(db, source_bill, exchange_items):
     cursor = db.execute(
         "INSERT INTO bills (bill_number, customer_name, customer_phone, subtotal, "
         "discount_percent, discount_amount, tax_percent, tax_amount, total, "
-        "payment_method, payment_breakdown_json, store_credit_used) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "payment_method, payment_breakdown_json, store_credit_used, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
         (
             exchange_bill_number,
             source_bill["customer_name"],
@@ -559,7 +559,8 @@ def inject_bill_helpers():
 def log_update(title, description, update_type="general"):
     db = get_db()
     db.execute(
-        "INSERT INTO updates (title, description, type) VALUES (?, ?, ?)",
+        "INSERT INTO updates (title, description, type, created_at) "
+        "VALUES (?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
         (title, description, update_type),
     )
     db.commit()
@@ -775,8 +776,10 @@ def add_product():
 
             cur = db.execute(
                 "INSERT INTO products (name, category_id, sku, size, color, "
-                "cost_price, selling_price, quantity, low_stock_threshold, image_filename) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "cost_price, selling_price, quantity, low_stock_threshold, image_filename, "
+                "created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+                "datetime('now','+5 hours','+30 minutes'), datetime('now','+5 hours','+30 minutes'))",
                 (entry_name, category_id, sku, size, color, cost_price,
                  selling_price, quantity, low_stock_threshold, image_filename),
             )
@@ -1321,7 +1324,8 @@ def create_bill():
     cursor = db.execute(
         "INSERT INTO bills (bill_number, customer_name, customer_phone, subtotal, "
         "discount_percent, discount_amount, tax_percent, tax_amount, "
-        "total, payment_method, payment_breakdown_json, store_credit_used) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "total, payment_method, payment_breakdown_json, store_credit_used, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
         (bill_number, customer_name, customer_phone, subtotal, discount_percent,
          discount_amount, tax_percent, tax_amount, total, normalized_payment_method,
          payment_breakdown_json, store_credit_amount),
@@ -1344,8 +1348,8 @@ def create_bill():
     # Record store credit transaction if used
     if store_credit_id and store_credit_amount > 0:
         db.execute(
-            "INSERT INTO credit_transactions (credit_id, bill_id, amount, transaction_type, notes) "
-            "VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO credit_transactions (credit_id, bill_id, amount, transaction_type, notes, created_at) "
+            "VALUES (?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
             (store_credit_id, bill_id, store_credit_amount, "debit", f"Used in Bill {bill_number}"),
         )
         db.execute(
@@ -1586,8 +1590,8 @@ def delete_bill(bill_id):
                 (bill["store_credit_used"], credit_id),
             )
             db.execute(
-                "INSERT INTO credit_transactions (credit_id, bill_id, amount, transaction_type, notes) "
-                "VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO credit_transactions (credit_id, bill_id, amount, transaction_type, notes, created_at) "
+                "VALUES (?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
                 (credit_id, bill_id, bill["store_credit_used"], "credit", f"Restored from deleted Bill #{bill_id}"),
             )
 
@@ -1651,16 +1655,16 @@ def add_store_credit():
         return redirect(url_for("store_credits"))
 
     cursor = db.execute(
-        "INSERT INTO store_credits (customer_name, customer_phone, balance) "
-        "VALUES (?, ?, ?)",
+        "INSERT INTO store_credits (customer_name, customer_phone, balance, created_at, updated_at) "
+        "VALUES (?, ?, ?, datetime('now','+5 hours','+30 minutes'), datetime('now','+5 hours','+30 minutes'))",
         (customer_name, customer_phone, round(balance, 2)),
     )
     credit_id = cursor.lastrowid
 
     # Record initial transaction
     db.execute(
-        "INSERT INTO credit_transactions (credit_id, amount, transaction_type, notes) "
-        "VALUES (?, ?, ?, ?)",
+        "INSERT INTO credit_transactions (credit_id, amount, transaction_type, notes, created_at) "
+        "VALUES (?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
         (credit_id, balance, "credit", "Initial credit added"),
     )
     db.commit()
@@ -1717,8 +1721,8 @@ def add_credit_balance(credit_id):
         (round(amount, 2), credit_id),
     )
     db.execute(
-        "INSERT INTO credit_transactions (credit_id, amount, transaction_type, notes) "
-        "VALUES (?, ?, ?, ?)",
+        "INSERT INTO credit_transactions (credit_id, amount, transaction_type, notes, created_at) "
+        "VALUES (?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
         (credit_id, amount, "credit", notes or "Balance added"),
     )
     db.commit()
@@ -1953,14 +1957,15 @@ def process_refund():
             )
         else:
             cursor2 = db.execute(
-                "INSERT INTO store_credits (customer_name, customer_phone, balance) VALUES (?, ?, ?)",
+                "INSERT INTO store_credits (customer_name, customer_phone, balance, created_at, updated_at) "
+                "VALUES (?, ?, ?, datetime('now','+5 hours','+30 minutes'), datetime('now','+5 hours','+30 minutes'))",
                 (sc_name, sc_phone, round(store_credit_refund, 2)),
             )
             credit_id = cursor2.lastrowid
 
         db.execute(
-            "INSERT INTO credit_transactions (credit_id, bill_id, amount, transaction_type, notes) "
-            "VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO credit_transactions (credit_id, bill_id, amount, transaction_type, notes, created_at) "
+            "VALUES (?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
             (credit_id, bill_id, round(store_credit_refund, 2), "credit",
              f"Refund from Bill #{bill_id}"),
         )
@@ -1980,8 +1985,8 @@ def process_refund():
         refund_type = "mixed"
 
     cursor = db.execute(
-        "INSERT INTO refunds (bill_id, customer_name, type, reason, refund_amount) "
-        "VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO refunds (bill_id, customer_name, type, reason, refund_amount, created_at) "
+        "VALUES (?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
         (bill_id, bill["customer_name"], refund_type, reason, round(refund_amount + store_credit_refund, 2)),
     )
     refund_id = cursor.lastrowid
@@ -2245,7 +2250,8 @@ def add_investment():
         return redirect(url_for("admin"))
 
     db.execute(
-        "INSERT INTO investments (description, amount, investment_date) VALUES (?, ?, ?)",
+        "INSERT INTO investments (description, amount, investment_date, created_at) "
+        "VALUES (?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
         (description, amount, investment_date),
     )
     db.commit()
@@ -2628,8 +2634,8 @@ def add_expense():
             bill_image_path = save_expense_bill_image(bill_image, title)
 
         db.execute(
-            "INSERT INTO expenses (title, vendor, description, category, amount, bill_image_path, include_in_pl) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO expenses (title, vendor, description, category, amount, bill_image_path, include_in_pl, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
             (title, vendor or None, description, category, amount, bill_image_path, include_in_pl),
         )
         db.commit()
