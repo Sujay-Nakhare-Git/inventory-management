@@ -724,7 +724,12 @@ def inventory():
     category_id = request.args.get("category", "")
     size_filter = request.args.get("size", "")
     vendor_filter = request.args.get("vendor", "")
-    in_stock_only = request.args.get("in_stock", "")
+    # Default "available stock only" to checked on a fresh load; respect the
+    # user's choice once the filter form has been submitted (marked by 'filtered').
+    if request.args.get("filtered"):
+        in_stock_only = request.args.get("in_stock", "")
+    else:
+        in_stock_only = "1"
     query = (
         "SELECT p.*, c.name as category_name, v.name as vendor_name FROM products p "
         "LEFT JOIN categories c ON p.category_id = c.id "
@@ -1054,6 +1059,19 @@ def product_variants(product_id):
         (product["product_group_id"], product_id),
     ).fetchall()
     return jsonify({"variants": [dict(v) for v in variants]})
+
+
+@app.route("/api/product/<int:product_id>/bills")
+def product_bills(product_id):
+    db = get_db()
+    rows = db.execute(
+        "SELECT b.id, b.bill_number, b.created_at, b.customer_name, "
+        "bi.quantity, bi.unit_price, bi.total_price "
+        "FROM bill_items bi JOIN bills b ON bi.bill_id = b.id "
+        "WHERE bi.product_id = ? ORDER BY b.created_at DESC",
+        (product_id,),
+    ).fetchall()
+    return jsonify({"bills": [dict(r) for r in rows]})
 
 
 @app.route("/inventory/<int:product_id>/link-variant", methods=["POST"])

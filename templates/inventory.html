@@ -12,6 +12,7 @@
 
 <div class="card">
     <form class="filter-bar" method="GET" action="{{ url_for('inventory') }}">
+        <input type="hidden" name="filtered" value="1">
         <input type="text" name="search" placeholder="Search by name or SKU..." value="{{ search }}" class="input">
         <select name="category" class="input">
             <option value="">All Categories</option>
@@ -42,6 +43,9 @@
 </div>
 
 <form id="bulkVendorForm" method="POST" action="{{ url_for('bulk_assign_vendor') }}"></form>
+<div style="margin-bottom:0.75rem;">
+    <button type="button" id="selectNoVendorBtn" class="btn btn-outline btn-sm">☑ Select all without vendor</button>
+</div>
 <div class="card" id="bulkActionsBar" style="display:none;">
     <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;">
         <span><strong id="bulkSelectedCount">0</strong> selected</span>
@@ -65,7 +69,7 @@
                     <th>Image</th>
                     <th class="sortable" data-col="2" data-type="string">SKU <span class="sort-icon">⇅</span></th>
                     <th class="sortable" data-col="3" data-type="string">Category <span class="sort-icon">⇅</span></th>
-                    <th class="sortable" data-col="4" data-type="string">Size <span class="sort-icon">⇅</span></th>
+                    <th class="sortable" data-col="4" data-type="size">Size <span class="sort-icon">⇅</span></th>
                     <th class="sortable" data-col="5" data-type="number">Cost (₹) <span class="sort-icon">⇅</span></th>
                     <th class="sortable" data-col="6" data-type="number">Price (₹) <span class="sort-icon">⇅</span></th>
                     <th class="sortable" data-col="7" data-type="number">Qty <span class="sort-icon">⇅</span></th>
@@ -74,7 +78,7 @@
             </thead>
             <tbody>
                 {% for p in products %}
-                <tr class="inventory-row{% if p.product_group_id %} has-variants{% endif %}" data-product-id="{{ p.id }}" {% if p.product_group_id %}style="cursor:pointer;" title="Click to see size variants"{% endif %}>
+                <tr class="inventory-row{% if p.product_group_id %} has-variants{% endif %}" data-product-id="{{ p.id }}" data-has-vendor="{{ 1 if p.vendor_id else 0 }}" {% if p.product_group_id %}style="cursor:pointer;" title="Click to see size variants"{% endif %}>
                     <td>
                         <input type="checkbox" class="row-select" value="{{ p.id }}">
                     </td>
@@ -105,6 +109,7 @@
                     </td>
                     <td class="actions">
                         <a href="{{ url_for('edit_product', product_id=p.id) }}" class="btn btn-sm">Edit</a>
+                        <button type="button" class="btn btn-sm btn-outline bills-toggle" data-product-id="{{ p.id }}">Bills</button>
                         <form method="POST" action="{{ url_for('delete_product', product_id=p.id) }}" style="display:inline" onsubmit="return confirm('Delete this product?')">
                             <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                         </form>
@@ -115,6 +120,15 @@
                         <div class="variant-detail-panel" style="background:#f0f9ff;border-top:2px solid #bfdbfe;padding:0.75rem 1rem;">
                             <div class="variant-detail-inner" id="variants-inner-{{ p.id }}">
                                 <span style="color:#6b7280;font-size:0.9rem;">Loading variants…</span>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <tr class="bills-detail-row" id="bills-{{ p.id }}" style="display:none;">
+                    <td colspan="9" style="padding:0;">
+                        <div style="background:#fffbeb;border-top:2px solid #fde68a;padding:0.75rem 1rem;">
+                            <div id="bills-inner-{{ p.id }}">
+                                <span style="color:#6b7280;font-size:0.9rem;">Loading bills…</span>
                             </div>
                         </div>
                     </td>
@@ -189,6 +203,17 @@
     let currentCol = null;
     let ascending = true;
 
+    // Natural clothing size order; unknown sizes fall back to numeric/alpha
+    const SIZE_ORDER = ['xxs','xs','s','m','l','xl','xxl','2xl','xxxl','3xl','4xl','5xl'];
+    function sizeRank(val) {
+        const v = (val || '').trim().toLowerCase();
+        const idx = SIZE_ORDER.indexOf(v);
+        if (idx !== -1) return idx;
+        const num = parseFloat(v.replace(/[^\d.-]/g, ''));
+        if (!isNaN(num)) return 1000 + num; // numeric sizes after named sizes
+        return 9999; // unknown/empty last
+    }
+
     headers.forEach(th => {
         th.style.cursor = 'pointer';
         th.style.userSelect = 'none';
@@ -205,18 +230,35 @@
             headers.forEach(h => h.querySelector('.sort-icon').textContent = '⇅');
             th.querySelector('.sort-icon').textContent = ascending ? '↑' : '↓';
 
-            const rows = Array.from(tbody.querySelectorAll('tr')).filter(r => !r.querySelector('.empty-state'));
+            // Only sort the main product rows (skip variant-detail and empty-state rows)
+            const rows = Array.from(tbody.querySelectorAll('tr.inventory-row'));
             rows.sort((a, b) => {
-                let aVal = a.cells[col].textContent.trim();
-                let bVal = b.cells[col].textContent.trim();
+                const aCell = a.cells[col];
+                const bCell = b.cells[col];
+                let aVal = aCell ? aCell.textContent.trim() : '';
+                let bVal = bCell ? bCell.textContent.trim() : '';
                 if (type === 'number') {
                     aVal = parseFloat(aVal.replace(/[^\d.-]/g, '')) || 0;
                     bVal = parseFloat(bVal.replace(/[^\d.-]/g, '')) || 0;
                     return ascending ? aVal - bVal : bVal - aVal;
                 }
-                return ascending ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                if (type === 'size') {
+                    const aRank = sizeRank(aVal);
+                    const bRank = sizeRank(bVal);
+                    return ascending ? aRank - bRank : bRank - aRank;
+                }
+                // Numeric-aware comparison so SKUs like "2" / "10" / "100" sort correctly
+                const cmp = aVal.localeCompare(bVal, undefined, { numeric: true, sensitivity: 'base' });
+                return ascending ? cmp : -cmp;
             });
-            rows.forEach(r => tbody.appendChild(r));
+            // Re-append each product row followed by its variant-detail row (if any)
+            rows.forEach(r => {
+                tbody.appendChild(r);
+                const detail = document.getElementById('variants-' + r.dataset.productId);
+                if (detail) tbody.appendChild(detail);
+                const billsDetail = document.getElementById('bills-' + r.dataset.productId);
+                if (billsDetail) tbody.appendChild(billsDetail);
+            });
         });
     });
 })();
@@ -278,6 +320,62 @@
 </script>
 <script>
 (() => {
+    // "Bills" toggle: show bill numbers where this product (SKU) was sold
+    function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[c]));
+    }
+
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.bills-toggle');
+        if (!btn) return;
+        e.stopPropagation();
+
+        const productId = btn.dataset.productId;
+        const detailRow = document.getElementById('bills-' + productId);
+        const inner = document.getElementById('bills-inner-' + productId);
+        if (!detailRow) return;
+
+        const isOpen = detailRow.style.display !== 'none';
+        if (isOpen) {
+            detailRow.style.display = 'none';
+            return;
+        }
+
+        detailRow.style.display = '';
+        inner.innerHTML = '<span style="color:#6b7280;font-size:0.9rem;">Loading bills…</span>';
+
+        fetch('/api/product/' + productId + '/bills')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.bills || data.bills.length === 0) {
+                    inner.innerHTML = '<span style="color:#6b7280;font-size:0.9rem;">No bills found for this product.</span>';
+                    return;
+                }
+                let html = '<div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;">';
+                html += '<span style="font-size:0.85rem;font-weight:600;color:#92400e;margin-right:0.25rem;">Sold in bills:</span>';
+                data.bills.forEach(b => {
+                    const num = escapeHtml(b.bill_number || ('#' + b.id));
+                    const date = escapeHtml((b.created_at || '').split(' ')[0]);
+                    const cust = b.customer_name ? ' · ' + escapeHtml(b.customer_name) : '';
+                    html += `<a href="/bills/${b.id}" style="display:flex;align-items:center;gap:0.4rem;padding:0.35rem 0.65rem;background:#fff;border:1px solid #fde68a;border-radius:8px;font-size:0.85rem;color:#1f2937;text-decoration:none;">`;
+                    html += `<span style="font-weight:700;color:#b45309;">${num}</span>`;
+                    html += `<span style="color:#6b7280;">${date}${cust}</span>`;
+                    html += `<span style="color:#6b7280;">×${b.quantity}</span>`;
+                    html += `</a>`;
+                });
+                html += '</div>';
+                inner.innerHTML = html;
+            })
+            .catch(() => {
+                inner.innerHTML = '<span style="color:#dc2626;font-size:0.9rem;">Failed to load bills.</span>';
+            });
+    });
+})();
+</script>
+<script>
+(() => {
     function init() {
         const selectAll = document.getElementById('selectAllProducts');
         const bar = document.getElementById('bulkActionsBar');
@@ -323,6 +421,21 @@
             rowChecks().forEach(c => { c.checked = false; });
             refresh();
         });
+
+        const noVendorBtn = document.getElementById('selectNoVendorBtn');
+        if (noVendorBtn) {
+            noVendorBtn.addEventListener('click', () => {
+                let matched = 0;
+                rowChecks().forEach(c => {
+                    const row = c.closest('.inventory-row');
+                    const hasVendor = row && row.dataset.hasVendor === '1';
+                    c.checked = !hasVendor;
+                    if (c.checked) matched++;
+                });
+                refresh();
+                if (matched === 0) alert('All products already have a vendor assigned.');
+            });
+        }
 
         assignBtn.addEventListener('click', () => {
             const checked = rowChecks().filter(c => c.checked);
