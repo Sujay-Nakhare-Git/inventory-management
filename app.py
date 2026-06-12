@@ -961,6 +961,50 @@ def delete_product(product_id):
     return redirect(url_for("inventory"))
 
 
+@app.route("/inventory/bulk-assign-vendor", methods=["POST"])
+def bulk_assign_vendor():
+    db = get_db()
+    product_ids = request.form.getlist("product_ids")
+    vendor_id = request.form.get("vendor_id", "").strip()
+
+    if not product_ids:
+        flash("No products selected.", "error")
+        return redirect(url_for("inventory"))
+
+    try:
+        ids = [int(pid) for pid in product_ids]
+    except ValueError:
+        flash("Invalid product selection.", "error")
+        return redirect(url_for("inventory"))
+
+    vendor_value = None
+    vendor_label = "No Vendor"
+    if vendor_id:
+        vendor = db.execute(
+            "SELECT id, name FROM vendors WHERE id = ?", (vendor_id,)
+        ).fetchone()
+        if not vendor:
+            flash("Selected vendor not found.", "error")
+            return redirect(url_for("inventory"))
+        vendor_value = vendor["id"]
+        vendor_label = vendor["name"]
+
+    placeholders = ",".join("?" for _ in ids)
+    db.execute(
+        f"UPDATE products SET vendor_id = ?, updated_at = datetime('now','+5 hours','+30 minutes') "
+        f"WHERE id IN ({placeholders})",
+        [vendor_value, *ids],
+    )
+    db.commit()
+    log_update(
+        "Vendor Assigned",
+        f"Set vendor to '{vendor_label}' for {len(ids)} product(s)",
+        "inventory",
+    )
+    flash(f"Assigned vendor '{vendor_label}' to {len(ids)} product(s).", "success")
+    return redirect(url_for("inventory"))
+
+
 # ── SKU Generation ────────────────────────────────────────────────────────
 def generate_sku(db, category_id):
     """Generate next sequential unique SKU for a category."""

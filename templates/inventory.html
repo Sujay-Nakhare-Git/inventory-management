@@ -41,24 +41,43 @@
     </form>
 </div>
 
+<form id="bulkVendorForm" method="POST" action="{{ url_for('bulk_assign_vendor') }}"></form>
+<div class="card" id="bulkActionsBar" style="display:none;">
+    <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;">
+        <span><strong id="bulkSelectedCount">0</strong> selected</span>
+        <select id="bulkVendorSelect" class="input">
+            <option value="">No Vendor</option>
+            {% for v in vendors %}
+            <option value="{{ v.id }}">{{ v.name }}</option>
+            {% endfor %}
+        </select>
+        <button type="button" id="bulkAssignBtn" class="btn btn-primary">Assign Vendor</button>
+        <button type="button" id="bulkClearBtn" class="btn btn-outline">Clear selection</button>
+    </div>
+</div>
+
 <div class="card">
     <div class="table-wrapper">
         <table>
             <thead>
                 <tr>
+                    <th style="width:36px;"><input type="checkbox" id="selectAllProducts" title="Select all"></th>
                     <th>Image</th>
-                    <th class="sortable" data-col="1" data-type="string">SKU <span class="sort-icon">⇅</span></th>
-                    <th class="sortable" data-col="2" data-type="string">Category <span class="sort-icon">⇅</span></th>
-                    <th class="sortable" data-col="3" data-type="string">Size <span class="sort-icon">⇅</span></th>
-                    <th class="sortable" data-col="4" data-type="number">Cost (₹) <span class="sort-icon">⇅</span></th>
-                    <th class="sortable" data-col="5" data-type="number">Price (₹) <span class="sort-icon">⇅</span></th>
-                    <th class="sortable" data-col="6" data-type="number">Qty <span class="sort-icon">⇅</span></th>
+                    <th class="sortable" data-col="2" data-type="string">SKU <span class="sort-icon">⇅</span></th>
+                    <th class="sortable" data-col="3" data-type="string">Category <span class="sort-icon">⇅</span></th>
+                    <th class="sortable" data-col="4" data-type="string">Size <span class="sort-icon">⇅</span></th>
+                    <th class="sortable" data-col="5" data-type="number">Cost (₹) <span class="sort-icon">⇅</span></th>
+                    <th class="sortable" data-col="6" data-type="number">Price (₹) <span class="sort-icon">⇅</span></th>
+                    <th class="sortable" data-col="7" data-type="number">Qty <span class="sort-icon">⇅</span></th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for p in products %}
                 <tr class="inventory-row{% if p.product_group_id %} has-variants{% endif %}" data-product-id="{{ p.id }}" {% if p.product_group_id %}style="cursor:pointer;" title="Click to see size variants"{% endif %}>
+                    <td>
+                        <input type="checkbox" class="row-select" value="{{ p.id }}">
+                    </td>
                     <td>
                         {% if p.image_filename %}
                         <button type="button" class="inventory-thumb-button image-preview-trigger" data-image-src="{{ url_for('static', filename='product_images/' ~ p.image_filename) }}" data-image-alt="{{ p.name }}" data-image-title="{{ p.name }}">
@@ -92,7 +111,7 @@
                     </td>
                 </tr>
                 <tr class="variant-detail-row" id="variants-{{ p.id }}" style="display:none;">
-                    <td colspan="8" style="padding:0;">
+                    <td colspan="9" style="padding:0;">
                         <div class="variant-detail-panel" style="background:#f0f9ff;border-top:2px solid #bfdbfe;padding:0.75rem 1rem;">
                             <div class="variant-detail-inner" id="variants-inner-{{ p.id }}">
                                 <span style="color:#6b7280;font-size:0.9rem;">Loading variants…</span>
@@ -101,7 +120,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="10" class="empty-state">No products found. Add your first product!</td></tr>
+                <tr><td colspan="9" class="empty-state">No products found. Add your first product!</td></tr>
                 {% endfor %}
             </tbody>
         </table>
