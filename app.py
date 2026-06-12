@@ -340,6 +340,8 @@ def init_db():
         db.execute("ALTER TABLE expenses ADD COLUMN vendor TEXT")
     if "bill_image_path" not in expense_columns:
         db.execute("ALTER TABLE expenses ADD COLUMN bill_image_path TEXT")
+    if "payment_mode" not in expense_columns:
+        db.execute("ALTER TABLE expenses ADD COLUMN payment_mode TEXT NOT NULL DEFAULT 'Cash'")
 
     bills_columns = {
         row["name"] for row in db.execute("PRAGMA table_info(bills)").fetchall()
@@ -1101,6 +1103,9 @@ def unlink_variant(product_id):
 
 @app.route("/categories", methods=["GET", "POST"])
 def categories():
+    if not admin_authenticated():
+        flash("Please unlock Admin to manage Categories.", "error")
+        return redirect(url_for("admin", next=url_for("categories")))
     db = get_db()
     if request.method == "POST":
         name = request.form["name"].strip()
@@ -2889,6 +2894,9 @@ def add_expense():
     description = request.form.get("description", "").strip()
     category = request.form.get("category", "General")
     amount = float(request.form.get("amount", 0))
+    payment_mode = request.form.get("payment_mode", "Cash").strip()
+    if payment_mode not in ALLOWED_PAYMENT_METHODS:
+        payment_mode = "Cash"
     include_in_pl = 1 if request.form.get("include_in_pl") else 0
     bill_image = request.files.get("bill_image")
     if title and amount > 0:
@@ -2900,9 +2908,9 @@ def add_expense():
             bill_image_path = save_expense_bill_image(bill_image, title)
 
         db.execute(
-            "INSERT INTO expenses (title, vendor, description, category, amount, bill_image_path, include_in_pl, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
-            (title, vendor or None, description, category, amount, bill_image_path, include_in_pl),
+            "INSERT INTO expenses (title, vendor, description, category, amount, payment_mode, bill_image_path, include_in_pl, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
+            (title, vendor or None, description, category, amount, payment_mode, bill_image_path, include_in_pl),
         )
         db.commit()
         log_update("Expense Added", f"{title} — ₹{amount} ({category})", "expense")
@@ -2930,6 +2938,9 @@ def edit_expense(expense_id):
         description = request.form.get("description", "").strip()
         category = request.form.get("category", "General")
         amount = float(request.form.get("amount", 0))
+        payment_mode = request.form.get("payment_mode", "Cash").strip()
+        if payment_mode not in ALLOWED_PAYMENT_METHODS:
+            payment_mode = "Cash"
         include_in_pl = 1 if request.form.get("include_in_pl") else 0
         remove_image = request.form.get("remove_bill_image") == "1"
         bill_image = request.files.get("bill_image")
@@ -2956,8 +2967,8 @@ def edit_expense(expense_id):
             bill_image_path = save_expense_bill_image(bill_image, title)
 
         db.execute(
-            "UPDATE expenses SET title = ?, vendor = ?, description = ?, category = ?, amount = ?, bill_image_path = ?, include_in_pl = ? WHERE id = ?",
-            (title, vendor or None, description, category, amount, bill_image_path, include_in_pl, expense_id),
+            "UPDATE expenses SET title = ?, vendor = ?, description = ?, category = ?, amount = ?, payment_mode = ?, bill_image_path = ?, include_in_pl = ? WHERE id = ?",
+            (title, vendor or None, description, category, amount, payment_mode, bill_image_path, include_in_pl, expense_id),
         )
         db.commit()
         log_update("Expense Updated", f"{title} — ₹{amount} ({category})", "expense")
@@ -3151,10 +3162,11 @@ def export_expenses():
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["ID", "Title", "Vendor", "Description", "Category", "Amount (₹)", "In P&L", "Date"])
+    writer.writerow(["ID", "Title", "Vendor", "Description", "Category", "Payment Mode", "Amount (₹)", "In P&L", "Date"])
     for r in rows:
         writer.writerow([r["id"], r["title"], r["vendor"] or "", r["description"] or "",
-                         r["category"], r["amount"], "Yes" if r["include_in_pl"] else "No", r["created_at"]])
+                         r["category"], r["payment_mode"] or "Cash", r["amount"],
+                         "Yes" if r["include_in_pl"] else "No", r["created_at"]])
 
     filename = f"expenses_{date or 'all'}.csv"
     return Response(

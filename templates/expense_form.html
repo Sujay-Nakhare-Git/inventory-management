@@ -30,6 +30,14 @@
                     {% endfor %}
                 </select>
             </div>
+            <div class="form-group">
+                <label for="payment_mode">Payment Mode</label>
+                <select id="payment_mode" name="payment_mode" class="input">
+                    {% for pm in ['Cash', 'UPI', 'Card', 'Bank Transfer'] %}
+                    <option value="{{ pm }}" {% if expense.payment_mode == pm %}selected{% endif %}>{{ pm }}</option>
+                    {% endfor %}
+                </select>
+            </div>
             <div class="form-group" style="grid-column: 1/-1;">
                 <label for="description">Description</label>
                 <textarea id="description" name="description" class="input" rows="2">{{ expense.description or '' }}</textarea>

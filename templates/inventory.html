@@ -4,7 +4,10 @@
 {% block content %}
 <div class="page-header">
     <h2>Inventory</h2>
-    <a href="{{ url_for('add_product') }}" class="btn btn-primary">+ Add Product</a>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a href="{{ url_for('add_product') }}" class="btn btn-primary">+ Add Product</a>
+        <a href="{{ url_for('admin') }}" class="btn btn-outline">← Back to Admin</a>
+    </div>
 </div>
 
 <div class="card">

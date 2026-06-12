@@ -43,6 +43,15 @@
                     <option value="Other">Other</option>
                 </select>
             </div>
+            <div class="form-group">
+                <label for="payment_mode">Payment Mode</label>
+                <select id="payment_mode" name="payment_mode" class="input">
+                    <option value="Cash" selected>Cash</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Card">Card</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+            </div>
             <div class="form-group" style="grid-column: 1/-1;">
                 <label for="description">Description</label>
                 <textarea id="description" name="description" class="input" rows="2" placeholder="Optional details..."></textarea>
@@ -165,6 +174,7 @@
                     <th>Title</th>
                     <th>Vendor</th>
                     <th>Category</th>
+                    <th>Payment</th>
                     <th>P&L</th>
                     <th>Description</th>
                     <th>Bill</th>
@@ -179,6 +189,7 @@
                     <td><strong>{{ e.title }}</strong></td>
                     <td>{{ e.vendor or '—' }}</td>
                     <td><span class="badge badge-info">{{ e.category }}</span></td>
+                    <td>{{ e.payment_mode or 'Cash' }}</td>
                     <td style="text-align:center;">
                         {% if e.include_in_pl %}✅{% else %}☐{% endif %}
                     </td>
@@ -201,7 +212,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="9" class="empty-state">No expenses recorded yet.</td></tr>
+                <tr><td colspan="10" class="empty-state">No expenses recorded yet.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
