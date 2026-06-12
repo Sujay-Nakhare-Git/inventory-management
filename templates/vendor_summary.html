@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Vendor Summary — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>📊 Vendor Sale &amp; Stock Summary</h2>
+    <a href="{{ url_for('admin') }}" class="btn btn-outline">← Back to Admin</a>
+</div>
+
+{% if summary %}
+<div class="stats-grid" style="margin-bottom:1rem;">
+    <div class="card stat-card stat-blue" style="text-align:center;">
+        <div class="stat-value">{{ totals.total_stock }}</div>
+        <div class="stat-label">Total Stock (units)</div>
+    </div>
+    <div class="card stat-card stat-gold" style="text-align:center;">
+        <div class="stat-value">₹{{ "{:,.2f}".format(totals.stock_cost_value) }}</div>
+        <div class="stat-label">Stock Value (Cost)</div>
+    </div>
+    <div class="card stat-card stat-coral" style="text-align:center;">
+        <div class="stat-value">₹{{ "{:,.2f}".format(totals.sold_amount) }}</div>
+        <div class="stat-label">Total Sales</div>
+    </div>
+    <div class="card stat-card stat-green" style="text-align:center;">
+        <div class="stat-value">₹{{ "{:,.2f}".format(totals.gross_profit) }}</div>
+        <div class="stat-label">Gross Profit</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-title">Per-Vendor Breakdown</div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Vendor</th>
+                    <th>Products</th>
+                    <th>Stock Qty</th>
+                    <th>Stock Value (Cost)</th>
+                    <th>Stock Value (Retail)</th>
+                    <th>Sold Qty</th>
+                    <th>Sales Amount</th>
+                    <th>Bills</th>
+                    <th>Gross Profit</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in summary %}
+                <tr>
+                    <td><strong>{{ row.vendor_name }}</strong></td>
+                    <td>{{ row.product_count }}</td>
+                    <td>{{ row.total_stock }}</td>
+                    <td>₹{{ "{:,.2f}".format(row.stock_cost_value) }}</td>
+                    <td>₹{{ "{:,.2f}".format(row.stock_retail_value) }}</td>
+                    <td>{{ row.sold_qty }}</td>
+                    <td>₹{{ "{:,.2f}".format(row.sold_amount) }}</td>
+                    <td>{{ row.bills_count }}</td>
+                    <td><strong>₹{{ "{:,.2f}".format(row.gross_profit) }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <p style="color:#95a5a6;text-align:center;">No vendors yet. Add vendors from <a href="{{ url_for('vendors') }}">Admin → Vendors</a>.</p>
+</div>
+{% endif %}
+{% endblock %}

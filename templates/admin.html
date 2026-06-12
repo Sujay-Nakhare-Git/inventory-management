@@ -14,7 +14,7 @@
     <div class="pl-login-card">
         <div class="pl-login-icon">🔐</div>
         <h2>Admin Access</h2>
-        <p>Enter password to access Daily Summary, Expenses, and Profit & Loss.</p>
+        <p>Enter password to access the admin tabs below.</p>
         <form method="POST" action="{{ url_for('admin') }}">
             <input type="hidden" name="next_url" value="{{ next_url }}">
             <div class="form-group">
@@ -82,339 +82,70 @@
         </div>
     </div>
 
-    <div class="card stat-card" style="text-align:left;border:2px solid #2c3e50;">
-        <div class="card-title">📲 WhatsApp Test</div>
-        <p class="page-desc">Send one fixed test message and show exact API error instantly.</p>
-        <div style="margin-top:0.75rem;display:flex;gap:0.5rem;align-items:center;">
-            <input type="text" id="waTestPhone" class="input" placeholder="10-digit phone" style="flex:1;" maxlength="15">
-            <button type="button" id="waTestBtn" class="btn btn-primary" onclick="runWhatsappTest()">Test</button>
-        </div>
-        <p id="waTestResult" style="margin-top:0.6rem;color:#555;min-height:1.2em;"></p>
-    </div>
-</div>
-
-<!-- Initial Investments -->
-<div style="margin-top:2rem;">
-    <h3 style="margin-bottom:1rem;">💰 Initial Investments</h3>
-
-    <div class="card form-card" style="margin-bottom:1rem;">
-        <h4 style="margin-bottom:0.75rem;">Add Investment</h4>
-        <form method="POST" action="{{ url_for('add_investment') }}">
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="inv_description">Description *</label>
-                    <input type="text" id="inv_description" name="description" class="input" required placeholder="e.g. Shop Setup, Initial Stock Purchase">
-                </div>
-                <div class="form-group">
-                    <label for="inv_amount">Amount (₹) *</label>
-                    <input type="number" id="inv_amount" name="amount" class="input" step="0.01" min="0.01" required placeholder="0.00">
-                </div>
-                <div class="form-group">
-                    <label for="inv_date">Date *</label>
-                    <input type="date" id="inv_date" name="investment_date" class="input" required>
-                </div>
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Add Investment</button>
-            </div>
-        </form>
-    </div>
-
-    {% if investments %}
-    <div class="card">
-        <div class="expense-total-bar" style="margin-bottom:1rem;">
-            <strong>Total Investment: ₹{{ "{:,.2f}".format(total_investment) }}</strong>
-        </div>
-        <div class="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Description</th>
-                        <th>Amount (₹)</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for inv in investments %}
-                    <tr>
-                        <td>{{ inv.investment_date }}</td>
-                        <td><strong>{{ inv.description }}</strong></td>
-                        <td><strong>₹{{ "{:,.2f}".format(inv.amount) }}</strong></td>
-                        <td>
-                            <form method="POST" action="{{ url_for('delete_investment', investment_id=inv.id) }}" style="display:inline" onsubmit="return confirm('Delete this investment?')">
-                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-    {% else %}
-    <div class="card">
-        <p style="color:#95a5a6;text-align:center;">No investments recorded yet.</p>
-    </div>
-    {% endif %}
-</div>
-
-<!-- Inventory Counts by Category & Size -->
-<div style="margin-top:2rem;">
-    <h3 style="margin-bottom:1rem;">📦 Inventory Overview</h3>
-
-    {% if inventory_totals %}
-    <div class="stats-grid" style="margin-bottom:1rem;">
-        <div class="card stat-card stat-gold" style="text-align:center;">
-            <div class="stat-value">₹{{ "{:,.2f}".format(inventory_totals.total_cost) }}</div>
-            <div class="stat-label">Total Cost Price</div>
-        </div>
-        <div class="card stat-card stat-green" style="text-align:center;">
-            <div class="stat-value">₹{{ "{:,.2f}".format(inventory_totals.total_selling) }}</div>
-            <div class="stat-label">Total Selling Price</div>
-        </div>
-        <div class="card stat-card stat-blue" style="text-align:center;">
-            <div class="stat-value">{{ inventory_totals.total_items }}</div>
-            <div class="stat-label">Total Items in Stock</div>
-        </div>
-    </div>
-    {% endif %}
-
-    <div class="stats-grid">
-        <div class="card" style="text-align:left;">
-            <div class="card-title">🏷️ By Category</div>
-            <form method="GET" action="{{ url_for('admin') }}" style="margin-top:0.75rem;display:flex;gap:0.5rem;align-items:center;">
-                {% if filter_size %}<input type="hidden" name="filter_size" value="{{ filter_size }}">{% endif %}
-                <select name="filter_category" class="input" style="font-size:0.85rem;padding:0.3rem 0.5rem;">
-                    <option value="">All Categories</option>
-                    {% for c in all_categories %}
-                    <option value="{{ c.name }}" {% if filter_category == c.name %}selected{% endif %}>{{ c.name }}</option>
-                    {% endfor %}
-                </select>
-                <button type="submit" class="btn btn-sm btn-primary">Filter</button>
-                {% if filter_category %}<a href="{{ url_for('admin', filter_size=filter_size) }}" class="btn btn-sm btn-outline">Clear</a>{% endif %}
-            </form>
-            {% if category_counts %}
-            <div style="overflow-x:auto;margin-top:0.75rem;">
-                <table style="width:100%;border-collapse:collapse;">
-                    <thead>
-                        <tr style="border-bottom:2px solid #ecf0f1;">
-                            <th style="text-align:left;padding:0.5rem 0.75rem;font-size:0.9rem;">Category</th>
-                            <th style="text-align:right;padding:0.5rem 0.75rem;font-size:0.9rem;">Products</th>
-                            <th style="text-align:right;padding:0.5rem 0.75rem;font-size:0.9rem;">Stock</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in category_counts %}
-                        <tr style="border-bottom:1px solid #f0f0f0;">
-                            <td style="padding:0.4rem 0.75rem;">{{ row.category }}</td>
-                            <td style="padding:0.4rem 0.75rem;text-align:right;">{{ row.product_count }}</td>
-                            <td style="padding:0.4rem 0.75rem;text-align:right;font-weight:bold;">{{ row.total_stock }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <p style="color:#95a5a6;margin-top:0.5rem;">No products added yet.</p>
-            {% endif %}
-        </div>
-
-        <div class="card" style="text-align:left;">
-            <div class="card-title">📏 By Size</div>
-            <form method="GET" action="{{ url_for('admin') }}" style="margin-top:0.75rem;display:flex;gap:0.5rem;align-items:center;">
-                {% if filter_category %}<input type="hidden" name="filter_category" value="{{ filter_category }}">{% endif %}
-                <select name="filter_size" class="input" style="font-size:0.85rem;padding:0.3rem 0.5rem;">
-                    <option value="">All Sizes</option>
-                    {% for s in all_sizes %}
-                    <option value="{{ s.name }}" {% if filter_size == s.name %}selected{% endif %}>{{ s.name }}</option>
-                    {% endfor %}
-                </select>
-                <button type="submit" class="btn btn-sm btn-primary">Filter</button>
-                {% if filter_size %}<a href="{{ url_for('admin', filter_category=filter_category) }}" class="btn btn-sm btn-outline">Clear</a>{% endif %}
-            </form>
-            {% if size_counts %}
-            <div style="overflow-x:auto;margin-top:0.75rem;">
-                <table style="width:100%;border-collapse:collapse;">
-                    <thead>
-                        <tr style="border-bottom:2px solid #ecf0f1;">
-                            <th style="text-align:left;padding:0.5rem 0.75rem;font-size:0.9rem;">Size</th>
-                            <th style="text-align:left;padding:0.5rem 0.75rem;font-size:0.9rem;">Category</th>
-                            <th style="text-align:right;padding:0.5rem 0.75rem;font-size:0.9rem;">Products</th>
-                            <th style="text-align:right;padding:0.5rem 0.75rem;font-size:0.9rem;">Stock</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in size_counts %}
-                        <tr style="border-bottom:1px solid #f0f0f0;">
-                            <td style="padding:0.4rem 0.75rem;">{{ row.size }}</td>
-                            <td style="padding:0.4rem 0.75rem;">{{ row.category }}</td>
-                            <td style="padding:0.4rem 0.75rem;text-align:right;">{{ row.product_count }}</td>
-                            <td style="padding:0.4rem 0.75rem;text-align:right;font-weight:bold;">{{ row.total_stock }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <p style="color:#95a5a6;margin-top:0.5rem;">No products added yet.</p>
-            {% endif %}
-        </div>
-    </div>
-</div>
-
-<!-- Sales Summary -->
-<div style="margin-top:2rem;">
-    <h3 style="margin-bottom:1rem;">🧾 Sales Summary</h3>
-
-    {% if sales_breakdown %}
-    <div class="stats-grid" style="margin-bottom:1rem;">
-        <div class="card stat-card stat-coral" style="text-align:center;">
-            <div class="stat-value">{{ top_selling_category.name if top_selling_category else '—' }}</div>
-            <div class="stat-label">High Selling Category</div>
-            {% if top_selling_category %}
-            <p class="page-desc" style="margin-top:0.5rem;">{{ top_selling_category.sold_qty }} pcs • ₹{{ "{:,.2f}".format(top_selling_category.sold_amount) }}</p>
-            {% endif %}
-        </div>
-        <div class="card stat-card stat-gold" style="text-align:center;">
-            <div class="stat-value">{{ top_selling_size.name if top_selling_size else '—' }}</div>
-            <div class="stat-label">High Selling Size</div>
-            {% if top_selling_size %}
-            <p class="page-desc" style="margin-top:0.5rem;">{{ top_selling_size.sold_qty }} pcs • ₹{{ "{:,.2f}".format(top_selling_size.sold_amount) }}</p>
-            {% endif %}
+    <div class="card stat-card stat-blue" style="text-align:left;">
+        <div class="card-title">🗂️ Categories</div>
+        <p class="page-desc">Add, edit, and manage product categories and SKU codes.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('categories') }}" class="btn btn-primary">Open Categories</a>
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-title">Category x Size Sold (Descending)</div>
-        <div class="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Rank</th>
-                        <th>Category</th>
-                        <th>Size</th>
-                        <th>Sold Qty</th>
-                        <th>Sales Amount</th>
-                        <th>Bills Count</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in sales_breakdown %}
-                    <tr>
-                        <td>{{ loop.index }}</td>
-                        <td><strong>{{ row.category }}</strong></td>
-                        <td>{{ row.size }}</td>
-                        <td>{{ row.sold_qty }}</td>
-                        <td>₹{{ "{:,.2f}".format(row.sold_amount) }}</td>
-                        <td>{{ row.bills_count }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <div class="card stat-card stat-gold" style="text-align:left;">
+        <div class="card-title">🏭 Vendors</div>
+        <p class="page-desc">Add and update vendor details used across inventory.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('vendors') }}" class="btn btn-primary">Open Vendors</a>
         </div>
     </div>
-    {% else %}
-    <div class="card">
-        <p style="color:#95a5a6;text-align:center;">No sales data available yet.</p>
-    </div>
-    {% endif %}
-</div>
 
-<!-- Clean All Data -->
-<div class="stats-grid" style="margin-top:2rem;">
+    <div class="card stat-card stat-gold" style="text-align:left;">
+        <div class="card-title">📊 Vendor Summary</div>
+        <p class="page-desc">See per-vendor stock value, units sold, and sales totals.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('vendor_summary') }}" class="btn btn-primary">Open Vendor Summary</a>
+        </div>
+    </div>
+
+    <div class="card stat-card stat-green" style="text-align:left;">
+        <div class="card-title">📦 Inventory Overview</div>
+        <p class="page-desc">Stock totals and counts broken down by category and size.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('admin_inventory_overview') }}" class="btn btn-primary">Open Inventory Overview</a>
+        </div>
+    </div>
+
+    <div class="card stat-card stat-coral" style="text-align:left;">
+        <div class="card-title">🧾 Sales Summary</div>
+        <p class="page-desc">Top-selling category and size with category × size breakdown.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('admin_sales_summary') }}" class="btn btn-primary">Open Sales Summary</a>
+        </div>
+    </div>
+
+    <div class="card stat-card stat-green" style="text-align:left;">
+        <div class="card-title">💰 Initial Investments</div>
+        <p class="page-desc">Record and review initial business investments.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('admin_investments') }}" class="btn btn-primary">Open Investments</a>
+        </div>
+    </div>
+
     <div class="card stat-card" style="text-align:left;">
-        <div class="card-title">🏷️ Print Inventory Labels</div>
-        <p class="page-desc">Generate 2&quot; × 3&quot; vertical labels with SKU, Price, and Size for one, several, or all products.</p>
+        <div class="card-title">🏷️ Print Labels</div>
+        <p class="page-desc">Generate 2&quot; × 3&quot; labels with SKU, Price, and Size.</p>
         <div style="margin-top:1rem;">
             <a href="{{ url_for('inventory_labels') }}" class="btn btn-primary">Open Label Generator</a>
         </div>
     </div>
-    <div class="card stat-card" style="text-align:left; border:2px solid #e74c3c;">
-        <div class="card-title">🗑️ Clean All Data</div>
-        <p class="page-desc">Permanently delete all bills, expenses, refunds, and history. Products and categories are kept. This action cannot be undone.</p>
+
+    <div class="card stat-card" style="text-align:left;border:2px solid #e74c3c;">
+        <div class="card-title">🛠️ Tools &amp; Danger Zone</div>
+        <p class="page-desc">WhatsApp test message and the option to clean all data.</p>
         <div style="margin-top:1rem;">
-            <button type="button" class="btn" style="background:#e74c3c;color:#fff;" onclick="document.getElementById('cleanDataModal').style.display='flex'">Clean All Data</button>
+            <a href="{{ url_for('admin_tools') }}" class="btn btn-primary">Open Tools</a>
         </div>
     </div>
 </div>
-
-<!-- Clean Data Confirmation Modal -->
-<div id="cleanDataModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:12px;padding:2rem;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
-        <h3 style="color:#e74c3c;margin-bottom:0.5rem;">⚠️ Delete All Data</h3>
-        <p style="color:#555;margin-bottom:1rem;">This will permanently delete <strong>all bills, expenses, refunds, and history</strong>. Products and categories will be kept.</p>
-        <form method="POST" action="{{ url_for('clean_all_data') }}">
-            <div class="form-group">
-                <label>Type <strong>DELETE ALL DATA</strong> to confirm:</label>
-                <input type="text" name="confirm" class="input" placeholder="DELETE ALL DATA" required autocomplete="off">
-            </div>
-            <div class="form-group">
-                <label>Re-enter Admin Password:</label>
-                <input type="password" name="password" class="input" placeholder="Admin password" required>
-            </div>
-            <div style="display:flex;gap:0.5rem;margin-top:1rem;">
-                <button type="button" class="btn btn-outline" style="flex:1;" onclick="document.getElementById('cleanDataModal').style.display='none'">Cancel</button>
-                <button type="submit" class="btn" style="flex:1;background:#e74c3c;color:#fff;">Delete Everything</button>
-            </div>
-        </form>
-    </div>
-</div>
 {% endif %}
 {% endblock %}
 
-{% block scripts %}
-{% if not locked %}
-<script>
-async function runWhatsappTest() {
-    const phoneInput = document.getElementById('waTestPhone');
-    const resultEl = document.getElementById('waTestResult');
-    const btn = document.getElementById('waTestBtn');
-    if (!phoneInput || !resultEl || !btn) {
-        return;
-    }
-
-    const phone = (phoneInput.value || '').trim();
-    if (!phone) {
-        resultEl.style.color = '#c0392b';
-        resultEl.textContent = 'Enter a phone number first.';
-        return;
-    }
-
-    btn.disabled = true;
-    const oldText = btn.textContent;
-    btn.textContent = 'Testing...';
-    resultEl.style.color = '#555';
-    resultEl.textContent = 'Sending test message...';
-
-    try {
-        const response = await fetch('/admin/whatsapp-test', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone })
-        });
-        const data = await response.json().catch(() => ({}));
-
-        if (data.sent) {
-            resultEl.style.color = '#1e8449';
-            resultEl.textContent = 'Success: test message sent.' + (data.sid ? ` SID: ${data.sid}` : '');
-            return;
-        }
-
-        resultEl.style.color = '#c0392b';
-        const reason = data.reason || `http_${response.status}`;
-        const error = (data.error || '').toString().trim();
-        resultEl.textContent = error
-            ? `Failed (${reason}): ${error}`
-            : `Failed (${reason}).`;
-    } catch (err) {
-        resultEl.style.color = '#c0392b';
-        resultEl.textContent = 'Request failed: ' + err;
-    } finally {
-        btn.disabled = false;
-        btn.textContent = oldText;
-    }
-}
-</script>
-{% endif %}
-{% endblock %}

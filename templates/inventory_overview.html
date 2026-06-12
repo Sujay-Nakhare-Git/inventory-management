@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Inventory Overview — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>📦 Inventory Overview</h2>
+    <a href="{{ url_for('admin') }}" class="btn btn-outline">← Back to Admin</a>
+</div>
+
+{% if inventory_totals %}
+<div class="stats-grid" style="margin-bottom:1rem;">
+    <div class="card stat-card stat-gold" style="text-align:center;">
+        <div class="stat-value">₹{{ "{:,.2f}".format(inventory_totals.total_cost) }}</div>
+        <div class="stat-label">Total Cost Price</div>
+    </div>
+    <div class="card stat-card stat-green" style="text-align:center;">
+        <div class="stat-value">₹{{ "{:,.2f}".format(inventory_totals.total_selling) }}</div>
+        <div class="stat-label">Total Selling Price</div>
+    </div>
+    <div class="card stat-card stat-blue" style="text-align:center;">
+        <div class="stat-value">{{ inventory_totals.total_items }}</div>
+        <div class="stat-label">Total Items in Stock</div>
+    </div>
+</div>
+{% endif %}
+
+<div class="stats-grid">
+    <div class="card" style="text-align:left;">
+        <div class="card-title">🏷️ By Category</div>
+        <form method="GET" action="{{ url_for('admin_inventory_overview') }}" style="margin-top:0.75rem;display:flex;gap:0.5rem;align-items:center;">
+            {% if filter_size %}<input type="hidden" name="filter_size" value="{{ filter_size }}">{% endif %}
+            <select name="filter_category" class="input" style="font-size:0.85rem;padding:0.3rem 0.5rem;">
+                <option value="">All Categories</option>
+                {% for c in all_categories %}
+                <option value="{{ c.name }}" {% if filter_category == c.name %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+            {% if filter_category %}<a href="{{ url_for('admin_inventory_overview', filter_size=filter_size) }}" class="btn btn-sm btn-outline">Clear</a>{% endif %}
+        </form>
+        {% if category_counts %}
+        <div style="overflow-x:auto;margin-top:0.75rem;">
+            <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr style="border-bottom:2px solid #ecf0f1;">
+                        <th style="text-align:left;padding:0.5rem 0.75rem;font-size:0.9rem;">Category</th>
+                        <th style="text-align:right;padding:0.5rem 0.75rem;font-size:0.9rem;">Products</th>
+                        <th style="text-align:right;padding:0.5rem 0.75rem;font-size:0.9rem;">Stock</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in category_counts %}
+                    <tr style="border-bottom:1px solid #f0f0f0;">
+                        <td style="padding:0.4rem 0.75rem;">{{ row.category }}</td>
+                        <td style="padding:0.4rem 0.75rem;text-align:right;">{{ row.product_count }}</td>
+                        <td style="padding:0.4rem 0.75rem;text-align:right;font-weight:bold;">{{ row.total_stock }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p style="color:#95a5a6;margin-top:0.5rem;">No products added yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="card" style="text-align:left;">
+        <div class="card-title">📏 By Size</div>
+        <form method="GET" action="{{ url_for('admin_inventory_overview') }}" style="margin-top:0.75rem;display:flex;gap:0.5rem;align-items:center;">
+            {% if filter_category %}<input type="hidden" name="filter_category" value="{{ filter_category }}">{% endif %}
+            <select name="filter_size" class="input" style="font-size:0.85rem;padding:0.3rem 0.5rem;">
+                <option value="">All Sizes</option>
+                {% for s in all_sizes %}
+                <option value="{{ s.name }}" {% if filter_size == s.name %}selected{% endif %}>{{ s.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+            {% if filter_size %}<a href="{{ url_for('admin_inventory_overview', filter_category=filter_category) }}" class="btn btn-sm btn-outline">Clear</a>{% endif %}
+        </form>
+        {% if size_counts %}
+        <div style="overflow-x:auto;margin-top:0.75rem;">
+            <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr style="border-bottom:2px solid #ecf0f1;">
+                        <th style="text-align:left;padding:0.5rem 0.75rem;font-size:0.9rem;">Size</th>
+                        <th style="text-align:left;padding:0.5rem 0.75rem;font-size:0.9rem;">Category</th>
+                        <th style="text-align:right;padding:0.5rem 0.75rem;font-size:0.9rem;">Products</th>
+                        <th style="text-align:right;padding:0.5rem 0.75rem;font-size:0.9rem;">Stock</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in size_counts %}
+                    <tr style="border-bottom:1px solid #f0f0f0;">
+                        <td style="padding:0.4rem 0.75rem;">{{ row.size }}</td>
+                        <td style="padding:0.4rem 0.75rem;">{{ row.category }}</td>
+                        <td style="padding:0.4rem 0.75rem;text-align:right;">{{ row.product_count }}</td>
+                        <td style="padding:0.4rem 0.75rem;text-align:right;font-weight:bold;">{{ row.total_stock }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p style="color:#95a5a6;margin-top:0.5rem;">No products added yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

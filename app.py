@@ -296,6 +296,18 @@ def init_db():
             name TEXT PRIMARY KEY,
             value INTEGER NOT NULL DEFAULT 0
         );
+
+        CREATE TABLE IF NOT EXISTS vendors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            contact_person TEXT,
+            phone TEXT,
+            email TEXT,
+            address TEXT,
+            notes TEXT,
+            created_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes')),
+            updated_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes'))
+        );
     """)
 
     # Seed default categories if empty
@@ -318,6 +330,8 @@ def init_db():
         db.execute("ALTER TABLE products ADD COLUMN image_filename TEXT")
     if "product_group_id" not in product_columns:
         db.execute("ALTER TABLE products ADD COLUMN product_group_id INTEGER")
+    if "vendor_id" not in product_columns:
+        db.execute("ALTER TABLE products ADD COLUMN vendor_id INTEGER")
 
     expense_columns = {
         row["name"] for row in db.execute("PRAGMA table_info(expenses)").fetchall()
@@ -706,9 +720,13 @@ def inventory():
     db = get_db()
     search = request.args.get("search", "").strip()
     category_id = request.args.get("category", "")
+    size_filter = request.args.get("size", "")
+    vendor_filter = request.args.get("vendor", "")
+    in_stock_only = request.args.get("in_stock", "")
     query = (
-        "SELECT p.*, c.name as category_name FROM products p "
-        "LEFT JOIN categories c ON p.category_id = c.id WHERE 1=1"
+        "SELECT p.*, c.name as category_name, v.name as vendor_name FROM products p "
+        "LEFT JOIN categories c ON p.category_id = c.id "
+        "LEFT JOIN vendors v ON p.vendor_id = v.id WHERE 1=1"
     )
     params = []
     if search:
@@ -717,12 +735,34 @@ def inventory():
     if category_id:
         query += " AND p.category_id = ?"
         params.append(category_id)
+    if size_filter:
+        if size_filter == "No Size":
+            query += " AND (p.size IS NULL OR p.size = '')"
+        else:
+            query += " AND p.size = ?"
+            params.append(size_filter)
+    if vendor_filter:
+        if vendor_filter == "No Vendor":
+            query += " AND p.vendor_id IS NULL"
+        else:
+            query += " AND p.vendor_id = ?"
+            params.append(vendor_filter)
+    if in_stock_only:
+        query += " AND p.quantity > 0"
     query += " ORDER BY p.updated_at DESC"
     products = db.execute(query, params).fetchall()
     categories = db.execute("SELECT * FROM categories ORDER BY name").fetchall()
+    all_sizes = db.execute(
+        "SELECT DISTINCT COALESCE(NULLIF(TRIM(size), ''), 'No Size') as name "
+        "FROM products ORDER BY name"
+    ).fetchall()
+    vendors = db.execute("SELECT id, name FROM vendors ORDER BY name").fetchall()
     return render_template(
         "inventory.html", products=products, categories=categories,
         search=search, selected_category=category_id,
+        all_sizes=all_sizes, vendors=vendors,
+        selected_size=size_filter, selected_vendor=vendor_filter,
+        in_stock_only=in_stock_only,
     )
 
 
@@ -732,6 +772,7 @@ def add_product():
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         category_id = request.form.get("category_id") or None
+        vendor_id = request.form.get("vendor_id") or None
         # Multi-size selection: if checkboxes selected, create one entry per size
         selected_sizes = request.form.getlist("sizes")
         custom_size = request.form.get("size", "").strip()
@@ -777,11 +818,11 @@ def add_product():
             cur = db.execute(
                 "INSERT INTO products (name, category_id, sku, size, color, "
                 "cost_price, selling_price, quantity, low_stock_threshold, image_filename, "
-                "created_at, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+                "vendor_id, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
                 "datetime('now','+5 hours','+30 minutes'), datetime('now','+5 hours','+30 minutes'))",
                 (entry_name, category_id, sku, size, color, cost_price,
-                 selling_price, quantity, low_stock_threshold, image_filename),
+                 selling_price, quantity, low_stock_threshold, image_filename, vendor_id),
             )
             created_ids.append(cur.lastrowid)
             created_skus.append(sku or entry_name)
@@ -816,7 +857,8 @@ def add_product():
         return redirect(url_for("inventory"))
 
     categories = db.execute("SELECT * FROM categories ORDER BY name").fetchall()
-    return render_template("product_form.html", product=None, categories=categories)
+    vendors = db.execute("SELECT * FROM vendors ORDER BY name").fetchall()
+    return render_template("product_form.html", product=None, categories=categories, vendors=vendors)
 
 
 @app.route("/inventory/edit/<int:product_id>", methods=["GET", "POST"])
@@ -830,6 +872,7 @@ def edit_product(product_id):
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         category_id = request.form.get("category_id") or None
+        vendor_id = request.form.get("vendor_id") or None
         # Re-generate SKU if category changed, or use manual SKU if edited
         manual_sku = request.form.get("sku", "").strip()
         old_category_id = str(product["category_id"]) if product["category_id"] else None
@@ -874,9 +917,9 @@ def edit_product(product_id):
         db.execute(
             "UPDATE products SET name=?, category_id=?, sku=?, size=?, color=?, "
             "cost_price=?, selling_price=?, quantity=?, low_stock_threshold=?, image_filename=?, "
-            "updated_at=datetime('now','+5 hours','+30 minutes') WHERE id=?",
+            "vendor_id=?, updated_at=datetime('now','+5 hours','+30 minutes') WHERE id=?",
             (name, category_id, sku, size, color, cost_price,
-             selling_price, quantity, low_stock_threshold, image_filename, product_id),
+             selling_price, quantity, low_stock_threshold, image_filename, vendor_id, product_id),
         )
         db.commit()
         log_update("Product Updated", f"Updated '{name}'", "inventory")
@@ -884,6 +927,7 @@ def edit_product(product_id):
         return redirect(url_for("inventory"))
 
     categories = db.execute("SELECT * FROM categories ORDER BY name").fetchall()
+    vendors = db.execute("SELECT * FROM vendors ORDER BY name").fetchall()
     # Fetch current size variants for display in edit form
     variants = []
     if product and product["product_group_id"]:
@@ -893,7 +937,7 @@ def edit_product(product_id):
             (product["product_group_id"], product_id),
         ).fetchall()
     return render_template("product_form.html", product=product, categories=categories,
-                           variants=variants)
+                           variants=variants, vendors=vendors)
 
 
 @app.route("/inventory/delete/<int:product_id>", methods=["POST"])
@@ -2072,127 +2116,349 @@ def admin():
 
     next_url = request.args.get("next", "")
 
-    category_counts = []
-    size_counts = []
-    all_categories = []
-    all_sizes = []
-    filter_category = request.args.get("filter_category", "")
-    filter_size = request.args.get("filter_size", "")
-    inventory_totals = None
-    investments = []
-    total_investment = 0
-    top_selling_category = None
-    top_selling_size = None
-    sales_breakdown = []
-    if admin_authenticated():
-        db = get_db()
-        investments = db.execute(
-            "SELECT * FROM investments ORDER BY investment_date DESC"
-        ).fetchall()
-        total_investment = sum(i["amount"] for i in investments)
-        inventory_totals = db.execute(
-            "SELECT COALESCE(SUM(cost_price * quantity), 0) as total_cost, "
-            "COALESCE(SUM(selling_price * quantity), 0) as total_selling, "
-            "COALESCE(SUM(quantity), 0) as total_items "
-            "FROM products WHERE quantity > 0"
-        ).fetchone()
-        all_categories = db.execute(
-            "SELECT DISTINCT COALESCE(c.name, 'Uncategorized') as name "
-            "FROM products p LEFT JOIN categories c ON p.category_id = c.id ORDER BY name"
-        ).fetchall()
-        all_sizes = db.execute(
-            "SELECT DISTINCT COALESCE(p.size, 'No Size') as name FROM products p ORDER BY name"
-        ).fetchall()
-
-        cat_where = ""
-        cat_params = []
-        if filter_category:
-            if filter_category == "Uncategorized":
-                cat_where = " WHERE c.name IS NULL"
-            else:
-                cat_where = " WHERE c.name = ?"
-                cat_params = [filter_category]
-
-        size_where = ""
-        size_params = []
-        if filter_size:
-            if filter_size == "No Size":
-                size_where = " WHERE p.size IS NULL OR p.size = ''"
-            else:
-                size_where = " WHERE p.size = ?"
-                size_params = [filter_size]
-
-        category_counts = db.execute(
-            "SELECT COALESCE(c.name, 'Uncategorized') as category, "
-            "COUNT(p.id) as product_count, COALESCE(SUM(p.quantity), 0) as total_stock "
-            "FROM products p LEFT JOIN categories c ON p.category_id = c.id"
-            + cat_where +
-            " GROUP BY c.name ORDER BY total_stock DESC",
-            cat_params,
-        ).fetchall()
-        size_counts = db.execute(
-            "SELECT COALESCE(p.size, 'No Size') as size, "
-            "COALESCE(c.name, 'Uncategorized') as category, "
-            "COUNT(p.id) as product_count, COALESCE(SUM(p.quantity), 0) as total_stock "
-            "FROM products p LEFT JOIN categories c ON p.category_id = c.id"
-            + size_where +
-            " GROUP BY p.size, c.name ORDER BY p.size, c.name",
-            size_params,
-        ).fetchall()
-
-        top_selling_category = db.execute(
-            "SELECT COALESCE(c.name, 'Uncategorized') as name, "
-            "COALESCE(SUM(bi.quantity), 0) as sold_qty, "
-            "COALESCE(SUM(bi.total_price), 0) as sold_amount "
-            "FROM bill_items bi "
-            "LEFT JOIN products p ON p.id = bi.product_id "
-            "LEFT JOIN categories c ON c.id = p.category_id "
-            "GROUP BY c.name "
-            "ORDER BY sold_qty DESC, sold_amount DESC "
-            "LIMIT 1"
-        ).fetchone()
-
-        top_selling_size = db.execute(
-            "SELECT COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') as name, "
-            "COALESCE(SUM(bi.quantity), 0) as sold_qty, "
-            "COALESCE(SUM(bi.total_price), 0) as sold_amount "
-            "FROM bill_items bi "
-            "LEFT JOIN products p ON p.id = bi.product_id "
-            "GROUP BY COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') "
-            "ORDER BY sold_qty DESC, sold_amount DESC "
-            "LIMIT 1"
-        ).fetchone()
-
-        sales_breakdown = db.execute(
-            "SELECT COALESCE(c.name, 'Uncategorized') as category, "
-            "COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') as size, "
-            "COALESCE(SUM(bi.quantity), 0) as sold_qty, "
-            "COALESCE(SUM(bi.total_price), 0) as sold_amount, "
-            "COUNT(DISTINCT bi.bill_id) as bills_count "
-            "FROM bill_items bi "
-            "LEFT JOIN products p ON p.id = bi.product_id "
-            "LEFT JOIN categories c ON c.id = p.category_id "
-            "GROUP BY COALESCE(c.name, 'Uncategorized'), COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') "
-            "ORDER BY sold_qty DESC, sold_amount DESC, category, size"
-        ).fetchall()
-
     return render_template(
         "admin.html",
         locked=not admin_authenticated(),
         next_url=next_url,
-        category_counts=category_counts,
-        size_counts=size_counts,
+    )
+
+
+@app.route("/admin/inventory-overview")
+def admin_inventory_overview():
+    if not admin_authenticated():
+        flash("Please unlock Admin to view Inventory Overview.", "error")
+        return redirect(url_for("admin", next=url_for("admin_inventory_overview")))
+
+    db = get_db()
+    filter_category = request.args.get("filter_category", "")
+    filter_size = request.args.get("filter_size", "")
+
+    inventory_totals = db.execute(
+        "SELECT COALESCE(SUM(cost_price * quantity), 0) as total_cost, "
+        "COALESCE(SUM(selling_price * quantity), 0) as total_selling, "
+        "COALESCE(SUM(quantity), 0) as total_items "
+        "FROM products WHERE quantity > 0"
+    ).fetchone()
+    all_categories = db.execute(
+        "SELECT DISTINCT COALESCE(c.name, 'Uncategorized') as name "
+        "FROM products p LEFT JOIN categories c ON p.category_id = c.id ORDER BY name"
+    ).fetchall()
+    all_sizes = db.execute(
+        "SELECT DISTINCT COALESCE(p.size, 'No Size') as name FROM products p ORDER BY name"
+    ).fetchall()
+
+    cat_where = ""
+    cat_params = []
+    if filter_category:
+        if filter_category == "Uncategorized":
+            cat_where = " WHERE c.name IS NULL"
+        else:
+            cat_where = " WHERE c.name = ?"
+            cat_params = [filter_category]
+
+    size_where = ""
+    size_params = []
+    if filter_size:
+        if filter_size == "No Size":
+            size_where = " WHERE p.size IS NULL OR p.size = ''"
+        else:
+            size_where = " WHERE p.size = ?"
+            size_params = [filter_size]
+
+    category_counts = db.execute(
+        "SELECT COALESCE(c.name, 'Uncategorized') as category, "
+        "COUNT(p.id) as product_count, COALESCE(SUM(p.quantity), 0) as total_stock "
+        "FROM products p LEFT JOIN categories c ON p.category_id = c.id"
+        + cat_where +
+        " GROUP BY c.name ORDER BY total_stock DESC",
+        cat_params,
+    ).fetchall()
+    size_counts = db.execute(
+        "SELECT COALESCE(p.size, 'No Size') as size, "
+        "COALESCE(c.name, 'Uncategorized') as category, "
+        "COUNT(p.id) as product_count, COALESCE(SUM(p.quantity), 0) as total_stock "
+        "FROM products p LEFT JOIN categories c ON p.category_id = c.id"
+        + size_where +
+        " GROUP BY p.size, c.name ORDER BY p.size, c.name",
+        size_params,
+    ).fetchall()
+
+    return render_template(
+        "inventory_overview.html",
+        inventory_totals=inventory_totals,
         all_categories=all_categories,
         all_sizes=all_sizes,
         filter_category=filter_category,
         filter_size=filter_size,
-        inventory_totals=inventory_totals,
-        investments=investments,
-        total_investment=total_investment,
+        category_counts=category_counts,
+        size_counts=size_counts,
+    )
+
+
+@app.route("/admin/sales-summary")
+def admin_sales_summary():
+    if not admin_authenticated():
+        flash("Please unlock Admin to view Sales Summary.", "error")
+        return redirect(url_for("admin", next=url_for("admin_sales_summary")))
+
+    db = get_db()
+    top_selling_category = db.execute(
+        "SELECT COALESCE(c.name, 'Uncategorized') as name, "
+        "COALESCE(SUM(bi.quantity), 0) as sold_qty, "
+        "COALESCE(SUM(bi.total_price), 0) as sold_amount "
+        "FROM bill_items bi "
+        "LEFT JOIN products p ON p.id = bi.product_id "
+        "LEFT JOIN categories c ON c.id = p.category_id "
+        "GROUP BY c.name "
+        "ORDER BY sold_qty DESC, sold_amount DESC "
+        "LIMIT 1"
+    ).fetchone()
+
+    top_selling_size = db.execute(
+        "SELECT COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') as name, "
+        "COALESCE(SUM(bi.quantity), 0) as sold_qty, "
+        "COALESCE(SUM(bi.total_price), 0) as sold_amount "
+        "FROM bill_items bi "
+        "LEFT JOIN products p ON p.id = bi.product_id "
+        "GROUP BY COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') "
+        "ORDER BY sold_qty DESC, sold_amount DESC "
+        "LIMIT 1"
+    ).fetchone()
+
+    sales_breakdown = db.execute(
+        "SELECT COALESCE(c.name, 'Uncategorized') as category, "
+        "COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') as size, "
+        "COALESCE(SUM(bi.quantity), 0) as sold_qty, "
+        "COALESCE(SUM(bi.total_price), 0) as sold_amount, "
+        "COUNT(DISTINCT bi.bill_id) as bills_count "
+        "FROM bill_items bi "
+        "LEFT JOIN products p ON p.id = bi.product_id "
+        "LEFT JOIN categories c ON c.id = p.category_id "
+        "GROUP BY COALESCE(c.name, 'Uncategorized'), COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') "
+        "ORDER BY sold_qty DESC, sold_amount DESC, category, size"
+    ).fetchall()
+
+    return render_template(
+        "sales_summary.html",
         top_selling_category=top_selling_category,
         top_selling_size=top_selling_size,
         sales_breakdown=sales_breakdown,
     )
+
+
+@app.route("/admin/investments")
+def admin_investments():
+    if not admin_authenticated():
+        flash("Please unlock Admin to manage Investments.", "error")
+        return redirect(url_for("admin", next=url_for("admin_investments")))
+
+    db = get_db()
+    investments = db.execute(
+        "SELECT * FROM investments ORDER BY investment_date DESC"
+    ).fetchall()
+    total_investment = sum(i["amount"] for i in investments)
+    return render_template(
+        "investments.html",
+        investments=investments,
+        total_investment=total_investment,
+    )
+
+
+@app.route("/admin/tools")
+def admin_tools():
+    if not admin_authenticated():
+        flash("Please unlock Admin to access Tools.", "error")
+        return redirect(url_for("admin", next=url_for("admin_tools")))
+
+    return render_template("admin_tools.html")
+
+
+# ── Vendors ──────────────────────────────────────────────────────────────
+@app.route("/admin/vendors")
+def vendors():
+    if not admin_authenticated():
+        flash("Please unlock Admin to manage Vendors.", "error")
+        return redirect(url_for("admin", next=url_for("vendors")))
+
+    db = get_db()
+    search = request.args.get("search", "").strip()
+    query = (
+        "SELECT v.*, "
+        "(SELECT COUNT(*) FROM products p WHERE p.vendor_id = v.id) as product_count "
+        "FROM vendors v WHERE 1=1"
+    )
+    params = []
+    if search:
+        query += " AND (v.name LIKE ? OR v.contact_person LIKE ? OR v.phone LIKE ?)"
+        params += [f"%{search}%", f"%{search}%", f"%{search}%"]
+    query += " ORDER BY v.name"
+    all_vendors = db.execute(query, params).fetchall()
+    return render_template("vendors.html", vendors=all_vendors, search=search)
+
+
+@app.route("/admin/vendors/add", methods=["POST"])
+def add_vendor():
+    if not admin_authenticated():
+        flash("Please unlock Admin to add vendors.", "error")
+        return redirect(url_for("admin", next=url_for("vendors")))
+
+    db = get_db()
+    name = request.form.get("name", "").strip()
+    contact_person = request.form.get("contact_person", "").strip()
+    phone = request.form.get("phone", "").strip()
+    email = request.form.get("email", "").strip()
+    address = request.form.get("address", "").strip()
+    notes = request.form.get("notes", "").strip()
+
+    if not name:
+        flash("Vendor name is required.", "error")
+        return redirect(url_for("vendors"))
+
+    db.execute(
+        "INSERT INTO vendors (name, contact_person, phone, email, address, notes, created_at, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'), datetime('now','+5 hours','+30 minutes'))",
+        (name, contact_person or None, phone or None, email or None, address or None, notes or None),
+    )
+    db.commit()
+    log_update("Vendor Added", f"{name}" + (f" ({phone})" if phone else ""), "vendor")
+    flash(f"Vendor '{name}' added!", "success")
+    return redirect(url_for("vendors"))
+
+
+@app.route("/admin/vendors/edit/<int:vendor_id>", methods=["POST"])
+def edit_vendor(vendor_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to manage vendors.", "error")
+        return redirect(url_for("admin", next=url_for("vendors")))
+
+    db = get_db()
+    vendor = db.execute("SELECT * FROM vendors WHERE id = ?", (vendor_id,)).fetchone()
+    if not vendor:
+        flash("Vendor not found.", "error")
+        return redirect(url_for("vendors"))
+
+    name = request.form.get("name", "").strip()
+    contact_person = request.form.get("contact_person", "").strip()
+    phone = request.form.get("phone", "").strip()
+    email = request.form.get("email", "").strip()
+    address = request.form.get("address", "").strip()
+    notes = request.form.get("notes", "").strip()
+
+    if not name:
+        flash("Vendor name is required.", "error")
+        return redirect(url_for("vendors"))
+
+    db.execute(
+        "UPDATE vendors SET name = ?, contact_person = ?, phone = ?, email = ?, "
+        "address = ?, notes = ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+        (name, contact_person or None, phone or None, email or None, address or None, notes or None, vendor_id),
+    )
+    db.commit()
+    log_update("Vendor Updated", f"{name}", "vendor")
+    flash(f"Vendor '{name}' updated.", "success")
+    return redirect(url_for("vendors"))
+
+
+@app.route("/admin/vendors/delete/<int:vendor_id>", methods=["POST"])
+def delete_vendor(vendor_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to manage vendors.", "error")
+        return redirect(url_for("admin", next=url_for("vendors")))
+
+    db = get_db()
+    vendor = db.execute("SELECT * FROM vendors WHERE id = ?", (vendor_id,)).fetchone()
+    if not vendor:
+        flash("Vendor not found.", "error")
+        return redirect(url_for("vendors"))
+
+    # Detach products from this vendor, then delete the vendor.
+    db.execute("UPDATE products SET vendor_id = NULL WHERE vendor_id = ?", (vendor_id,))
+    db.execute("DELETE FROM vendors WHERE id = ?", (vendor_id,))
+    db.commit()
+    log_update("Vendor Deleted", f"{vendor['name']}", "vendor")
+    flash(f"Vendor '{vendor['name']}' deleted.", "success")
+    return redirect(url_for("vendors"))
+
+
+@app.route("/admin/vendor-summary")
+def vendor_summary():
+    if not admin_authenticated():
+        flash("Please unlock Admin to view Vendor Summary.", "error")
+        return redirect(url_for("admin", next=url_for("vendor_summary")))
+
+    db = get_db()
+    # Current stock value per vendor.
+    stock_rows = db.execute(
+        "SELECT v.id as vendor_id, v.name as vendor_name, "
+        "COUNT(p.id) as product_count, "
+        "COALESCE(SUM(p.quantity), 0) as total_stock, "
+        "COALESCE(SUM(p.cost_price * p.quantity), 0) as stock_cost_value, "
+        "COALESCE(SUM(p.selling_price * p.quantity), 0) as stock_retail_value "
+        "FROM vendors v "
+        "LEFT JOIN products p ON p.vendor_id = v.id "
+        "GROUP BY v.id, v.name "
+        "ORDER BY v.name"
+    ).fetchall()
+
+    # Sales per vendor (units sold and revenue) derived from bill_items → products.
+    sales_rows = db.execute(
+        "SELECT v.id as vendor_id, "
+        "COALESCE(SUM(bi.quantity), 0) as sold_qty, "
+        "COALESCE(SUM(bi.total_price), 0) as sold_amount, "
+        "COALESCE(SUM(bi.quantity * p.cost_price), 0) as sold_cost, "
+        "COUNT(DISTINCT bi.bill_id) as bills_count "
+        "FROM vendors v "
+        "JOIN products p ON p.vendor_id = v.id "
+        "JOIN bill_items bi ON bi.product_id = p.id "
+        "GROUP BY v.id"
+    ).fetchall()
+    sales_map = {row["vendor_id"]: row for row in sales_rows}
+
+    summary = []
+    totals = {
+        "product_count": 0,
+        "total_stock": 0,
+        "stock_cost_value": 0.0,
+        "stock_retail_value": 0.0,
+        "sold_qty": 0,
+        "sold_amount": 0.0,
+        "gross_profit": 0.0,
+    }
+    for row in stock_rows:
+        sales = sales_map.get(row["vendor_id"])
+        sold_qty = sales["sold_qty"] if sales else 0
+        sold_amount = round(sales["sold_amount"], 2) if sales else 0.0
+        sold_cost = round(sales["sold_cost"], 2) if sales else 0.0
+        bills_count = sales["bills_count"] if sales else 0
+        gross_profit = round(sold_amount - sold_cost, 2)
+        summary.append({
+            "vendor_id": row["vendor_id"],
+            "vendor_name": row["vendor_name"],
+            "product_count": row["product_count"],
+            "total_stock": row["total_stock"],
+            "stock_cost_value": round(row["stock_cost_value"], 2),
+            "stock_retail_value": round(row["stock_retail_value"], 2),
+            "sold_qty": sold_qty,
+            "sold_amount": sold_amount,
+            "bills_count": bills_count,
+            "gross_profit": gross_profit,
+        })
+        totals["product_count"] += row["product_count"]
+        totals["total_stock"] += row["total_stock"]
+        totals["stock_cost_value"] += row["stock_cost_value"]
+        totals["stock_retail_value"] += row["stock_retail_value"]
+        totals["sold_qty"] += sold_qty
+        totals["sold_amount"] += sold_amount
+        totals["gross_profit"] += gross_profit
+
+    summary.sort(key=lambda x: (-x["sold_amount"], x["vendor_name"]))
+    totals["stock_cost_value"] = round(totals["stock_cost_value"], 2)
+    totals["stock_retail_value"] = round(totals["stock_retail_value"], 2)
+    totals["sold_amount"] = round(totals["sold_amount"], 2)
+    totals["gross_profit"] = round(totals["gross_profit"], 2)
+
+    return render_template("vendor_summary.html", summary=summary, totals=totals)
+
 
 
 @app.route("/admin/logout")

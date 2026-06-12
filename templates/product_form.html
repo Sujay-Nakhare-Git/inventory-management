@@ -30,6 +30,16 @@
                 </select>
             </div>
             <div class="form-group">
+                <label for="vendor_id">Vendor</label>
+                <select id="vendor_id" name="vendor_id" class="input">
+                    <option value="">No Vendor</option>
+                    {% for v in vendors %}
+                    <option value="{{ v.id }}" {% if product and product.vendor_id == v.id %}selected{% endif %}>{{ v.name }}</option>
+                    {% endfor %}
+                </select>
+                <small style="color:#6b7280;">Add or edit vendors from <a href="{{ url_for('vendors') }}">Admin → Vendors</a>.</small>
+            </div>
+            <div class="form-group">
                 <label for="size">Size</label>
                 {% if product %}
                 <input type="text" id="size" name="size" class="input" placeholder="e.g. S, M, L, XL, Free Size" value="{{ product.size if product.size else '' }}">

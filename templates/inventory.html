@@ -16,6 +16,23 @@
             <option value="{{ c.id }}" {% if selected_category == c.id|string %}selected{% endif %}>{{ c.name }}</option>
             {% endfor %}
         </select>
+        <select name="size" class="input">
+            <option value="">All Sizes</option>
+            {% for s in all_sizes %}
+            <option value="{{ s.name }}" {% if selected_size == s.name %}selected{% endif %}>{{ s.name }}</option>
+            {% endfor %}
+        </select>
+        <select name="vendor" class="input">
+            <option value="">All Vendors</option>
+            <option value="No Vendor" {% if selected_vendor == 'No Vendor' %}selected{% endif %}>No Vendor</option>
+            {% for v in vendors %}
+            <option value="{{ v.id }}" {% if selected_vendor == v.id|string %}selected{% endif %}>{{ v.name }}</option>
+            {% endfor %}
+        </select>
+        <label style="display:inline-flex;align-items:center;gap:0.4rem;white-space:nowrap;">
+            <input type="checkbox" name="in_stock" value="1" {% if in_stock_only %}checked{% endif %}>
+            Available stock only
+        </label>
         <button type="submit" class="btn btn-primary">Filter</button>
         <a href="{{ url_for('inventory') }}" class="btn btn-outline">Clear</a>
     </form>
