@@ -33,7 +33,7 @@
             {% endfor %}
         </select>
         <label style="display:inline-flex;align-items:center;gap:0.4rem;white-space:nowrap;">
-            <input type="checkbox" name="in_stock" value="1" {% if in_stock_only %}checked{% endif %}>
+            <input type="checkbox" name="in_stock" value="1" autocomplete="off" {% if in_stock_only %}checked{% endif %}>
             Available stock only
         </label>
         <button type="submit" class="btn btn-primary">Filter</button>
@@ -274,6 +274,86 @@
                 });
         });
     });
+})();
+</script>
+<script>
+(() => {
+    function init() {
+        const selectAll = document.getElementById('selectAllProducts');
+        const bar = document.getElementById('bulkActionsBar');
+        const countEl = document.getElementById('bulkSelectedCount');
+        const vendorSelect = document.getElementById('bulkVendorSelect');
+        const assignBtn = document.getElementById('bulkAssignBtn');
+        const clearBtn = document.getElementById('bulkClearBtn');
+        const form = document.getElementById('bulkVendorForm');
+        if (!selectAll || !bar || !form) return;
+
+        function rowChecks() {
+            return Array.from(document.querySelectorAll('.row-select'));
+        }
+
+        function refresh() {
+            const all = rowChecks();
+            const checked = all.filter(c => c.checked);
+            countEl.textContent = checked.length;
+            bar.style.display = checked.length ? '' : 'none';
+            selectAll.checked = all.length > 0 && checked.length === all.length;
+            selectAll.indeterminate = checked.length > 0 && checked.length < all.length;
+        }
+
+        // Event delegation: handles all current and future row checkboxes
+        document.addEventListener('change', (e) => {
+            if (e.target && e.target.classList && e.target.classList.contains('row-select')) {
+                refresh();
+            }
+        });
+        document.addEventListener('click', (e) => {
+            // Stop checkbox clicks from triggering the row variant-toggle
+            if (e.target && e.target.classList && e.target.classList.contains('row-select')) {
+                e.stopPropagation();
+            }
+        }, true);
+
+        selectAll.addEventListener('change', () => {
+            rowChecks().forEach(c => { c.checked = selectAll.checked; });
+            refresh();
+        });
+
+        clearBtn.addEventListener('click', () => {
+            rowChecks().forEach(c => { c.checked = false; });
+            refresh();
+        });
+
+        assignBtn.addEventListener('click', () => {
+            const checked = rowChecks().filter(c => c.checked);
+            if (!checked.length) return;
+            const vendorName = vendorSelect.options[vendorSelect.selectedIndex].text;
+            if (!confirm(`Assign vendor "${vendorName}" to ${checked.length} product(s)?`)) return;
+
+            form.querySelectorAll('input[name="product_ids"], input[name="vendor_id"]').forEach(el => el.remove());
+            checked.forEach(c => {
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'product_ids';
+                hidden.value = c.value;
+                form.appendChild(hidden);
+            });
+            const vh = document.createElement('input');
+            vh.type = 'hidden';
+            vh.name = 'vendor_id';
+            vh.value = vendorSelect.value;
+            form.appendChild(vh);
+            form.submit();
+        });
+
+        refresh();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();
 </script>
 {% endblock %}
