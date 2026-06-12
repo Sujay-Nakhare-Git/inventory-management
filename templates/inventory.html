@@ -73,6 +73,7 @@
                     <th class="sortable" data-col="5" data-type="number">Cost (₹) <span class="sort-icon">⇅</span></th>
                     <th class="sortable" data-col="6" data-type="number">Price (₹) <span class="sort-icon">⇅</span></th>
                     <th class="sortable" data-col="7" data-type="number">Qty <span class="sort-icon">⇅</span></th>
+                    <th class="sortable" data-col="8" data-type="string">Vendor <span class="sort-icon">⇅</span></th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -107,6 +108,13 @@
                         <span class="badge badge-success">{{ p.quantity }}</span>
                         {% endif %}
                     </td>
+                    <td>
+                        {% if p.vendor_name %}
+                        <span style="font-size:0.85rem;">{{ p.vendor_name }}</span>
+                        {% else %}
+                        <span style="color:#9ca3af;font-size:0.85rem;">Not assigned</span>
+                        {% endif %}
+                    </td>
                     <td class="actions">
                         <a href="{{ url_for('edit_product', product_id=p.id) }}" class="btn btn-sm">Edit</a>
                         <button type="button" class="btn btn-sm btn-outline bills-toggle" data-product-id="{{ p.id }}">Bills</button>
@@ -116,7 +124,7 @@
                     </td>
                 </tr>
                 <tr class="variant-detail-row" id="variants-{{ p.id }}" style="display:none;">
-                    <td colspan="9" style="padding:0;">
+                    <td colspan="10" style="padding:0;">
                         <div class="variant-detail-panel" style="background:#f0f9ff;border-top:2px solid #bfdbfe;padding:0.75rem 1rem;">
                             <div class="variant-detail-inner" id="variants-inner-{{ p.id }}">
                                 <span style="color:#6b7280;font-size:0.9rem;">Loading variants…</span>
@@ -125,7 +133,7 @@
                     </td>
                 </tr>
                 <tr class="bills-detail-row" id="bills-{{ p.id }}" style="display:none;">
-                    <td colspan="9" style="padding:0;">
+                    <td colspan="10" style="padding:0;">
                         <div style="background:#fffbeb;border-top:2px solid #fde68a;padding:0.75rem 1rem;">
                             <div id="bills-inner-{{ p.id }}">
                                 <span style="color:#6b7280;font-size:0.9rem;">Loading bills…</span>
@@ -134,7 +142,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="9" class="empty-state">No products found. Add your first product!</td></tr>
+                <tr><td colspan="10" class="empty-state">No products found. Add your first product!</td></tr>
                 {% endfor %}
             </tbody>
         </table>

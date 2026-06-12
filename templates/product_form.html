@@ -31,7 +31,7 @@
             </div>
             <div class="form-group">
                 <label for="vendor_id">Vendor</label>
-                <select id="vendor_id" name="vendor_id" class="input">
+                <select id="vendor_id" name="vendor_id" class="input" autocomplete="off">
                     <option value="">No Vendor</option>
                     {% for v in vendors %}
                     <option value="{{ v.id }}" {% if product and product.vendor_id == v.id %}selected{% endif %}>{{ v.name }}</option>
