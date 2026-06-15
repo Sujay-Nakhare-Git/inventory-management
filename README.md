@@ -4,6 +4,11 @@ A boutique management web application for inventory, billing, refunds/exchanges,
 
 ## Release Notes
 
+### 2.0.0 — 2026-06-15
+
+- Modularized the application codebase: the single large `app.py` was split into focused modules (`core.py`, `routes_inventory.py`, `routes_sales.py`, `routes_admin.py`, `routes_reports.py`) with `app.py` as a thin entry point. No change to behavior or routes.
+- Bill viewing access refined: Bill History (`/bills`) remains Admin-protected, while individual bill detail and thermal print pages are accessible directly after a bill is generated (no password prompt).
+
 ### 2026-06-12
 
 - Added Vendor management:
