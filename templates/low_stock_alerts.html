@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Low Stock Alerts — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>🔔 Low Stock Alerts</h2>
+    <a href="{{ url_for('admin') }}" class="btn btn-outline">← Back to Admin</a>
+</div>
+
+<p class="page-desc" style="margin-bottom:1rem;">
+    Define alerts by <strong>Category → Size → Count</strong>. When the total stock for a
+    category and size drops to or below the count, it shows up on the Dashboard.
+</p>
+
+<div class="card form-card" style="margin-bottom:1.5rem;">
+    <h4 style="margin-bottom:0.75rem;">Add Alert</h4>
+    <form method="POST" action="{{ url_for('add_low_stock_alert') }}">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="category_id">Category *</label>
+                <select id="category_id" name="category_id" class="input" required>
+                    <option value="">Select category</option>
+                    {% for c in categories %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="size">Size</label>
+                <input type="text" id="size" name="size" class="input" list="size-options"
+                    placeholder="e.g. M, L, Free Size or No Size">
+                <datalist id="size-options">
+                    {% for s in all_sizes %}
+                    <option value="{{ s.name }}"></option>
+                    {% endfor %}
+                </datalist>
+            </div>
+            <div class="form-group">
+                <label for="threshold">Alert Count *</label>
+                <input type="number" id="threshold" name="threshold" class="input" min="0" value="5" required>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Add Alert</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    {% if alerts %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Size</th>
+                    <th>Alert Count</th>
+                    <th>Current Stock</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in alerts %}
+                <tr>
+                    <td><strong>{{ a.category_name }}</strong></td>
+                    <td>{{ a.size or 'No Size' }}</td>
+                    <td>{{ a.threshold }}</td>
+                    <td>{{ a.current }}</td>
+                    <td>
+                        {% if a.triggered %}
+                        <span class="badge badge-danger">Low</span>
+                        {% else %}
+                        <span class="badge badge-success">OK</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline"
+                            onclick="openAlertEdit({{ a.id }})">Edit</button>
+                        <form method="POST" action="{{ url_for('delete_low_stock_alert', alert_id=a.id) }}" style="display:inline;"
+                            onsubmit="return confirm('Delete this low stock alert?')">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr id="alert-edit-{{ a.id }}" style="display:none;background:#f9fafb;">
+                    <td colspan="6">
+                        <form method="POST" action="{{ url_for('edit_low_stock_alert', alert_id=a.id) }}">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Category *</label>
+                                    <select name="category_id" class="input" required>
+                                        {% for c in categories %}
+                                        <option value="{{ c.id }}" {% if c.id == a.category_id %}selected{% endif %}>{{ c.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Size</label>
+                                    <input type="text" name="size" class="input" list="size-options"
+                                        value="{{ a.size or 'No Size' }}">
+                                </div>
+                                <div class="form-group">
+                                    <label>Alert Count *</label>
+                                    <input type="number" name="threshold" class="input" min="0" value="{{ a.threshold }}" required>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                                <button type="button" class="btn btn-sm btn-outline" onclick="closeAlertEdit({{ a.id }})">Cancel</button>
+                            </div>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="page-desc">No low stock alerts configured yet. Add one above.</p>
+    {% endif %}
+</div>
+
+<script>
+    function openAlertEdit(id) {
+        const row = document.getElementById('alert-edit-' + id);
+        if (row) row.style.display = 'table-row';
+    }
+    function closeAlertEdit(id) {
+        const row = document.getElementById('alert-edit-' + id);
+        if (row) row.style.display = 'none';
+    }
+</script>
+{% endblock %}

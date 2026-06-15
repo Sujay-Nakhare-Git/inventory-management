@@ -11,7 +11,7 @@
         <a href="{{ url_for('dashboard') }}" class="tab-btn{% if request.endpoint == 'dashboard' %} active{% endif %}">Dashboard</a>
         <a href="{{ url_for('billing') }}" class="tab-btn{% if request.endpoint == 'billing' %} active{% endif %}">New Bill</a>
         <a href="{{ url_for('categories') }}" class="tab-btn{% if request.endpoint == 'categories' %} active{% endif %}">Categories</a>
-        <a href="{{ url_for('admin') }}" class="tab-btn{% if request.endpoint in ['admin', 'expenses', 'profit_loss', 'daily_summary', 'bills_list', 'bill_detail', 'edit_bill', 'bill_thermal_print', 'delete_bill', 'refunds_list', 'new_refund', 'process_refund'] %} active{% endif %}">Admin</a>
+        <a href="{{ url_for('admin') }}" class="tab-btn{% if request.endpoint in ['admin', 'expenses', 'profit_loss', 'daily_summary', 'bills_list', 'bill_detail', 'edit_bill', 'bill_thermal_print', 'delete_bill', 'refunds_list', 'new_refund', 'process_refund', 'low_stock_alerts'] %} active{% endif %}">Admin</a>
     </div>
 </div>
 
@@ -36,6 +36,35 @@
         <div class="stat-label">Available Items</div>
     </div>
 </div>
+
+{% if low_stock_alerts %}
+<div class="card" style="margin-top:1.5rem;border-left:4px solid var(--danger);">
+    <div class="card-title" style="color:var(--danger);">🔔 Low Stock Alerts</div>
+    <p class="page-desc" style="margin-bottom:1rem;">These category &amp; size combinations are at or below their alert count.</p>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Size</th>
+                    <th>Current Stock</th>
+                    <th>Alert Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in low_stock_alerts %}
+                <tr>
+                    <td><strong>{{ a.category_name }}</strong></td>
+                    <td>{{ a.size }}</td>
+                    <td><span class="badge badge-danger">{{ a.current }}</span></td>
+                    <td>{{ a.threshold }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
 
 <div class="card dashboard-logo-card">
     <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Gulmohar by Ankita" class="dashboard-logo-image">

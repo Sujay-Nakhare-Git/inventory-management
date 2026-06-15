@@ -308,6 +308,17 @@ def init_db():
             created_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes')),
             updated_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes'))
         );
+
+        CREATE TABLE IF NOT EXISTS low_stock_alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category_id INTEGER NOT NULL,
+            size TEXT NOT NULL DEFAULT '',
+            threshold INTEGER NOT NULL DEFAULT 5,
+            created_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes')),
+            updated_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes')),
+            UNIQUE (category_id, size),
+            FOREIGN KEY (category_id) REFERENCES categories(id)
+        );
     """)
 
     # Seed default categories if empty
@@ -674,5 +685,46 @@ ADMIN_PASSWORD_HASH = "d1215baec4cf39b5c9cc710527fbbfcb3d4290caaf9b0f095d32198c9
 
 def admin_authenticated():
     return session.get("admin_authenticated", False)
+
+
+def get_triggered_low_stock_alerts(db):
+    """Return configured low-stock alerts whose current stock is at or below
+    the configured threshold.
+
+    Each alert is defined by category + size + threshold count. The current
+    stock is the total quantity of products matching that category and size.
+    """
+    alerts = db.execute(
+        "SELECT a.id, a.category_id, a.size, a.threshold, c.name AS category_name "
+        "FROM low_stock_alerts a "
+        "LEFT JOIN categories c ON c.id = a.category_id "
+        "ORDER BY c.name, a.size"
+    ).fetchall()
+
+    triggered = []
+    for alert in alerts:
+        size = alert["size"] or ""
+        if size:
+            current = db.execute(
+                "SELECT COALESCE(SUM(quantity), 0) FROM products "
+                "WHERE category_id = ? AND size = ?",
+                (alert["category_id"], size),
+            ).fetchone()[0]
+        else:
+            current = db.execute(
+                "SELECT COALESCE(SUM(quantity), 0) FROM products "
+                "WHERE category_id = ? AND (size IS NULL OR TRIM(size) = '')",
+                (alert["category_id"],),
+            ).fetchone()[0]
+
+        if current <= alert["threshold"]:
+            triggered.append({
+                "id": alert["id"],
+                "category_name": alert["category_name"] or "Uncategorized",
+                "size": size or "No Size",
+                "threshold": alert["threshold"],
+                "current": current,
+            })
+    return triggered
 
 

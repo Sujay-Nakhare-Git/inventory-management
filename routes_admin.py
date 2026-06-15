@@ -175,6 +175,194 @@ def admin_tools():
     return render_template("admin_tools.html")
 
 
+# ── Low Stock Alerts ─────────────────────────────────────────────────────
+@app.route("/admin/low-stock-alerts")
+def low_stock_alerts():
+    if not admin_authenticated():
+        flash("Please unlock Admin to manage Low Stock Alerts.", "error")
+        return redirect(url_for("admin", next=url_for("low_stock_alerts")))
+
+    db = get_db()
+    alerts = db.execute(
+        "SELECT a.id, a.category_id, a.size, a.threshold, c.name AS category_name "
+        "FROM low_stock_alerts a "
+        "LEFT JOIN categories c ON c.id = a.category_id "
+        "ORDER BY c.name, a.size"
+    ).fetchall()
+
+    # Attach current stock so the table can show how close each rule is.
+    alert_rows = []
+    for alert in alerts:
+        size = alert["size"] or ""
+        if size:
+            current = db.execute(
+                "SELECT COALESCE(SUM(quantity), 0) FROM products "
+                "WHERE category_id = ? AND size = ?",
+                (alert["category_id"], size),
+            ).fetchone()[0]
+        else:
+            current = db.execute(
+                "SELECT COALESCE(SUM(quantity), 0) FROM products "
+                "WHERE category_id = ? AND (size IS NULL OR TRIM(size) = '')",
+                (alert["category_id"],),
+            ).fetchone()[0]
+        alert_rows.append({
+            "id": alert["id"],
+            "category_id": alert["category_id"],
+            "category_name": alert["category_name"] or "Uncategorized",
+            "size": size,
+            "threshold": alert["threshold"],
+            "current": current,
+            "triggered": current <= alert["threshold"],
+        })
+
+    categories = db.execute("SELECT id, name FROM categories ORDER BY name").fetchall()
+    all_sizes = db.execute(
+        "SELECT DISTINCT COALESCE(NULLIF(TRIM(size), ''), 'No Size') as name "
+        "FROM products ORDER BY name"
+    ).fetchall()
+
+    return render_template(
+        "low_stock_alerts.html",
+        alerts=alert_rows,
+        categories=categories,
+        all_sizes=all_sizes,
+    )
+
+
+def _parse_alert_size(raw_size):
+    size = (raw_size or "").strip()
+    if size == "No Size":
+        return ""
+    return size
+
+
+@app.route("/admin/low-stock-alerts/add", methods=["POST"])
+def add_low_stock_alert():
+    if not admin_authenticated():
+        flash("Please unlock Admin to add Low Stock Alerts.", "error")
+        return redirect(url_for("admin", next=url_for("low_stock_alerts")))
+
+    db = get_db()
+    category_id = request.form.get("category_id", "").strip()
+    size = _parse_alert_size(request.form.get("size", ""))
+    threshold_raw = request.form.get("threshold", "").strip()
+
+    if not category_id:
+        flash("Please select a category.", "error")
+        return redirect(url_for("low_stock_alerts"))
+
+    try:
+        threshold = int(threshold_raw)
+        if threshold < 0:
+            raise ValueError
+    except ValueError:
+        flash("Please provide a valid threshold count (0 or more).", "error")
+        return redirect(url_for("low_stock_alerts"))
+
+    category = db.execute(
+        "SELECT name FROM categories WHERE id = ?", (category_id,)
+    ).fetchone()
+    if not category:
+        flash("Selected category not found.", "error")
+        return redirect(url_for("low_stock_alerts"))
+
+    existing = db.execute(
+        "SELECT id FROM low_stock_alerts WHERE category_id = ? AND size = ?",
+        (category_id, size),
+    ).fetchone()
+    if existing:
+        flash("An alert for this category and size already exists. Edit it instead.", "error")
+        return redirect(url_for("low_stock_alerts"))
+
+    db.execute(
+        "INSERT INTO low_stock_alerts (category_id, size, threshold, created_at, updated_at) "
+        "VALUES (?, ?, ?, datetime('now','+5 hours','+30 minutes'), datetime('now','+5 hours','+30 minutes'))",
+        (category_id, size, threshold),
+    )
+    db.commit()
+    log_update(
+        "Low Stock Alert Added",
+        f"{category['name']} / {size or 'No Size'} — alert at {threshold}",
+        "inventory",
+    )
+    flash("Low stock alert added.", "success")
+    return redirect(url_for("low_stock_alerts"))
+
+
+@app.route("/admin/low-stock-alerts/edit/<int:alert_id>", methods=["POST"])
+def edit_low_stock_alert(alert_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to manage Low Stock Alerts.", "error")
+        return redirect(url_for("admin", next=url_for("low_stock_alerts")))
+
+    db = get_db()
+    alert = db.execute(
+        "SELECT * FROM low_stock_alerts WHERE id = ?", (alert_id,)
+    ).fetchone()
+    if not alert:
+        flash("Low stock alert not found.", "error")
+        return redirect(url_for("low_stock_alerts"))
+
+    category_id = request.form.get("category_id", "").strip()
+    size = _parse_alert_size(request.form.get("size", ""))
+    threshold_raw = request.form.get("threshold", "").strip()
+
+    if not category_id:
+        flash("Please select a category.", "error")
+        return redirect(url_for("low_stock_alerts"))
+
+    try:
+        threshold = int(threshold_raw)
+        if threshold < 0:
+            raise ValueError
+    except ValueError:
+        flash("Please provide a valid threshold count (0 or more).", "error")
+        return redirect(url_for("low_stock_alerts"))
+
+    category = db.execute(
+        "SELECT name FROM categories WHERE id = ?", (category_id,)
+    ).fetchone()
+    if not category:
+        flash("Selected category not found.", "error")
+        return redirect(url_for("low_stock_alerts"))
+
+    clash = db.execute(
+        "SELECT id FROM low_stock_alerts WHERE category_id = ? AND size = ? AND id != ?",
+        (category_id, size, alert_id),
+    ).fetchone()
+    if clash:
+        flash("Another alert for this category and size already exists.", "error")
+        return redirect(url_for("low_stock_alerts"))
+
+    db.execute(
+        "UPDATE low_stock_alerts SET category_id = ?, size = ?, threshold = ?, "
+        "updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+        (category_id, size, threshold, alert_id),
+    )
+    db.commit()
+    log_update(
+        "Low Stock Alert Updated",
+        f"{category['name']} / {size or 'No Size'} — alert at {threshold}",
+        "inventory",
+    )
+    flash("Low stock alert updated.", "success")
+    return redirect(url_for("low_stock_alerts"))
+
+
+@app.route("/admin/low-stock-alerts/delete/<int:alert_id>", methods=["POST"])
+def delete_low_stock_alert(alert_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to manage Low Stock Alerts.", "error")
+        return redirect(url_for("admin", next=url_for("low_stock_alerts")))
+
+    db = get_db()
+    db.execute("DELETE FROM low_stock_alerts WHERE id = ?", (alert_id,))
+    db.commit()
+    flash("Low stock alert deleted.", "success")
+    return redirect(url_for("low_stock_alerts"))
+
+
 # ── Vendors ──────────────────────────────────────────────────────────────
 @app.route("/admin/vendors")
 def vendors():

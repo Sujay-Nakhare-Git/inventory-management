@@ -28,6 +28,8 @@ def dashboard():
         "WHERE p.quantity <= p.low_stock_threshold ORDER BY p.quantity ASC LIMIT 10"
     ).fetchall()
 
+    low_stock_alerts = get_triggered_low_stock_alerts(db)
+
     return render_template(
         "dashboard.html",
         total_products=total_products,
@@ -38,6 +40,7 @@ def dashboard():
         total_bills=total_bills,
         recent_updates=recent_updates,
         low_stock_products=low_stock_products,
+        low_stock_alerts=low_stock_alerts,
     )
 
 
