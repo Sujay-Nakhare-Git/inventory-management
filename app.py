@@ -1499,10 +1499,6 @@ def create_bill():
 
 @app.route("/bills")
 def bills_list():
-    if not admin_authenticated():
-        flash("Please unlock Admin to access Bill History.", "error")
-        return redirect(url_for("admin", next=url_for("bills_list")))
-
     db = get_db()
     search = request.args.get("search", "").strip()
     search_type = request.args.get("search_type", "all")
@@ -1530,10 +1526,6 @@ def bills_list():
 
 @app.route("/bills/<int:bill_id>")
 def bill_detail(bill_id):
-    if not admin_authenticated():
-        flash("Please unlock Admin to view bill details.", "error")
-        return redirect(url_for("admin", next=url_for("bill_detail", bill_id=bill_id)))
-
     db = get_db()
     bill = db.execute("SELECT * FROM bills WHERE id = ?", (bill_id,)).fetchone()
     if not bill:
@@ -1639,10 +1631,6 @@ def edit_bill(bill_id):
 
 @app.route("/bills/<int:bill_id>/thermal")
 def bill_thermal_print(bill_id):
-    if not admin_authenticated():
-        flash("Please unlock Admin to print bill history.", "error")
-        return redirect(url_for("admin", next=url_for("bill_detail", bill_id=bill_id)))
-
     db = get_db()
     bill = db.execute("SELECT * FROM bills WHERE id = ?", (bill_id,)).fetchone()
     if not bill:
