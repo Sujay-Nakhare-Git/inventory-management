@@ -397,6 +397,119 @@ def delete_store_credit(credit_id):
     return redirect(url_for("store_credits"))
 
 
+@app.route("/store-credits/transactions/<int:transaction_id>/delete", methods=["POST"])
+def delete_credit_transaction(transaction_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to delete transactions.", "error")
+        return redirect(url_for("store_credits"))
+
+    db = get_db()
+    transaction = db.execute(
+        "SELECT * FROM credit_transactions WHERE id = ?", (transaction_id,)
+    ).fetchone()
+    if not transaction:
+        flash("Transaction not found.", "error")
+        return redirect(url_for("store_credits"))
+
+    credit = db.execute(
+        "SELECT * FROM store_credits WHERE id = ?", (transaction["credit_id"],)
+    ).fetchone()
+    if not credit:
+        flash("Store credit not found.", "error")
+        return redirect(url_for("store_credits"))
+
+    # Adjust store credit balance
+    if transaction["transaction_type"] == "credit":
+        db.execute(
+            "UPDATE store_credits SET balance = balance - ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+            (transaction["amount"], transaction["credit_id"]),
+        )
+    else:  # debit
+        db.execute(
+            "UPDATE store_credits SET balance = balance + ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+            (transaction["amount"], transaction["credit_id"]),
+        )
+
+    db.execute("DELETE FROM credit_transactions WHERE id = ?", (transaction_id,))
+    db.commit()
+
+    log_update(
+        "Transaction Deleted",
+        f"{credit['customer_name']} — {transaction['transaction_type'].title()} ₹{transaction['amount']}",
+        "store_credit",
+    )
+    flash(f"Transaction deleted! Balance adjusted for {credit['customer_name']}.", "success")
+    return redirect(url_for("credit_transactions", credit_id=transaction["credit_id"]))
+
+
+@app.route("/store-credits/transactions/<int:transaction_id>/edit", methods=["GET", "POST"])
+def edit_credit_transaction(transaction_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to edit transactions.", "error")
+        return redirect(url_for("store_credits"))
+
+    db = get_db()
+    transaction = db.execute(
+        "SELECT * FROM credit_transactions WHERE id = ?", (transaction_id,)
+    ).fetchone()
+    if not transaction:
+        flash("Transaction not found.", "error")
+        return redirect(url_for("store_credits"))
+
+    credit = db.execute(
+        "SELECT * FROM store_credits WHERE id = ?", (transaction["credit_id"],)
+    ).fetchone()
+    if not credit:
+        flash("Store credit not found.", "error")
+        return redirect(url_for("store_credits"))
+
+    if request.method == "GET":
+        return render_template(
+            "edit_credit_transaction.html",
+            transaction=transaction,
+            credit=credit,
+        )
+
+    # POST: Update transaction
+    amount = float(request.form.get("amount", 0))
+    notes = request.form.get("notes", "").strip()
+
+    if amount <= 0:
+        flash("Please provide a valid amount.", "error")
+        return redirect(url_for("edit_credit_transaction", transaction_id=transaction_id))
+
+    old_amount = transaction["amount"]
+    amount_diff = amount - old_amount
+
+    # Update transaction
+    db.execute(
+        "UPDATE credit_transactions SET amount = ?, notes = ? WHERE id = ?",
+        (round(amount, 2), notes, transaction_id),
+    )
+
+    # Adjust store credit balance based on the difference
+    if transaction["transaction_type"] == "credit":
+        db.execute(
+            "UPDATE store_credits SET balance = balance + ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+            (round(amount_diff, 2), transaction["credit_id"]),
+        )
+    else:  # debit
+        db.execute(
+            "UPDATE store_credits SET balance = balance - ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+            (round(amount_diff, 2), transaction["credit_id"]),
+        )
+
+    db.commit()
+
+    log_update(
+        "Transaction Edited",
+        f"{credit['customer_name']} — Amount: ₹{old_amount} → ₹{amount}",
+        "store_credit",
+    )
+    flash(f"Transaction updated! Balance adjusted for {credit['customer_name']}.", "success")
+    return redirect(url_for("credit_transactions", credit_id=transaction["credit_id"]))
+
+
 # ── Refunds & Exchanges ──────────────────────────────────────────────────
 @app.route("/refunds")
 def refunds_list():
@@ -457,6 +570,20 @@ def process_refund():
         "SELECT * FROM bill_items WHERE bill_id = ?", (bill_id,)
     ).fetchall()
 
+    # Check if this is a FULL RETURN (all items being returned with full quantities)
+    is_full_return = True
+    for bi in bill_items:
+        action = request.form.get(f"action_{bi['id']}", "keep")
+        qty = int(request.form.get(f"qty_{bi['id']}", 0))
+        if action == "keep" or qty != bi["quantity"]:
+            is_full_return = False
+            break
+
+    # Calculate discount per rupee for full returns
+    discount_per_unit = 0.0
+    if is_full_return and bill["subtotal"] > 0:
+        discount_per_unit = bill["discount_amount"] / bill["subtotal"]
+
     refund_amount = 0
     store_credit_refund = 0
     exchange_bill_id = None
@@ -472,7 +599,12 @@ def process_refund():
         if qty <= 0 or qty > bi["quantity"]:
             continue
 
-        item_refund = bi["unit_price"] * qty
+        # For full returns, apply discount; for partial returns, use full unit price
+        if is_full_return:
+            effective_unit_price = bi["unit_price"] * (1 - discount_per_unit)
+            item_refund = round(effective_unit_price * qty, 2)
+        else:
+            item_refund = bi["unit_price"] * qty
         exchange_product_id = None
         exchange_product_name = None
         exchange_unit_price = None
@@ -525,7 +657,12 @@ def process_refund():
             exchange_line_total = round(exchange_unit_price * qty, 2)
 
             # Cheaper exchanges become store credit; the replacement bill is created below.
-            price_diff = bi["unit_price"] - exchange_unit_price
+            # For full returns, use effective (discounted) price; for partial returns, use full unit price
+            if is_full_return:
+                effective_unit_price = bi["unit_price"] * (1 - discount_per_unit)
+                price_diff = effective_unit_price - exchange_unit_price
+            else:
+                price_diff = bi["unit_price"] - exchange_unit_price
             if price_diff > 0:
                 store_credit_refund += round(price_diff * qty, 2)
 
@@ -534,6 +671,7 @@ def process_refund():
             "product_name": bi["product_name"],
             "quantity": qty,
             "unit_price": bi["unit_price"],
+            "effective_unit_price": round(bi["unit_price"] * (1 - discount_per_unit), 2) if is_full_return else bi["unit_price"],
             "action": action,
             "exchange_product_id": exchange_product_id,
             "exchange_product_name": exchange_product_name,

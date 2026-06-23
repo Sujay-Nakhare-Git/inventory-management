@@ -40,6 +40,7 @@
                 <th>Amount (₹)</th>
                 <th>Bill #</th>
                 <th>Notes</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -66,6 +67,14 @@
                     {% endif %}
                 </td>
                 <td>{{ txn.notes or "—" }}</td>
+                <td>
+                    <div style="display:flex;gap:0.5rem;">
+                        <a href="{{ url_for('edit_credit_transaction', transaction_id=txn.id) }}" class="btn btn-sm" style="background:#3498db;color:#fff;text-decoration:none;padding:0.4rem 0.8rem;border-radius:4px;font-size:0.85rem;">✏️ Edit</a>
+                        <form method="POST" action="{{ url_for('delete_credit_transaction', transaction_id=txn.id) }}" style="display:inline;" onsubmit="return confirm('Delete this transaction? Balance will be adjusted.');">
+                            <button type="submit" class="btn btn-sm" style="background:#e74c3c;color:#fff;padding:0.4rem 0.8rem;border-radius:4px;font-size:0.85rem;border:none;cursor:pointer;">🗑️ Delete</button>
+                        </form>
+                    </div>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
