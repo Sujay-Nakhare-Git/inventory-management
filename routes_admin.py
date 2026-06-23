@@ -33,7 +33,7 @@ def admin_inventory_overview():
 
     db = get_db()
     filter_category = request.args.get("filter_category", "")
-    filter_size = request.args.get("filter_size", "")
+    filter_size = request.args.get("filter_size", "XL")  # Default to XL
 
     inventory_totals = db.execute(
         "SELECT COALESCE(SUM(cost_price * quantity), 0) as total_cost, "
@@ -41,48 +41,61 @@ def admin_inventory_overview():
         "COALESCE(SUM(quantity), 0) as total_items "
         "FROM products WHERE quantity > 0"
     ).fetchone()
+    
     all_categories = db.execute(
         "SELECT DISTINCT COALESCE(c.name, 'Uncategorized') as name "
         "FROM products p LEFT JOIN categories c ON p.category_id = c.id ORDER BY name"
     ).fetchall()
+    
     all_sizes = db.execute(
         "SELECT DISTINCT COALESCE(p.size, 'No Size') as name FROM products p ORDER BY name"
     ).fetchall()
 
-    cat_where = ""
-    cat_params = []
-    if filter_category:
-        if filter_category == "Uncategorized":
-            cat_where = " WHERE c.name IS NULL"
-        else:
-            cat_where = " WHERE c.name = ?"
-            cat_params = [filter_category]
+    # Category view with availability (showing stock by category)
+    category_availability = db.execute(
+        "SELECT COALESCE(c.name, 'Uncategorized') as category, "
+        "COALESCE(SUM(p.quantity), 0) as total_stock "
+        "FROM products p LEFT JOIN categories c ON p.category_id = c.id "
+        "WHERE p.quantity > 0 "
+        "GROUP BY c.name ORDER BY total_stock DESC"
+    ).fetchall()
 
+    # Size availability for selected category
     size_where = ""
     size_params = []
+    if filter_category:
+        if filter_category == "Uncategorized":
+            size_where = " AND c.name IS NULL"
+        else:
+            size_where = " AND c.name = ?"
+            size_params = [filter_category]
+
+    size_availability = db.execute(
+        "SELECT COALESCE(p.size, 'No Size') as size, "
+        "COALESCE(SUM(p.quantity), 0) as total_stock "
+        "FROM products p LEFT JOIN categories c ON p.category_id = c.id "
+        "WHERE p.quantity > 0" + size_where +
+        " GROUP BY p.size ORDER BY p.size",
+        size_params,
+    ).fetchall()
+
+    # Category counts filtered by size
+    size_where_results = ""
+    size_params_results = []
     if filter_size:
         if filter_size == "No Size":
-            size_where = " WHERE p.size IS NULL OR p.size = ''"
+            size_where_results = " WHERE p.size IS NULL OR p.size = ''"
         else:
-            size_where = " WHERE p.size = ?"
-            size_params = [filter_size]
+            size_where_results = " WHERE p.size = ?"
+            size_params_results = [filter_size]
 
     category_counts = db.execute(
         "SELECT COALESCE(c.name, 'Uncategorized') as category, "
         "COUNT(p.id) as product_count, COALESCE(SUM(p.quantity), 0) as total_stock "
         "FROM products p LEFT JOIN categories c ON p.category_id = c.id"
-        + cat_where +
+        + size_where_results +
         " GROUP BY c.name ORDER BY total_stock DESC",
-        cat_params,
-    ).fetchall()
-    size_counts = db.execute(
-        "SELECT COALESCE(p.size, 'No Size') as size, "
-        "COALESCE(c.name, 'Uncategorized') as category, "
-        "COUNT(p.id) as product_count, COALESCE(SUM(p.quantity), 0) as total_stock "
-        "FROM products p LEFT JOIN categories c ON p.category_id = c.id"
-        + size_where +
-        " GROUP BY p.size, c.name ORDER BY p.size, c.name",
-        size_params,
+        size_params_results,
     ).fetchall()
 
     return render_template(
@@ -92,8 +105,9 @@ def admin_inventory_overview():
         all_sizes=all_sizes,
         filter_category=filter_category,
         filter_size=filter_size,
+        category_availability=category_availability,
+        size_availability=size_availability,
         category_counts=category_counts,
-        size_counts=size_counts,
     )
 
 

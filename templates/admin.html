@@ -25,15 +25,6 @@
     </div>
 </div>
 {% else %}
-<div class="stats-grid">
-    <div class="card stat-card stat-blue" style="text-align:left;">
-        <div class="card-title">👗 Inventory</div>
-        <p class="page-desc">Manage and view all products in stock.</p>
-        <div style="margin-top:1rem;">
-            <a href="{{ url_for('inventory') }}" class="btn btn-primary">Open Inventory</a>
-        </div>
-    </div>
-
     <div class="card stat-card stat-blue" style="text-align:left;">
         <div class="card-title">📅 Daily Summary</div>
         <p class="page-desc">See today's sales, expenses, refunds, top products, and net summary.</p>
@@ -103,6 +94,15 @@
         <p class="page-desc">See per-vendor stock value, units sold, and sales totals.</p>
         <div style="margin-top:1rem;">
             <a href="{{ url_for('vendor_summary') }}" class="btn btn-primary">Open Vendor Summary</a>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+    <div class="card stat-card stat-blue" style="text-align:left;">
+        <div class="card-title">👗 Inventory</div>
+        <p class="page-desc">Manage and view all products in stock.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('inventory') }}" class="btn btn-primary">Open Inventory</a>
         </div>
     </div>
 
