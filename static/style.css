@@ -76,6 +76,9 @@ body {
     color: var(--charcoal);
     display: flex;
     min-height: 100vh;
+    overflow-x: hidden;
+    width: 100vw;
+    max-width: 100%;
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────────────── */
@@ -168,6 +171,9 @@ body {
     flex: 1;
     padding: 2rem 2.5rem;
     max-width: 1400px;
+    overflow-x: hidden;
+    width: calc(100% - var(--sidebar-width));
+    box-sizing: border-box;
 }
 
 /* ── Page Header ─────────────────────────────────────────────────────── */
@@ -1421,6 +1427,8 @@ textarea.input { resize: vertical; }
         padding-top: 4rem;
         width: 100%;
         max-width: 100%;
+        overflow-x: hidden;
+        box-sizing: border-box;
     }
 
     .page-header { flex-direction: column; align-items: flex-start; }
@@ -1433,7 +1441,12 @@ textarea.input { resize: vertical; }
     .stat-label { font-size: 0.75rem; }
 
     /* Tables */
-    .table-wrapper { margin: 0 -1rem; padding: 0 1rem; }
+    .table-wrapper { 
+        margin: 0;
+        padding: 0;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
     table { font-size: 0.8rem; }
     thead th, tbody td { padding: 0.5rem 0.6rem; }
     .actions { flex-direction: column; gap: 0.25rem; }
@@ -1480,12 +1493,16 @@ textarea.input { resize: vertical; }
     /* Modal */
     .modal-content { margin: 1rem; }
     .image-preview-content {
-        width: calc(100vw - 2rem);
+        width: 100%;
+        max-width: calc(100vw - 2rem);
         padding: 1rem;
+        box-sizing: border-box;
     }
     .image-preview-content img {
         max-width: 100%;
         max-height: 70vh;
+        height: auto;
+        display: block;
     }
 
     /* Admin cards */
