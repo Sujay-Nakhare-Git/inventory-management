@@ -27,8 +27,9 @@
             <option value="{{ s.name }}" {% if filter_size == s.name %}selected{% endif %}>{{ s.name }}</option>
             {% endfor %}
         </select>
+        <input type="date" name="filter_date" value="{{ filter_date }}" class="input" title="Filter by date added">
         <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
-        {% if search or filter_category or filter_size %}
+        {% if search or filter_category or filter_size or filter_date %}
         <a href="{{ url_for('inventory_labels') }}" class="btn btn-outline btn-sm">Clear</a>
         {% endif %}
     </form>
@@ -57,6 +58,7 @@
                         <th>Size</th>
                         <th>Price</th>
                         <th>Stock</th>
+                        <th>Added On</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -69,9 +71,10 @@
                         <td>{{ p.size or '—' }}</td>
                         <td>₹{{ "%.2f"|format(p.selling_price) }}</td>
                         <td>{{ p.quantity }}</td>
+                        <td style="font-size:0.82rem;color:#6b7280;">{{ p.created_at | istdate if p.created_at else '—' }}</td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="7" style="text-align:center;color:#888;">No products match the filters.</td></tr>
+                    <tr><td colspan="8" style="text-align:center;color:#888;">No products match the filters.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

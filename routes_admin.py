@@ -704,10 +704,11 @@ def inventory_labels():
     db = get_db()
     filter_category = request.args.get("filter_category", "").strip()
     filter_size = request.args.get("filter_size", "").strip()
+    filter_date = request.args.get("filter_date", "").strip()
     search = request.args.get("q", "").strip()
 
     query = (
-        "SELECT p.id, p.name, p.sku, p.size, p.selling_price, p.quantity, "
+        "SELECT p.id, p.name, p.sku, p.size, p.selling_price, p.quantity, p.created_at, "
         "COALESCE(c.name, 'Uncategorized') AS category "
         "FROM products p LEFT JOIN categories c ON p.category_id = c.id"
     )
@@ -725,6 +726,9 @@ def inventory_labels():
         else:
             where.append("p.size = ?")
             params.append(filter_size)
+    if filter_date:
+        where.append("DATE(p.created_at) = ?")
+        params.append(filter_date)
     if search:
         where.append("(p.sku LIKE ? OR p.name LIKE ?)")
         params.extend([f"%{search}%", f"%{search}%"])
@@ -748,6 +752,7 @@ def inventory_labels():
         all_sizes=all_sizes,
         filter_category=filter_category,
         filter_size=filter_size,
+        filter_date=filter_date,
         search=search,
     )
 

@@ -671,7 +671,7 @@ def create_bill():
         subtotal += line_total
         validated_items.append({
             "product_id": product["id"],
-            "product_name": product["name"],
+            "product_name": product["sku"] or product["name"],
             "quantity": qty,
             "unit_price": product["selling_price"],
             "total_price": line_total,
