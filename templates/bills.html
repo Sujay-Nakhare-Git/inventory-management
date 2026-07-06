@@ -5,7 +5,7 @@
 <div class="page-header">
     <h2>Bills History</h2>
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-        <a href="{{ url_for('export_sales') }}" class="btn btn-outline">📥 Export CSV</a>
+        <a href="{{ url_for('export_sales', date=selected_month) if selected_month else url_for('export_sales') }}" class="btn btn-outline">📥 Export CSV</a>
         <a href="{{ url_for('billing') }}" class="btn btn-primary">+ New Bill</a>
         <a href="{{ url_for('admin') }}" class="btn btn-outline">← Back to Admin</a>
     </div>
@@ -26,8 +26,12 @@
                 <option value="phone" {% if search_type == 'phone' %}selected{% endif %}>Phone</option>
             </select>
         </div>
+        <div class="form-group" style="flex: 0 0 auto; margin-bottom: 0;">
+            <label style="font-size: 0.9rem; margin-bottom: 0.25rem;">Month</label>
+            <input type="month" name="month" class="input" value="{{ selected_month or '' }}" max="{{ current_month }}">
+        </div>
         <button type="submit" class="btn btn-primary">🔍 Search</button>
-        {% if search %}
+        {% if search or selected_month %}
         <a href="{{ url_for('bills_list') }}" class="btn btn-outline">✕ Clear</a>
         {% endif %}
     </form>
@@ -71,7 +75,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="10" class="empty-state">{% if search %}No bills found matching "{{ search }}". {% else %}No bills yet.{% endif %} {% if not search %}<a href="{{ url_for('billing') }}" style="color:#3498db;text-decoration:underline;">Create your first bill!</a>{% endif %}</td></tr>
+                <tr><td colspan="10" class="empty-state">{% if search %}No bills found matching "{{ search }}". {% elif selected_month %}No bills found for {{ selected_month }}. {% else %}No bills yet.{% endif %} {% if not search and not selected_month %}<a href="{{ url_for('billing') }}" style="color:#3498db;text-decoration:underline;">Create your first bill!</a>{% endif %}</td></tr>
                 {% endfor %}
             </tbody>
         </table>

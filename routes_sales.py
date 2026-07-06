@@ -11,6 +11,13 @@ def bills_list():
     db = get_db()
     search = request.args.get("search", "").strip()
     search_type = request.args.get("search_type", "all")
+    current_month = now_ist().strftime("%Y-%m")
+    selected_month = request.args.get("month", "").strip()
+    if selected_month:
+        try:
+            datetime.strptime(selected_month, "%Y-%m")
+        except ValueError:
+            selected_month = ""
     
     query = "SELECT * FROM bills WHERE 1=1"
     params = []
@@ -26,11 +33,22 @@ def bills_list():
             query += " AND (customer_name LIKE ? OR customer_phone LIKE ?)"
             params.append(f"%{search}%")
             params.append(f"%{search}%")
+
+    if selected_month:
+        query += " AND created_at LIKE ?"
+        params.append(f"{selected_month}%")
     
     query += " ORDER BY created_at DESC"
     bills = db.execute(query, params).fetchall()
     
-    return render_template("bills.html", bills=bills, search=search, search_type=search_type)
+    return render_template(
+        "bills.html",
+        bills=bills,
+        search=search,
+        search_type=search_type,
+        selected_month=selected_month,
+        current_month=current_month,
+    )
 
 
 @app.route("/bills/<int:bill_id>")
