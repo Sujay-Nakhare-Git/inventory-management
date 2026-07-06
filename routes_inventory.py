@@ -7,6 +7,9 @@ def dashboard():
     db = get_db()
     total_products = db.execute("SELECT COUNT(*) FROM products").fetchone()[0]
     total_stock = db.execute("SELECT COALESCE(SUM(quantity),0) FROM products").fetchone()[0]
+    items_sold = db.execute(
+        "SELECT COALESCE(SUM(quantity),0) FROM bill_items"
+    ).fetchone()[0]
     available_items = db.execute(
         "SELECT COALESCE(SUM(quantity),0) FROM products WHERE quantity > 0"
     ).fetchone()[0]
@@ -34,6 +37,7 @@ def dashboard():
         "dashboard.html",
         total_products=total_products,
         total_stock=total_stock,
+        items_sold=items_sold,
         available_items=available_items,
         low_stock=low_stock,
         today_sales=today_sales,
