@@ -323,12 +323,17 @@ def profit_loss():
     db = get_db()
     period = request.args.get("period", "all")
     today = now_ist().strftime("%Y-%m-%d")
-    month = now_ist().strftime("%Y-%m")
+    current_month = now_ist().strftime("%Y-%m")
+    selected_month = request.args.get("month", current_month).strip() or current_month
+    try:
+        datetime.strptime(selected_month, "%Y-%m")
+    except ValueError:
+        selected_month = current_month
 
     if period == "today":
         date_filter = f"{today}%"
     elif period == "month":
-        date_filter = f"{month}%"
+        date_filter = f"{selected_month}%"
     else:
         date_filter = "%"
 
@@ -354,8 +359,15 @@ def profit_loss():
         (date_filter,),
     ).fetchone()[0]
 
+    # All expenses for selected period (used in month-wise expense-sale-profit summary)
+    total_expenses_all = db.execute(
+        "SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE created_at LIKE ?",
+        (date_filter,),
+    ).fetchone()[0]
+
     gross_profit = revenue - cogs
     net_profit = gross_profit - total_expenses
+    sales_minus_expenses = revenue - total_expenses_all
 
     # Total investment
     total_investment = db.execute(
@@ -421,6 +433,24 @@ def profit_loss():
         (date_filter,),
     ).fetchall()
 
+    # Full sale history for selected month (for month-wise reporting section)
+    monthly_sales_history = db.execute(
+        "SELECT * FROM bills WHERE created_at LIKE ? ORDER BY created_at DESC",
+        (f"{selected_month}%",),
+    ).fetchall()
+
+    monthly_sale_total = db.execute(
+        "SELECT COALESCE(SUM(total), 0) FROM bills WHERE created_at LIKE ?",
+        (f"{selected_month}%",),
+    ).fetchone()[0]
+
+    monthly_expense_total = db.execute(
+        "SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE created_at LIKE ?",
+        (f"{selected_month}%",),
+    ).fetchone()[0]
+
+    monthly_profit = monthly_sale_total - monthly_expense_total
+
     # Inventory value
     inventory_cost = db.execute(
         "SELECT COALESCE(SUM(cost_price * quantity), 0) FROM products"
@@ -446,6 +476,14 @@ def profit_loss():
         inventory_retail=inventory_retail,
         period=period,
         total_investment=total_investment,
+        selected_month=selected_month,
+        current_month=current_month,
+        total_expenses_all=total_expenses_all,
+        sales_minus_expenses=sales_minus_expenses,
+        monthly_sales_history=monthly_sales_history,
+        monthly_sale_total=monthly_sale_total,
+        monthly_expense_total=monthly_expense_total,
+        monthly_profit=monthly_profit,
     )
 
 

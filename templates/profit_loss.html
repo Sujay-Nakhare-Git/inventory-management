@@ -12,8 +12,64 @@
 
 <div class="period-tabs">
     <a href="{{ url_for('profit_loss', period='today') }}" class="btn {% if period == 'today' %}btn-primary{% else %}btn-outline{% endif %}">Today</a>
-    <a href="{{ url_for('profit_loss', period='month') }}" class="btn {% if period == 'month' %}btn-primary{% else %}btn-outline{% endif %}">This Month</a>
+    <a href="{{ url_for('profit_loss', period='month', month=selected_month) }}" class="btn {% if period == 'month' %}btn-primary{% else %}btn-outline{% endif %}">This Month</a>
     <a href="{{ url_for('profit_loss', period='all') }}" class="btn {% if period == 'all' %}btn-primary{% else %}btn-outline{% endif %}">All Time</a>
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+    <h3 class="card-title">Month-wise Expense, Sale & Profit</h3>
+    <form method="GET" action="{{ url_for('profit_loss') }}" class="filter-bar" style="align-items:flex-end;">
+        <input type="hidden" name="period" value="month">
+        <div class="form-group" style="margin:0;">
+            <label for="month">Select Month</label>
+            <input type="month" id="month" name="month" class="input" value="{{ selected_month }}" max="{{ current_month }}">
+        </div>
+        <button type="submit" class="btn btn-primary">Show Month</button>
+    </form>
+
+    <div class="stats-grid" style="margin-top:1rem;">
+        <div class="stat-card stat-blue">
+            <div class="stat-value">₹{{ "%.2f"|format(monthly_sale_total) }}</div>
+            <div class="stat-label">Sale ({{ selected_month }})</div>
+        </div>
+        <div class="stat-card stat-red">
+            <div class="stat-value">₹{{ "%.2f"|format(monthly_expense_total) }}</div>
+            <div class="stat-label">Expense ({{ selected_month }})</div>
+        </div>
+        <div class="stat-card {% if monthly_profit >= 0 %}stat-green{% else %}stat-red{% endif %}">
+            <div class="stat-value">₹{{ "%.2f"|format(monthly_profit) }}</div>
+            <div class="stat-label">Profit (Sale - Expense)</div>
+        </div>
+    </div>
+
+    {% if monthly_sales_history %}
+    <div class="table-wrapper" style="margin-top:1rem;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Bill #</th>
+                    <th>Customer</th>
+                    <th>Total</th>
+                    <th>Payment</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bill in monthly_sales_history %}
+                <tr>
+                    <td><strong>{{ display_bill_ref(bill) }}</strong></td>
+                    <td>{{ bill.customer_name or 'Walk-in' }}</td>
+                    <td>₹{{ "%.2f"|format(bill.total) }}</td>
+                    <td>{{ bill.payment_method }}</td>
+                    <td>{{ bill.created_at | istdatetime }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty-state" style="margin-top:0.75rem;">No sales found for {{ selected_month }}.</p>
+    {% endif %}
 </div>
 
 <div class="stats-grid">
