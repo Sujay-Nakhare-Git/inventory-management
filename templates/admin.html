@@ -14,16 +14,79 @@
     <div class="pl-login-card">
         <div class="pl-login-icon">🔐</div>
         <h2>Admin Access</h2>
-        <p>Enter password to access the admin tabs below.</p>
-        <form method="POST" action="{{ url_for('admin') }}">
+        <p>Enter password and verify with fingerprint or PIN. Admin auto-locks after 20 minutes of inactivity.</p>
+        <form method="POST" action="{{ url_for('admin') }}" id="adminUnlockForm">
             <input type="hidden" name="next_url" value="{{ next_url }}">
+            <input type="hidden" name="fingerprint_token" id="fingerprintToken">
             <div class="form-group">
                 <input type="password" name="password" class="input" placeholder="Enter admin password" required autofocus>
             </div>
+            <div class="form-group">
+                <input type="password" name="pin" id="adminPin" class="input" placeholder="Enter admin PIN (or use fingerprint)">
+            </div>
+            <button type="button" class="btn btn-outline btn-block" id="fingerprintBtn">Use Fingerprint</button>
+            <p id="fingerprintStatus" style="margin-top:0.6rem; font-size:0.92rem; color:#555;">Not verified with fingerprint yet.</p>
             <button type="submit" class="btn btn-primary btn-block">Unlock Admin</button>
         </form>
     </div>
 </div>
+<script>
+(function () {
+    const form = document.getElementById("adminUnlockForm");
+    if (!form) {
+        return;
+    }
+
+    const pinInput = document.getElementById("adminPin");
+    const fingerprintBtn = document.getElementById("fingerprintBtn");
+    const fingerprintTokenInput = document.getElementById("fingerprintToken");
+    const fingerprintStatus = document.getElementById("fingerprintStatus");
+    const fingerprintNonce = "{{ fingerprint_nonce }}";
+
+    async function sha256Hex(text) {
+        const bytes = new TextEncoder().encode(text);
+        const digest = await crypto.subtle.digest("SHA-256", bytes);
+        return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    async function verifyFingerprint() {
+        if (!window.PublicKeyCredential || !navigator.credentials || !window.isSecureContext) {
+            fingerprintStatus.textContent = "Fingerprint is not available in this browser. Use PIN.";
+            return;
+        }
+
+        try {
+            const challenge = new TextEncoder().encode(fingerprintNonce);
+            await navigator.credentials.get({
+                publicKey: {
+                    challenge,
+                    timeout: 60000,
+                    userVerification: "required"
+                }
+            });
+            fingerprintTokenInput.value = await sha256Hex(fingerprintNonce + "|ok");
+            fingerprintStatus.textContent = "Fingerprint verified.";
+            fingerprintStatus.style.color = "#1f7a38";
+        } catch (err) {
+            fingerprintTokenInput.value = "";
+            fingerprintStatus.textContent = "Fingerprint verification failed or cancelled. Use PIN.";
+            fingerprintStatus.style.color = "#b03a2e";
+        }
+    }
+
+    fingerprintBtn.addEventListener("click", verifyFingerprint);
+
+    form.addEventListener("submit", function (event) {
+        const pinEntered = pinInput.value.trim().length > 0;
+        const fingerprintVerified = fingerprintTokenInput.value.trim().length > 0;
+        if (!pinEntered && !fingerprintVerified) {
+            event.preventDefault();
+            fingerprintStatus.textContent = "Enter PIN or verify fingerprint before unlocking.";
+            fingerprintStatus.style.color = "#b03a2e";
+        }
+    });
+})();
+</script>
 {% else %}
 <div class="stats-grid">
 

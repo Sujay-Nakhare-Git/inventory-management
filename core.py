@@ -681,10 +681,59 @@ def save_optimized_image(uploaded_file, saved_path, extension):
 
 
 ADMIN_PASSWORD_HASH = "d1215baec4cf39b5c9cc710527fbbfcb3d4290caaf9b0f095d32198c9d5e28aa"
+# Change via env for production: export ADMIN_PIN_HASH=<sha256_of_pin>
+ADMIN_PIN_HASH = os.getenv(
+    "ADMIN_PIN_HASH",
+    "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",  # 1234
+).strip().lower()
+ADMIN_IDLE_TIMEOUT_SECONDS = 20 * 60
+
+
+def _current_ts():
+    return int(now_ist().timestamp())
+
+
+def mark_admin_session_active():
+    session["admin_last_activity_ts"] = _current_ts()
+
+
+def establish_admin_session():
+    session["admin_authenticated"] = True
+    mark_admin_session_active()
+
+
+def clear_admin_session():
+    session.pop("admin_authenticated", None)
+    session.pop("admin_last_activity_ts", None)
+    session.pop("admin_fingerprint_nonce", None)
+    session.pop("pl_authenticated", None)
+
+
+def admin_pin_verified(pin):
+    if not pin:
+        return False
+    entered_hash = hashlib.sha256(pin.encode()).hexdigest()
+    return hmac.compare_digest(entered_hash, ADMIN_PIN_HASH)
 
 
 def admin_authenticated():
-    return session.get("admin_authenticated", False)
+    if not session.get("admin_authenticated", False):
+        return False
+
+    last_active = session.get("admin_last_activity_ts")
+    try:
+        last_active = int(last_active)
+    except (TypeError, ValueError):
+        last_active = 0
+
+    now_ts = _current_ts()
+    if last_active <= 0 or (now_ts - last_active) > ADMIN_IDLE_TIMEOUT_SECONDS:
+        clear_admin_session()
+        session["admin_timeout_notice"] = True
+        return False
+
+    mark_admin_session_active()
+    return True
 
 
 def get_triggered_low_stock_alerts(db):

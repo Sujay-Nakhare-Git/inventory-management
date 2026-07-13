@@ -4,24 +4,45 @@ from core import *  # noqa: F401,F403
 # ── Admin ────────────────────────────────────────────────────────────────
 @app.route("/admin", methods=["GET", "POST"])
 def admin():
+    next_url = request.values.get("next", request.values.get("next_url", "")).strip()
+
+    if request.method == "GET" and session.pop("admin_timeout_notice", False):
+        flash("Admin auto-locked after 20 minutes of inactivity. Please unlock again.", "error")
+
     if request.method == "POST":
         password = request.form.get("password", "")
         entered_hash = hashlib.sha256(password.encode()).hexdigest()
-        if hmac.compare_digest(entered_hash, ADMIN_PASSWORD_HASH):
-            session["admin_authenticated"] = True
+        pin = request.form.get("pin", "").strip()
+        fingerprint_token = request.form.get("fingerprint_token", "").strip()
+        fingerprint_nonce = session.get("admin_fingerprint_nonce", "")
+
+        fingerprint_ok = False
+        if fingerprint_nonce and fingerprint_token:
+            expected_token = hashlib.sha256(f"{fingerprint_nonce}|ok".encode()).hexdigest()
+            fingerprint_ok = hmac.compare_digest(fingerprint_token, expected_token)
+
+        pin_ok = admin_pin_verified(pin)
+
+        if hmac.compare_digest(entered_hash, ADMIN_PASSWORD_HASH) and (fingerprint_ok or pin_ok):
+            establish_admin_session()
+            session.pop("admin_fingerprint_nonce", None)
             flash("Admin access granted.", "success")
-            next_url = request.form.get("next_url", "").strip()
             if next_url.startswith("/"):
                 return redirect(next_url)
             return redirect(url_for("admin"))
-        flash("Incorrect admin password.", "error")
+        if not hmac.compare_digest(entered_hash, ADMIN_PASSWORD_HASH):
+            flash("Incorrect admin password.", "error")
+        else:
+            flash("Verify using fingerprint or enter valid PIN.", "error")
 
-    next_url = request.args.get("next", "")
+    fingerprint_nonce = os.urandom(16).hex()
+    session["admin_fingerprint_nonce"] = fingerprint_nonce
 
     return render_template(
         "admin.html",
         locked=not admin_authenticated(),
         next_url=next_url,
+        fingerprint_nonce=fingerprint_nonce,
     )
 
 
@@ -567,8 +588,7 @@ def vendor_summary():
 
 @app.route("/admin/logout")
 def admin_logout():
-    session.pop("admin_authenticated", None)
-    session.pop("pl_authenticated", None)
+    clear_admin_session()
     flash("Admin area locked.", "success")
     return redirect(url_for("dashboard"))
 
