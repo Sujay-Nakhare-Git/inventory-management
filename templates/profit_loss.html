@@ -95,6 +95,26 @@
             {% if net_profit >= 0 %}✅ Net Profit{% else %}❌ Net Loss{% endif %}
         </div>
     </div>
+    <div class="stat-card {% if gross_profit >= 0 %}stat-blue{% else %}stat-red{% endif %}">
+        <div class="stat-value">
+            {% if revenue > 0 %}
+                {{ "%.1f"|format(gross_profit / revenue * 100) }}%
+            {% else %}
+                0.0%
+            {% endif %}
+        </div>
+        <div class="stat-label">Profit % (Without Expense)</div>
+    </div>
+    <div class="stat-card {% if net_profit >= 0 %}stat-blue{% else %}stat-red{% endif %}">
+        <div class="stat-value">
+            {% if revenue > 0 %}
+                {{ "%.1f"|format(net_profit / revenue * 100) }}%
+            {% else %}
+                0.0%
+            {% endif %}
+        </div>
+        <div class="stat-label">Profit % (Including Expense)</div>
+    </div>
     {% if total_investment > 0 %}
     <div class="stat-card" style="border:2px solid #8e44ad;">
         <div class="stat-value">₹{{ "%.2f"|format(total_investment) }}</div>
@@ -139,8 +159,8 @@
         </div>
         {% if revenue > 0 %}
         <div class="pl-margins">
-            <span>Gross Margin: <strong>{{ "%.1f"|format(gross_profit / revenue * 100) }}%</strong></span>
-            <span>Net Margin: <strong>{{ "%.1f"|format(net_profit / revenue * 100) }}%</strong></span>
+            <span>Profit % (Without Expense): <strong>{{ "%.1f"|format(gross_profit / revenue * 100) }}%</strong></span>
+            <span>Profit % (Including Expense): <strong>{{ "%.1f"|format(net_profit / revenue * 100) }}%</strong></span>
         </div>
         {% endif %}
     </div>

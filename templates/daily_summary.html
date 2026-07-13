@@ -36,6 +36,26 @@
         <div class="stat-value">₹{{ "%.2f"|format(net_after_expenses) }}</div>
         <div class="stat-label">Net After Costs</div>
     </div>
+    <div class="stat-card {% if gross_profit >= 0 %}stat-blue{% else %}stat-red{% endif %}">
+        <div class="stat-value">
+            {% if sales_total > 0 %}
+                {{ "%.1f"|format(gross_profit / sales_total * 100) }}%
+            {% else %}
+                0.0%
+            {% endif %}
+        </div>
+        <div class="stat-label">Profit % (Without Expense)</div>
+    </div>
+    <div class="stat-card {% if net_after_expenses >= 0 %}stat-blue{% else %}stat-red{% endif %}">
+        <div class="stat-value">
+            {% if sales_total > 0 %}
+                {{ "%.1f"|format(net_after_expenses / sales_total * 100) }}%
+            {% else %}
+                0.0%
+            {% endif %}
+        </div>
+        <div class="stat-label">Profit % (Including Expense)</div>
+    </div>
 </div>
 
 <div class="pl-grid">
@@ -67,6 +87,12 @@
                 <span><strong>₹{{ "%.2f"|format(net_after_expenses) }}</strong></span>
             </div>
         </div>
+        {% if sales_total > 0 %}
+        <div class="pl-margins">
+            <span>Profit % (Without Expense): <strong>{{ "%.1f"|format(gross_profit / sales_total * 100) }}%</strong></span>
+            <span>Profit % (Including Expense): <strong>{{ "%.1f"|format(net_after_expenses / sales_total * 100) }}%</strong></span>
+        </div>
+        {% endif %}
     </div>
 
     <div class="card">
