@@ -34,12 +34,20 @@ def daily_summary():
         (date_filter,),
     ).fetchone()[0]
 
-    refund_total = db.execute(
+    refund_total_raw = db.execute(
         "SELECT COALESCE(SUM(refund_amount), 0) FROM refunds WHERE created_at LIKE ?",
         (date_filter,),
     ).fetchone()[0]
+    refund_store_credit_total = db.execute(
+        "SELECT COALESCE(SUM(amount), 0) FROM credit_transactions "
+        "WHERE transaction_type = 'credit' "
+        "AND notes LIKE 'Refund from Bill #%' "
+        "AND created_at LIKE ?",
+        (date_filter,),
+    ).fetchone()[0]
+    refund_total = max(float(refund_total_raw) - float(refund_store_credit_total), 0)
     refund_count = db.execute(
-        "SELECT COUNT(*) FROM refunds WHERE created_at LIKE ?",
+        "SELECT COUNT(*) FROM refunds WHERE created_at LIKE ? AND type != 'store_credit'",
         (date_filter,),
     ).fetchone()[0]
 

@@ -4,7 +4,18 @@ A boutique management web application for inventory, billing, refunds/exchanges,
 
 ## Release Notes
 
-### 2.0.0 — 2026-06-15
+### 2.0.0 — 2026-07-13
+
+- Security hardening for Admin access:
+	- Admin now auto-locks after 20 minutes of inactivity.
+	- Admin unlock now requires password plus one additional verification step:
+		- Fingerprint (browser WebAuthn flow when available), or
+		- Admin PIN.
+- Reporting visibility improvements:
+	- Daily Summary now shows Profit % (Without Expense) and Profit % (Including Expense) in top summary cards.
+	- Profit & Loss now shows the same two Profit % metrics in top summary cards.
+
+### 1.9.0 — 2026-06-15
 
 - Modularized the application codebase: the single large `app.py` was split into focused modules (`core.py`, `routes_inventory.py`, `routes_sales.py`, `routes_admin.py`, `routes_reports.py`) with `app.py` as a thin entry point. No change to behavior or routes.
 - Bill viewing access refined: Bill History (`/bills`) remains Admin-protected, while individual bill detail and thermal print pages are accessible directly after a bill is generated (no password prompt).

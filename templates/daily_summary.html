@@ -30,7 +30,7 @@
     </div>
     <div class="stat-card stat-blue">
         <div class="stat-value">₹{{ "%.2f"|format(refund_total) }}</div>
-        <div class="stat-label">Refunds Today</div>
+        <div class="stat-label">Refunds Today (Excl. Store Credit)</div>
     </div>
     <div class="stat-card {% if net_after_expenses >= 0 %}stat-green{% else %}stat-red{% endif %}">
         <div class="stat-value">₹{{ "%.2f"|format(net_after_expenses) }}</div>
@@ -79,7 +79,7 @@
                 <span class="pl-negative">-₹{{ "%.2f"|format(expense_total) }}</span>
             </div>
             <div class="pl-row">
-                <span>Refunds</span>
+                <span>Refunds (Excl. Store Credit)</span>
                 <span class="pl-negative">-₹{{ "%.2f"|format(refund_total) }}</span>
             </div>
             <div class="pl-row pl-total {% if net_after_expenses >= 0 %}pl-profit{% else %}pl-loss{% endif %}">
