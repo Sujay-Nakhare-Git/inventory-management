@@ -42,11 +42,73 @@
     const fingerprintTokenInput = document.getElementById("fingerprintToken");
     const fingerprintStatus = document.getElementById("fingerprintStatus");
     const fingerprintNonce = "{{ fingerprint_nonce }}";
+    const webauthnStorageKey = "admin_webauthn_credential_id";
 
     async function sha256Hex(text) {
         const bytes = new TextEncoder().encode(text);
         const digest = await crypto.subtle.digest("SHA-256", bytes);
         return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    function toBase64Url(bytes) {
+        let binary = "";
+        bytes.forEach(function (b) {
+            binary += String.fromCharCode(b);
+        });
+        return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    }
+
+    function fromBase64Url(value) {
+        const b64 = value.replace(/-/g, "+").replace(/_/g, "/");
+        const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+        const raw = atob(padded);
+        const out = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i += 1) {
+            out[i] = raw.charCodeAt(i);
+        }
+        return out;
+    }
+
+    function randomChallenge() {
+        const arr = new Uint8Array(32);
+        crypto.getRandomValues(arr);
+        return arr;
+    }
+
+    async function ensureCredentialId() {
+        const existingId = localStorage.getItem(webauthnStorageKey);
+        if (existingId) {
+            return existingId;
+        }
+
+        const userId = new TextEncoder().encode("admin-user");
+        const credential = await navigator.credentials.create({
+            publicKey: {
+                challenge: randomChallenge(),
+                rp: {
+                    name: "Gulmohar Admin",
+                },
+                user: {
+                    id: userId,
+                    name: "admin@gulmohar.local",
+                    displayName: "Admin",
+                },
+                pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+                timeout: 60000,
+                attestation: "none",
+                authenticatorSelection: {
+                    userVerification: "required",
+                },
+            },
+        });
+
+        if (!credential || !credential.rawId) {
+            throw new Error("credential_not_created");
+        }
+
+        const storedId = toBase64Url(new Uint8Array(credential.rawId));
+        localStorage.setItem(webauthnStorageKey, storedId);
+        return storedId;
     }
 
     async function verifyFingerprint() {
@@ -56,10 +118,19 @@
         }
 
         try {
-            const challenge = new TextEncoder().encode(fingerprintNonce);
+            fingerprintStatus.textContent = "Waiting for fingerprint...";
+            fingerprintStatus.style.color = "#555";
+
+            const credentialId = await ensureCredentialId();
+            const credentialIdBytes = fromBase64Url(credentialId);
+
             await navigator.credentials.get({
                 publicKey: {
-                    challenge,
+                    challenge: randomChallenge(),
+                    allowCredentials: [{
+                        id: credentialIdBytes,
+                        type: "public-key",
+                    }],
                     timeout: 60000,
                     userVerification: "required"
                 }
