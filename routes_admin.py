@@ -12,37 +12,18 @@ def admin():
     if request.method == "POST":
         password = request.form.get("password", "")
         entered_hash = hashlib.sha256(password.encode()).hexdigest()
-        pin = request.form.get("pin", "").strip()
-        fingerprint_token = request.form.get("fingerprint_token", "").strip()
-        fingerprint_nonce = session.get("admin_fingerprint_nonce", "")
-
-        fingerprint_ok = False
-        if fingerprint_nonce and fingerprint_token:
-            expected_token = hashlib.sha256(f"{fingerprint_nonce}|ok".encode()).hexdigest()
-            fingerprint_ok = hmac.compare_digest(fingerprint_token, expected_token)
-
-        pin_ok = admin_pin_verified(pin)
-
-        if hmac.compare_digest(entered_hash, ADMIN_PASSWORD_HASH) and (fingerprint_ok or pin_ok):
+        if hmac.compare_digest(entered_hash, ADMIN_PASSWORD_HASH):
             establish_admin_session()
-            session.pop("admin_fingerprint_nonce", None)
             flash("Admin access granted.", "success")
             if next_url.startswith("/"):
                 return redirect(next_url)
             return redirect(url_for("admin"))
-        if not hmac.compare_digest(entered_hash, ADMIN_PASSWORD_HASH):
-            flash("Incorrect admin password.", "error")
-        else:
-            flash("Verify using fingerprint or enter valid PIN.", "error")
-
-    fingerprint_nonce = os.urandom(16).hex()
-    session["admin_fingerprint_nonce"] = fingerprint_nonce
+        flash("Incorrect admin password.", "error")
 
     return render_template(
         "admin.html",
         locked=not admin_authenticated(),
         next_url=next_url,
-        fingerprint_nonce=fingerprint_nonce,
     )
 
 

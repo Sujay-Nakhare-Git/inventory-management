@@ -681,11 +681,6 @@ def save_optimized_image(uploaded_file, saved_path, extension):
 
 
 ADMIN_PASSWORD_HASH = "d1215baec4cf39b5c9cc710527fbbfcb3d4290caaf9b0f095d32198c9d5e28aa"
-# Change via env for production: export ADMIN_PIN_HASH=<sha256_of_pin>
-ADMIN_PIN_HASH = os.getenv(
-    "ADMIN_PIN_HASH",
-    "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",  # 1234
-).strip().lower()
 ADMIN_IDLE_TIMEOUT_SECONDS = 20 * 60
 
 
@@ -705,15 +700,7 @@ def establish_admin_session():
 def clear_admin_session():
     session.pop("admin_authenticated", None)
     session.pop("admin_last_activity_ts", None)
-    session.pop("admin_fingerprint_nonce", None)
     session.pop("pl_authenticated", None)
-
-
-def admin_pin_verified(pin):
-    if not pin:
-        return False
-    entered_hash = hashlib.sha256(pin.encode()).hexdigest()
-    return hmac.compare_digest(entered_hash, ADMIN_PIN_HASH)
 
 
 def admin_authenticated():

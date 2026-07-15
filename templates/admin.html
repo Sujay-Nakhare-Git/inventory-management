@@ -14,150 +14,16 @@
     <div class="pl-login-card">
         <div class="pl-login-icon">🔐</div>
         <h2>Admin Access</h2>
-        <p>Enter password and verify with fingerprint or PIN. Admin auto-locks after 20 minutes of inactivity.</p>
-        <form method="POST" action="{{ url_for('admin') }}" id="adminUnlockForm">
+        <p>Enter password to access admin. Admin auto-locks after 20 minutes of inactivity.</p>
+        <form method="POST" action="{{ url_for('admin') }}">
             <input type="hidden" name="next_url" value="{{ next_url }}">
-            <input type="hidden" name="fingerprint_token" id="fingerprintToken">
             <div class="form-group">
                 <input type="password" name="password" class="input" placeholder="Enter admin password" required autofocus>
             </div>
-            <div class="form-group">
-                <input type="password" name="pin" id="adminPin" class="input" placeholder="Enter admin PIN (or use fingerprint)">
-            </div>
-            <button type="button" class="btn btn-outline btn-block" id="fingerprintBtn">Use Fingerprint</button>
-            <p id="fingerprintStatus" style="margin-top:0.6rem; font-size:0.92rem; color:#555;">Not verified with fingerprint yet.</p>
             <button type="submit" class="btn btn-primary btn-block">Unlock Admin</button>
         </form>
     </div>
 </div>
-<script>
-(function () {
-    const form = document.getElementById("adminUnlockForm");
-    if (!form) {
-        return;
-    }
-
-    const pinInput = document.getElementById("adminPin");
-    const fingerprintBtn = document.getElementById("fingerprintBtn");
-    const fingerprintTokenInput = document.getElementById("fingerprintToken");
-    const fingerprintStatus = document.getElementById("fingerprintStatus");
-    const fingerprintNonce = "{{ fingerprint_nonce }}";
-    const webauthnStorageKey = "admin_webauthn_credential_id";
-
-    async function sha256Hex(text) {
-        const bytes = new TextEncoder().encode(text);
-        const digest = await crypto.subtle.digest("SHA-256", bytes);
-        return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
-    }
-
-    function toBase64Url(bytes) {
-        let binary = "";
-        bytes.forEach(function (b) {
-            binary += String.fromCharCode(b);
-        });
-        return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-    }
-
-    function fromBase64Url(value) {
-        const b64 = value.replace(/-/g, "+").replace(/_/g, "/");
-        const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
-        const raw = atob(padded);
-        const out = new Uint8Array(raw.length);
-        for (let i = 0; i < raw.length; i += 1) {
-            out[i] = raw.charCodeAt(i);
-        }
-        return out;
-    }
-
-    function randomChallenge() {
-        const arr = new Uint8Array(32);
-        crypto.getRandomValues(arr);
-        return arr;
-    }
-
-    async function ensureCredentialId() {
-        const existingId = localStorage.getItem(webauthnStorageKey);
-        if (existingId) {
-            return existingId;
-        }
-
-        const userId = new TextEncoder().encode("admin-user");
-        const credential = await navigator.credentials.create({
-            publicKey: {
-                challenge: randomChallenge(),
-                rp: {
-                    name: "Gulmohar Admin",
-                },
-                user: {
-                    id: userId,
-                    name: "admin@gulmohar.local",
-                    displayName: "Admin",
-                },
-                pubKeyCredParams: [{ type: "public-key", alg: -7 }],
-                timeout: 60000,
-                attestation: "none",
-                authenticatorSelection: {
-                    userVerification: "required",
-                },
-            },
-        });
-
-        if (!credential || !credential.rawId) {
-            throw new Error("credential_not_created");
-        }
-
-        const storedId = toBase64Url(new Uint8Array(credential.rawId));
-        localStorage.setItem(webauthnStorageKey, storedId);
-        return storedId;
-    }
-
-    async function verifyFingerprint() {
-        if (!window.PublicKeyCredential || !navigator.credentials || !window.isSecureContext) {
-            fingerprintStatus.textContent = "Fingerprint is not available in this browser. Use PIN.";
-            return;
-        }
-
-        try {
-            fingerprintStatus.textContent = "Waiting for fingerprint...";
-            fingerprintStatus.style.color = "#555";
-
-            const credentialId = await ensureCredentialId();
-            const credentialIdBytes = fromBase64Url(credentialId);
-
-            await navigator.credentials.get({
-                publicKey: {
-                    challenge: randomChallenge(),
-                    allowCredentials: [{
-                        id: credentialIdBytes,
-                        type: "public-key",
-                    }],
-                    timeout: 60000,
-                    userVerification: "required"
-                }
-            });
-            fingerprintTokenInput.value = await sha256Hex(fingerprintNonce + "|ok");
-            fingerprintStatus.textContent = "Fingerprint verified.";
-            fingerprintStatus.style.color = "#1f7a38";
-        } catch (err) {
-            fingerprintTokenInput.value = "";
-            fingerprintStatus.textContent = "Fingerprint verification failed or cancelled. Use PIN.";
-            fingerprintStatus.style.color = "#b03a2e";
-        }
-    }
-
-    fingerprintBtn.addEventListener("click", verifyFingerprint);
-
-    form.addEventListener("submit", function (event) {
-        const pinEntered = pinInput.value.trim().length > 0;
-        const fingerprintVerified = fingerprintTokenInput.value.trim().length > 0;
-        if (!pinEntered && !fingerprintVerified) {
-            event.preventDefault();
-            fingerprintStatus.textContent = "Enter PIN or verify fingerprint before unlocking.";
-            fingerprintStatus.style.color = "#b03a2e";
-        }
-    });
-})();
-</script>
 {% else %}
 <div class="stats-grid">
 
