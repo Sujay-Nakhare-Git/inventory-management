@@ -14,7 +14,9 @@
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="document.querySelector('.sidebar').classList.remove('open'); document.getElementById('hamburgerBtn').classList.remove('active')"></div>
     <nav class="sidebar">
         <div class="brand">
-            <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Gulmohar by Ankita" class="brand-logo">
+            <a href="{{ url_for('dashboard') }}">
+                <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Gulmohar by Ankita" class="brand-logo">
+            </a>
             <p class="brand-tagline">Handpicked Apparel</p>
         </div>
         <ul class="nav-links">
