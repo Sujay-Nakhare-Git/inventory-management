@@ -17,7 +17,7 @@ def daily_summary():
     date_filter = f"{selected_date}%"
 
     sales_total = db.execute(
-        "SELECT COALESCE(SUM(total), 0) FROM bills WHERE created_at LIKE ?",
+        "SELECT COALESCE(SUM(total + store_credit_used), 0) FROM bills WHERE created_at LIKE ?",
         (date_filter,),
     ).fetchone()[0]
     bill_count = db.execute(

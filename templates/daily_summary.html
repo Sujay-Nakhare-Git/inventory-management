@@ -18,7 +18,7 @@
 <div class="stats-grid">
     <div class="stat-card stat-green">
         <div class="stat-value">₹{{ "%.2f"|format(sales_total) }}</div>
-        <div class="stat-label">Today's Sales</div>
+        <div class="stat-label">Today's Sales (Incl. Store Credit)</div>
     </div>
     <div class="stat-card stat-gold">
         <div class="stat-value">{{ bill_count }}</div>
@@ -63,7 +63,7 @@
         <h3 class="card-title">📊 Financial Breakdown (Today)</h3>
         <div class="pl-table">
             <div class="pl-row">
-                <span>Sales Revenue</span>
+                <span>Sales Revenue (Incl. Store Credit)</span>
                 <span class="pl-positive">₹{{ "%.2f"|format(sales_total) }}</span>
             </div>
             <div class="pl-row">
