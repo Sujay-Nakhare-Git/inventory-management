@@ -5,13 +5,13 @@ from core import *  # noqa: F401,F403
 @app.route("/")
 def dashboard():
     db = get_db()
-    total_products = db.execute("SELECT COALESCE(SUM(quantity),0) FROM products").fetchone()[0]
     items_sold = db.execute(
         "SELECT COALESCE(SUM(quantity),0) FROM bill_items"
     ).fetchone()[0]
     available_items = db.execute(
         "SELECT COALESCE(SUM(quantity),0) FROM products WHERE quantity > 0"
     ).fetchone()[0]
+    total_products = available_items + items_sold
     low_stock = db.execute(
         "SELECT COUNT(*) FROM products WHERE quantity <= low_stock_threshold"
     ).fetchone()[0]
