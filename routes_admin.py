@@ -486,6 +486,126 @@ def delete_vendor(vendor_id):
     return redirect(url_for("vendors"))
 
 
+@app.route("/admin/customers")
+def customers():
+    if not admin_authenticated():
+        flash("Please unlock Admin to access Customers.", "error")
+        return redirect(url_for("admin", next=url_for("customers")))
+
+    db = get_db()
+    search = request.args.get("search", "").strip()
+    sort = request.args.get("sort", "name")
+    direction = request.args.get("dir", "asc")
+    if sort not in ("name", "bills", "total"):
+        sort = "name"
+    if direction not in ("asc", "desc"):
+        direction = "asc"
+    sort_column = {"name": "c.name", "bills": "bill_count", "total": "total_value"}[sort]
+
+    query = (
+        "SELECT c.id AS id, c.name AS name, c.phone AS phone, "
+        "COUNT(b.id) AS bill_count, "
+        "COALESCE(SUM(b.total), 0) AS total_value, "
+        "MAX(b.created_at) AS last_purchase "
+        "FROM customers c "
+        "LEFT JOIN bills b ON TRIM(b.customer_phone) = c.phone "
+        "WHERE 1=1 "
+    )
+    params = []
+    if search:
+        query += "AND (c.name LIKE ? OR c.phone LIKE ?) "
+        params += [f"%{search}%", f"%{search}%"]
+    query += "GROUP BY c.id "
+    query += f"ORDER BY {sort_column} COLLATE NOCASE {direction.upper()}"
+
+    all_customers = db.execute(query, params).fetchall()
+
+    return render_template(
+        "customers.html",
+        customers=all_customers,
+        search=search,
+        sort=sort,
+        direction=direction,
+    )
+
+
+@app.route("/admin/customers/<int:customer_id>/edit", methods=["POST"])
+def edit_customer(customer_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to edit customers.", "error")
+        return redirect(url_for("admin", next=url_for("customers")))
+
+    db = get_db()
+    customer = db.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+    if not customer:
+        flash("Customer not found.", "error")
+        return redirect(url_for("customers"))
+
+    name = request.form.get("name", "").strip()
+    phone = request.form.get("phone", "").strip()
+
+    if not name or not phone:
+        flash("Name and phone are required.", "error")
+        return redirect(url_for("customers"))
+
+    if phone != customer["phone"]:
+        conflict = db.execute(
+            "SELECT COUNT(*) FROM customers WHERE phone = ? AND id != ?", (phone, customer_id)
+        ).fetchone()[0]
+        if conflict:
+            flash(f"Another customer already uses phone {phone}.", "error")
+            return redirect(url_for("customers"))
+
+    db.execute(
+        "UPDATE bills SET customer_name = ?, customer_phone = ? WHERE TRIM(customer_phone) = ?",
+        (name, phone, customer["phone"]),
+    )
+    db.execute(
+        "UPDATE store_credits SET customer_name = ?, customer_phone = ? WHERE customer_phone = ?",
+        (name, phone, customer["phone"]),
+    )
+    db.execute(
+        "UPDATE customers SET name = ?, phone = ?, updated_at = datetime('now','+5 hours','+30 minutes') "
+        "WHERE id = ?",
+        (name, phone, customer_id),
+    )
+    db.commit()
+    log_update("Customer Updated", f"{name} ({phone})", "customer")
+    flash("Customer details updated.", "success")
+    return redirect(url_for("customers"))
+
+
+@app.route("/admin/customers/<int:customer_id>")
+def customer_detail(customer_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to view customer details.", "error")
+        return redirect(url_for("admin", next=url_for("customers")))
+
+    db = get_db()
+    customer = db.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+    if not customer:
+        flash("Customer not found.", "error")
+        return redirect(url_for("customers"))
+
+    bills = db.execute(
+        "SELECT * FROM bills WHERE TRIM(customer_phone) = ? ORDER BY created_at DESC",
+        (customer["phone"],),
+    ).fetchall()
+    total_value = round(sum(b["total"] for b in bills), 2)
+    store_credit = db.execute(
+        "SELECT * FROM store_credits WHERE customer_phone = ?", (customer["phone"],)
+    ).fetchone()
+
+    return render_template(
+        "customer_detail.html",
+        customer=customer,
+        bills=bills,
+        bill_count=len(bills),
+        total_value=total_value,
+        store_credit=store_credit,
+    )
+
+
 @app.route("/admin/vendor-summary")
 def vendor_summary():
     if not admin_authenticated():

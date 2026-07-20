@@ -319,6 +319,14 @@ def init_db():
             UNIQUE (category_id, size),
             FOREIGN KEY (category_id) REFERENCES categories(id)
         );
+
+        CREATE TABLE IF NOT EXISTS customers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            phone TEXT NOT NULL UNIQUE,
+            created_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes')),
+            updated_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes'))
+        );
     """)
 
     # Seed default categories if empty
@@ -371,11 +379,62 @@ def init_db():
     if "include_in_pl" not in expense_columns:
         db.execute("ALTER TABLE expenses ADD COLUMN include_in_pl INTEGER NOT NULL DEFAULT 1")
 
+    # Backfill customers table from existing bills + store_credits (one-time, only if empty)
+    customer_count = db.execute("SELECT COUNT(*) FROM customers").fetchone()[0]
+    if customer_count == 0:
+        bill_customers = db.execute(
+            "SELECT TRIM(customer_phone) AS phone, "
+            "(SELECT TRIM(b2.customer_name) FROM bills b2 "
+            " WHERE TRIM(b2.customer_phone) = TRIM(b1.customer_phone) "
+            " ORDER BY b2.created_at DESC LIMIT 1) AS name "
+            "FROM bills b1 "
+            "WHERE customer_phone IS NOT NULL AND TRIM(customer_phone) != '' "
+            "GROUP BY TRIM(customer_phone)"
+        ).fetchall()
+        for row in bill_customers:
+            db.execute(
+                "INSERT OR IGNORE INTO customers (name, phone, created_at, updated_at) "
+                "VALUES (?, ?, datetime('now','+5 hours','+30 minutes'), datetime('now','+5 hours','+30 minutes'))",
+                (row["name"] or "Walk-in", row["phone"]),
+            )
+        credit_customers = db.execute(
+            "SELECT customer_name, customer_phone FROM store_credits "
+            "WHERE customer_phone IS NOT NULL AND TRIM(customer_phone) != ''"
+        ).fetchall()
+        for row in credit_customers:
+            db.execute(
+                "INSERT OR IGNORE INTO customers (name, phone, created_at, updated_at) "
+                "VALUES (?, ?, datetime('now','+5 hours','+30 minutes'), datetime('now','+5 hours','+30 minutes'))",
+                (row["customer_name"] or "Walk-in", row["customer_phone"]),
+            )
+
     db.commit()
 
 
 with app.app_context():
     init_db()
+
+
+def upsert_customer(db, name, phone):
+    """Create or update a customer record keyed by phone. No-op if phone is blank."""
+    phone = (phone or "").strip()
+    name = (name or "").strip()
+    if not phone:
+        return
+    existing = db.execute("SELECT id FROM customers WHERE phone = ?", (phone,)).fetchone()
+    if existing:
+        if name:
+            db.execute(
+                "UPDATE customers SET name = ?, updated_at = datetime('now','+5 hours','+30 minutes') "
+                "WHERE phone = ?",
+                (name, phone),
+            )
+    else:
+        db.execute(
+            "INSERT INTO customers (name, phone, created_at, updated_at) "
+            "VALUES (?, ?, datetime('now','+5 hours','+30 minutes'), datetime('now','+5 hours','+30 minutes'))",
+            (name or "Walk-in", phone),
+        )
 
 
 def get_next_bill_number(db):
@@ -458,6 +517,7 @@ def _insert_exchange_bill(db, source_bill, exchange_items):
         ),
     )
     exchange_bill_id = cursor.lastrowid
+    upsert_customer(db, source_bill["customer_name"], source_bill["customer_phone"])
 
     for item in exchange_items:
         db.execute(

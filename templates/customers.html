@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Customers — Gulmohar by Ankita{% endblock %}
+
+{% macro sort_link(key, label) %}
+    {% set next_dir = 'desc' if sort == key and direction == 'asc' else 'asc' %}
+    <a href="{{ url_for('customers', search=search, sort=key, dir=next_dir) }}" style="color:inherit;text-decoration:none;">
+        {{ label }}{% if sort == key %}{{ ' ▲' if direction == 'asc' else ' ▼' }}{% endif %}
+    </a>
+{% endmacro %}
+
+{% block content %}
+<div class="page-header">
+    <h2>👤 Customers</h2>
+    <a href="{{ url_for('admin') }}" class="btn btn-outline">← Back to Admin</a>
+</div>
+
+<div class="card">
+    <form method="GET" action="{{ url_for('customers') }}" style="display:flex;gap:0.5rem;align-items:center;margin-bottom:1rem;">
+        <input type="hidden" name="sort" value="{{ sort }}">
+        <input type="hidden" name="dir" value="{{ direction }}">
+        <input type="text" name="search" class="input" value="{{ search }}" placeholder="Search customers by name or phone" style="flex:1;">
+        <button type="submit" class="btn btn-sm btn-primary">Search</button>
+        {% if search %}<a href="{{ url_for('customers', sort=sort, dir=direction) }}" class="btn btn-sm btn-outline">Clear</a>{% endif %}
+    </form>
+
+    {% if customers %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>{{ sort_link('name', 'Name') }}</th>
+                    <th>Phone</th>
+                    <th>{{ sort_link('bills', 'Bills') }}</th>
+                    <th>{{ sort_link('total', 'Total Purchase Value') }}</th>
+                    <th>Last Purchase</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in customers %}
+                <tr>
+                    <td><strong>{{ c.name or 'Walk-in' }}</strong></td>
+                    <td>{{ c.phone }}</td>
+                    <td>{{ c.bill_count }}</td>
+                    <td>₹{{ "%.2f"|format(c.total_value) }}</td>
+                    <td>{{ c.last_purchase | istdatetime if c.last_purchase else '—' }}</td>
+                    <td>
+                        <a href="{{ url_for('customer_detail', customer_id=c.id) }}" class="btn btn-sm btn-outline">History</a>
+                        <button type="button" class="btn btn-sm btn-outline" onclick="openCustomerEdit('{{ c.id }}')">Edit</button>
+                    </td>
+                </tr>
+                <tr id="customer-edit-{{ c.id }}" style="display:none;background:#f9fafb;">
+                    <td colspan="6">
+                        <form method="POST" action="{{ url_for('edit_customer', customer_id=c.id) }}">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Name *</label>
+                                    <input type="text" name="name" class="input" required value="{{ c.name or '' }}">
+                                </div>
+                                <div class="form-group">
+                                    <label>Phone *</label>
+                                    <input type="text" name="phone" class="input" required value="{{ c.phone }}">
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+                                <button type="button" class="btn btn-outline btn-sm" onclick="closeCustomerEdit('{{ c.id }}')">Cancel</button>
+                            </div>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:#95a5a6;text-align:center;">{% if search %}No customers found matching "{{ search }}".{% else %}No customers yet.{% endif %}</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openCustomerEdit(id) {
+    const row = document.getElementById('customer-edit-' + id);
+    if (row) row.style.display = 'table-row';
+}
+function closeCustomerEdit(id) {
+    const row = document.getElementById('customer-edit-' + id);
+    if (row) row.style.display = 'none';
+}
+</script>
+{% endblock %}

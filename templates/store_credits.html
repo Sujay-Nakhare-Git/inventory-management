@@ -34,10 +34,15 @@
 <!-- Search Bar -->
 <div class="card" style="margin-bottom:1.5rem;">
     <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-        <form method="GET" action="{{ url_for('store_credits') }}" style="flex:1; display:flex; gap:0.5rem;">
+        <form method="GET" action="{{ url_for('store_credits') }}" style="flex:1; display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+            <input type="hidden" name="filter_applied" value="1">
             <input type="text" name="search" class="input" placeholder="Search by name or phone..." value="{{ search }}" style="flex:1;">
+            <label style="display:flex; align-items:center; gap:0.4rem; white-space:nowrap;">
+                <input type="checkbox" name="only_positive" value="1" {% if only_positive %}checked{% endif %}>
+                Show only balance &gt; 0
+            </label>
             <button type="submit" class="btn btn-primary">🔍 Search</button>
-            {% if search %}
+            {% if search or not only_positive %}
             <a href="{{ url_for('store_credits') }}" class="btn btn-outline">✕ Clear</a>
             {% endif %}
         </form>

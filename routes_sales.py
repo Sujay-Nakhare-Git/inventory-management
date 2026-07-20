@@ -145,6 +145,7 @@ def edit_bill(bill_id):
         "payment_method = ?, payment_breakdown_json = ? WHERE id = ?",
         (customer_name, customer_phone, payment_method, payment_breakdown_json, bill_id),
     )
+    upsert_customer(db, customer_name, customer_phone)
     db.commit()
 
     log_update(
@@ -247,14 +248,24 @@ def store_credits():
 
     db = get_db()
     search = request.args.get("search", "").strip()
+    filter_applied = request.args.get("filter_applied") == "1"
+    only_positive = (request.args.get("only_positive") == "1") if filter_applied else True
+
     query = "SELECT * FROM store_credits WHERE 1=1"
     params = []
     if search:
         query += " AND (customer_name LIKE ? OR customer_phone LIKE ?)"
         params += [f"%{search}%", f"%{search}%"]
+    if only_positive:
+        query += " AND balance > 0"
     query += " ORDER BY updated_at DESC"
     all_credits = db.execute(query, params).fetchall()
-    return render_template("store_credits.html", credits=all_credits, search=search)
+    return render_template(
+        "store_credits.html",
+        credits=all_credits,
+        search=search,
+        only_positive=only_positive,
+    )
 
 
 @app.route("/store-credits/add", methods=["POST"])
@@ -293,6 +304,7 @@ def add_store_credit():
         "VALUES (?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
         (credit_id, balance, "credit", "Initial credit added"),
     )
+    upsert_customer(db, customer_name, customer_phone)
     db.commit()
 
     log_update(
@@ -733,6 +745,7 @@ def process_refund():
             (credit_id, bill_id, round(store_credit_refund, 2), "credit",
              f"Refund from Bill #{bill_id}"),
         )
+        upsert_customer(db, sc_name, sc_phone)
 
     exchange_items = [item for item in processed_items if item["action"] == "exchange"]
     if exchange_items:

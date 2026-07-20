@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ customer.name }} — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>👤 {{ customer.name }}</h2>
+    <a href="{{ url_for('customers') }}" class="btn btn-outline">← Back to Customers</a>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card stat-blue">
+        <div class="stat-value">{{ customer.phone }}</div>
+        <div class="stat-label">Phone Number</div>
+    </div>
+    <div class="stat-card stat-gold">
+        <div class="stat-value">{{ bill_count }}</div>
+        <div class="stat-label">Total Bills</div>
+    </div>
+    <div class="stat-card stat-green">
+        <div class="stat-value">₹{{ "%.2f"|format(total_value) }}</div>
+        <div class="stat-label">Total Purchase Value</div>
+    </div>
+    {% if store_credit %}
+    <div class="stat-card" style="border:2px solid #9b59b6;">
+        <div class="stat-value">₹{{ "%.2f"|format(store_credit.balance) }}</div>
+        <div class="stat-label">Store Credit Balance</div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3 class="card-title">🧾 Bill History</h3>
+    {% if bills %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Bill #</th>
+                    <th>Total</th>
+                    <th>Payment</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in bills %}
+                <tr>
+                    <td><strong>{{ display_bill_ref(b) }}</strong></td>
+                    <td><strong>₹{{ "%.2f"|format(b.total) }}</strong></td>
+                    <td><span class="badge badge-info">{{ b.payment_method }}</span></td>
+                    <td>{{ b.created_at | istdatetime }}</td>
+                    <td><a href="{{ url_for('bill_detail', bill_id=b.id) }}" class="btn btn-sm">View</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty-state">No bills found for this customer.</p>
+    {% endif %}
+</div>
+{% endblock %}

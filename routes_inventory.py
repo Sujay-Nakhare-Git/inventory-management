@@ -591,36 +591,13 @@ def api_customers_search():
     like = f"%{q}%"
     rows = db.execute(
         """
-        WITH all_customers AS (
-            SELECT
-                TRIM(COALESCE(customer_name, '')) AS name,
-                TRIM(COALESCE(customer_phone, '')) AS phone,
-                created_at AS last_seen
-            FROM bills
-            WHERE customer_phone IS NOT NULL AND TRIM(customer_phone) != ''
-            UNION ALL
-            SELECT
-                TRIM(COALESCE(customer_name, '')) AS name,
-                TRIM(COALESCE(customer_phone, '')) AS phone,
-                updated_at AS last_seen
-            FROM store_credits
-            WHERE customer_phone IS NOT NULL AND TRIM(customer_phone) != ''
-        ),
-        agg AS (
-            SELECT
-                phone,
-                MAX(name) AS name,
-                MAX(last_seen) AS last_seen,
-                COUNT(*) AS visit_count
-            FROM all_customers
-            GROUP BY phone
-        )
-        SELECT agg.phone, agg.name, agg.last_seen, agg.visit_count,
+        SELECT c.phone AS phone, c.name AS name, c.updated_at AS last_seen,
+               (SELECT COUNT(*) FROM bills b WHERE TRIM(b.customer_phone) = c.phone) AS visit_count,
                sc.id AS credit_id, sc.balance AS credit_balance
-        FROM agg
-        LEFT JOIN store_credits sc ON sc.customer_phone = agg.phone
-        WHERE agg.phone LIKE ? OR agg.name LIKE ?
-        ORDER BY agg.last_seen DESC
+        FROM customers c
+        LEFT JOIN store_credits sc ON sc.customer_phone = c.phone
+        WHERE c.phone LIKE ? OR c.name LIKE ?
+        ORDER BY c.updated_at DESC
         LIMIT 8
         """,
         (like, like),
@@ -772,6 +749,7 @@ def create_bill():
          payment_breakdown_json, store_credit_amount),
     )
     bill_id = cursor.lastrowid
+    upsert_customer(db, customer_name, customer_phone)
 
     for it in validated_items:
         db.execute(
