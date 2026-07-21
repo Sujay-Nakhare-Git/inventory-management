@@ -25,6 +25,10 @@
         <div class="stat-value">₹{{ "{:,.2f}".format(totals.gross_profit) }}</div>
         <div class="stat-label">Gross Profit</div>
     </div>
+    <div class="card stat-card stat-red" style="text-align:center;">
+        <div class="stat-value">{{ "{:.2f}%".format(totals.profit_percent) if totals.profit_percent is not none else '—' }}</div>
+        <div class="stat-label">Profit %</div>
+    </div>
 </div>
 
 <div class="card">
@@ -42,6 +46,7 @@
                     <th>Sales Amount</th>
                     <th>Bills</th>
                     <th>Gross Profit</th>
+                    <th>Profit %</th>
                 </tr>
             </thead>
             <tbody>
@@ -56,6 +61,7 @@
                     <td>₹{{ "{:,.2f}".format(row.sold_amount) }}</td>
                     <td>{{ row.bills_count }}</td>
                     <td><strong>₹{{ "{:,.2f}".format(row.gross_profit) }}</strong></td>
+                    <td><strong>{{ "{:.2f}%".format(row.profit_percent) if row.profit_percent is not none else '—' }}</strong></td>
                 </tr>
                 {% endfor %}
             </tbody>

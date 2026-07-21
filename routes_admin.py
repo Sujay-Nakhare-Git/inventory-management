@@ -657,6 +657,7 @@ def vendor_summary():
         sold_cost = round(sales["sold_cost"], 2) if sales else 0.0
         bills_count = sales["bills_count"] if sales else 0
         gross_profit = round(sold_amount - sold_cost, 2)
+        profit_percent = round((gross_profit / sold_amount) * 100, 2) if sold_amount > 0 else None
         summary.append({
             "vendor_id": row["vendor_id"],
             "vendor_name": row["vendor_name"],
@@ -668,6 +669,7 @@ def vendor_summary():
             "sold_amount": sold_amount,
             "bills_count": bills_count,
             "gross_profit": gross_profit,
+            "profit_percent": profit_percent,
         })
         totals["product_count"] += row["product_count"]
         totals["total_stock"] += row["total_stock"]
@@ -682,6 +684,10 @@ def vendor_summary():
     totals["stock_retail_value"] = round(totals["stock_retail_value"], 2)
     totals["sold_amount"] = round(totals["sold_amount"], 2)
     totals["gross_profit"] = round(totals["gross_profit"], 2)
+    totals["profit_percent"] = (
+        round((totals["gross_profit"] / totals["sold_amount"]) * 100, 2)
+        if totals["sold_amount"] > 0 else None
+    )
 
     return render_template("vendor_summary.html", summary=summary, totals=totals)
 
