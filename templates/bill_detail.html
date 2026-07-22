@@ -53,6 +53,7 @@
             <tr>
                 <th>#</th>
                 <th>Product</th>
+                <th>Size</th>
                 <th>Qty</th>
                 <th>Unit Price</th>
                 <th>Total</th>
@@ -63,6 +64,7 @@
             <tr>
                 <td>{{ loop.index }}</td>
                 <td>{{ item.product_name }}</td>
+                <td>{{ item.item_size or '—' }}</td>
                 <td>{{ item.quantity }}</td>
                 <td>₹{{ "%.2f"|format(item.unit_price) }}</td>
                 <td>₹{{ "%.2f"|format(item.total_price) }}</td>
@@ -120,7 +122,7 @@
         <tbody>
             {% for item in items %}
             <tr>
-                <td class="t-l" colspan="4">{{ item.sku }}</td>
+                <td class="t-l" colspan="4">{{ item.product_name }}{% if item.item_size %} (Size: {{ item.item_size }}){% endif %}</td>
             </tr>
             <tr>
                 <td class="t-l"></td>

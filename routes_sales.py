@@ -59,7 +59,13 @@ def bill_detail(bill_id):
         flash("Bill not found.", "error")
         return redirect(url_for("bills_list"))
     items = db.execute(
-        "SELECT * FROM bill_items WHERE bill_id = ?", (bill_id,)
+        """
+        SELECT bi.*, p.size AS item_size
+        FROM bill_items bi
+        LEFT JOIN products p ON p.id = bi.product_id
+        WHERE bi.bill_id = ?
+        """,
+        (bill_id,),
     ).fetchall()
     refunds = db.execute(
         "SELECT * FROM refunds WHERE bill_id = ? ORDER BY created_at DESC", (bill_id,)
@@ -167,7 +173,7 @@ def bill_thermal_print(bill_id):
 
     items = db.execute(
         """
-        SELECT bi.*, COALESCE(p.sku, bi.product_name) AS item_label
+        SELECT bi.*, COALESCE(p.sku, bi.product_name) AS item_label, p.size AS item_size
         FROM bill_items bi
         LEFT JOIN products p ON p.id = bi.product_id
         WHERE bi.bill_id = ?

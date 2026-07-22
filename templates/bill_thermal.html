@@ -15,10 +15,12 @@
             font-family: "Courier New", monospace;
             font-size: 11px;
             line-height: 1.25;
-            font-weight: 600;
+            font-weight: 700;
             writing-mode: horizontal-tb;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            -webkit-text-stroke: 0.3px #000;
+            text-shadow: 0 0 0.15px #000, 0 0 0.15px #000;
         }
         .receipt {
             box-sizing: border-box;
@@ -30,7 +32,8 @@
         }
         .center { text-align: center; }
         .left { text-align: left; }
-        .line { border-top: 1px solid #000; margin: 1mm 0; }
+        .line { border-top: 1.5px solid #000; margin: 1mm 0; }
+        .item-size { font-size: 9px; font-weight: 700; }
         .row {
             display: flex;
             justify-content: space-between;
@@ -45,8 +48,8 @@
             text-align: right;
             overflow-wrap: anywhere;
         }
-        .small { font-size: 10px; font-weight: 600; }
-        .total { font-weight: 700; font-size: 12px; }
+        .small { font-size: 10px; font-weight: 700; }
+        .total { font-weight: 900; font-size: 12px; }
         .brand-large {
             font-size: 20px;
             font-weight: 700;
@@ -84,7 +87,7 @@
         th:first-child, td:first-child { width: 60%; }
         th:nth-child(2), td:nth-child(2) { width: 14%; }
         th:nth-child(3), td:nth-child(3) { width: 26%; }
-        th { border-bottom: 1px solid #000; }
+        th { border-bottom: 1.5px solid #000; font-weight: 900; }
         .right { text-align: right; }
         @media print {
             @page {
@@ -155,7 +158,7 @@
             <tbody>
                 {% for item in items %}
                 <tr>
-                    <td>{{ item.item_label }}</td>
+                    <td>{{ item.item_label }}{% if item.item_size %}<br><span class="item-size">Size: {{ item.item_size }}</span>{% endif %}</td>
                     <td class="right">{{ item.quantity }}</td>
                     <td class="right">{{ "%.2f"|format(item.total_price) }}</td>
                 </tr>
