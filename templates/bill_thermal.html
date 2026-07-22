@@ -46,7 +46,7 @@
             overflow-wrap: anywhere;
         }
         .small { font-size: 10px; font-weight: 700; }
-        .total { font-weight: 900; font-size: 12px; }
+        .total { font-weight: 500; font-size: 14px; }
         .brand-large {
             font-size: 20px;
             font-weight: 700;
@@ -138,9 +138,9 @@
 
         {% if bill.customer_name or bill.customer_phone %}
         <div class="line"></div>
-        <div class="left section-title">Customer Details</div>
-        {% if bill.customer_name %}<div class="left small">Name: {{ bill.customer_name }}</div>{% endif %}
-        {% if bill.customer_phone %}<div class="left small">Phone: {{ bill.customer_phone }}</div>{% endif %}
+        <div class="left">Customer Details</div>
+        {% if bill.customer_name %}<div class="left">Name: {{ bill.customer_name }}</div>{% endif %}
+        {% if bill.customer_phone %}<div class="left">Phone: {{ bill.customer_phone }}</div>{% endif %}
         {% endif %}
 
         <div class="line"></div>
