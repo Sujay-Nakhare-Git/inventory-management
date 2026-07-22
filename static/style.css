@@ -1268,8 +1268,6 @@ textarea.input { resize: vertical; }
         line-height: 1.25;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
-        -webkit-text-stroke: 0.3px #000;
-        text-shadow: 0 0 0.15px #000, 0 0 0.15px #000;
     }
 
     /* Hide all chrome and the on-screen invoice card. */
