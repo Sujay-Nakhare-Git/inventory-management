@@ -330,6 +330,7 @@ def profit_loss():
 
     db = get_db()
     period = request.args.get("period", "all")
+    view = request.args.get("view", "default")
     today = now_ist().strftime("%Y-%m-%d")
     current_month = now_ist().strftime("%Y-%m")
     selected_month = request.args.get("month", current_month).strip() or current_month
@@ -366,6 +367,47 @@ def profit_loss():
         "SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE include_in_pl = 1 AND created_at LIKE ?",
         (date_filter,),
     ).fetchone()[0]
+
+    def is_selected_cost_category(category_name):
+        if not category_name:
+            return False
+        normalized = (category_name or "").strip().lower()
+        if "rent" in normalized:
+            return True
+        if "utility" in normalized:
+            return True
+        if "packag" in normalized:
+            return True
+        if "tailor" in normalized:
+            return True
+        if "fabric" in normalized:
+            return True
+        return False
+
+    selected_cost_rows = db.execute(
+        "SELECT category, SUM(amount) as total FROM expenses "
+        "WHERE include_in_pl = 1 AND created_at LIKE ? GROUP BY category",
+        (date_filter,),
+    ).fetchall()
+
+    selected_cost_breakdown = []
+    selected_cost_total = 0.0
+    for category_name in ["Rent", "Utilities", "Fabric & Materials", "Packaging", "Tailor"]:
+        category_total = 0.0
+        for row in selected_cost_rows:
+            if is_selected_cost_category(row["category"]):
+                if row["category"].lower() == category_name.lower() or (
+                    category_name == "Fabric & Materials" and "fabric" in (row["category"] or "").lower()
+                ):
+                    category_total += float(row["total"] or 0)
+        selected_cost_breakdown.append({
+            "category": category_name,
+            "total": round(category_total, 2),
+        })
+        selected_cost_total += category_total
+
+    selected_cost_total = round(selected_cost_total, 2)
+    selected_cost_profit = round(gross_profit - selected_cost_total, 2)
 
     # All expenses for selected period (used in month-wise expense-sale-profit summary)
     total_expenses_all = db.execute(
@@ -474,6 +516,10 @@ def profit_loss():
         gross_profit=gross_profit,
         total_expenses=total_expenses,
         net_profit=net_profit,
+        view=view,
+        selected_cost_total=selected_cost_total,
+        selected_cost_profit=selected_cost_profit,
+        selected_cost_breakdown=selected_cost_breakdown,
         expense_breakdown=expense_breakdown,
         recent_bills=recent_bills,
         payment_split=payment_split,

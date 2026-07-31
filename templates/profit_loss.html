@@ -16,6 +16,39 @@
     <a href="{{ url_for('profit_loss', period='all') }}" class="btn {% if period == 'all' %}btn-primary{% else %}btn-outline{% endif %}">All Time</a>
 </div>
 
+<div class="period-tabs" style="margin-top: 0.75rem;">
+    <a href="{% if period == 'month' %}{{ url_for('profit_loss', period='month', month=selected_month, view='default') }}{% else %}{{ url_for('profit_loss', period=period, view='default') }}{% endif %}" class="btn {% if view != 'selected' %}btn-primary{% else %}btn-outline{% endif %}">Standard P&L</a>
+    <a href="{% if period == 'month' %}{{ url_for('profit_loss', period='month', month=selected_month, view='selected') }}{% else %}{{ url_for('profit_loss', period=period, view='selected') }}{% endif %}" class="btn {% if view == 'selected' %}btn-primary{% else %}btn-outline{% endif %}">Selected Cost Profit</a>
+</div>
+
+{% if view == 'selected' %}
+<div class="stats-grid" style="margin-top:1rem;">
+    <div class="stat-card stat-green">
+        <div class="stat-value">₹{{ "%.2f"|format(revenue) }}</div>
+        <div class="stat-label">Revenue</div>
+    </div>
+    <div class="stat-card stat-red">
+        <div class="stat-value">₹{{ "%.2f"|format(selected_cost_total) }}</div>
+        <div class="stat-label">Selected Costs (Rent, Utilities, Fabrics, Packaging, Tailor)</div>
+    </div>
+    <div class="stat-card {% if selected_cost_profit >= 0 %}stat-green{% else %}stat-red{% endif %}">
+        <div class="stat-value">₹{{ "%.2f"|format(selected_cost_profit) }}</div>
+        <div class="stat-label">Profit After Selected Costs</div>
+    </div>
+</div>
+
+<div class="card" style="margin-top:1rem;">
+    <h3 class="card-title">📋 Selected Cost Breakdown</h3>
+    <div class="pl-table">
+        {% for item in selected_cost_breakdown %}
+        <div class="pl-row">
+            <span>{{ item.category }}</span>
+            <span>₹{{ "%.2f"|format(item.total) }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
 <div class="stats-grid">
     <div class="stat-card stat-green">
         <div class="stat-value">₹{{ "%.2f"|format(revenue) }}</div>
@@ -74,6 +107,7 @@
         <div class="stat-label">Digital Collection</div>
     </div>
 </div>
+{% endif %}
 
 <!-- P&L Breakdown -->
 <div class="pl-grid">
