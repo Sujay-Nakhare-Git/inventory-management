@@ -29,7 +29,7 @@
     </div>
     <div class="stat-card stat-red">
         <div class="stat-value">₹{{ "%.2f"|format(selected_cost_total) }}</div>
-        <div class="stat-label">Selected Costs (Rent, Utilities, Fabrics, Packaging, Tailor)</div>
+        <div class="stat-label">Selected Costs (Rent, Utilities, Packaging, Tailor)</div>
     </div>
     <div class="stat-card {% if selected_cost_profit >= 0 %}stat-green{% else %}stat-red{% endif %}">
         <div class="stat-value">₹{{ "%.2f"|format(selected_cost_profit) }}</div>

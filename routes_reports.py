@@ -380,8 +380,6 @@ def profit_loss():
             return True
         if "tailor" in normalized:
             return True
-        if "fabric" in normalized:
-            return True
         return False
 
     selected_cost_rows = db.execute(
@@ -392,13 +390,11 @@ def profit_loss():
 
     selected_cost_breakdown = []
     selected_cost_total = 0.0
-    for category_name in ["Rent", "Utilities", "Fabric & Materials", "Packaging", "Tailor"]:
+    for category_name in ["Rent", "Utilities", "Packaging", "Tailor"]:
         category_total = 0.0
         for row in selected_cost_rows:
             if is_selected_cost_category(row["category"]):
-                if row["category"].lower() == category_name.lower() or (
-                    category_name == "Fabric & Materials" and "fabric" in (row["category"] or "").lower()
-                ):
+                if row["category"].lower() == category_name.lower():
                     category_total += float(row["total"] or 0)
         selected_cost_breakdown.append({
             "category": category_name,
