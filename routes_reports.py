@@ -406,10 +406,20 @@ def profit_loss():
         })
         selected_cost_total += category_total
 
+    # All expenses for selected period (used in month-wise expense-sale-profit summary)
+    total_expenses_all = db.execute(
+        "SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE created_at LIKE ?",
+        (date_filter,),
+    ).fetchone()[0]
+
+    gross_profit = revenue - cogs
+    net_profit = gross_profit - total_expenses
+    sales_minus_expenses = revenue - total_expenses_all
+
     selected_cost_total = round(selected_cost_total, 2)
     selected_cost_profit = round(gross_profit - selected_cost_total, 2)
 
-    # All expenses for selected period (used in month-wise expense-sale-profit summary)
+    # Total investment
     total_expenses_all = db.execute(
         "SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE created_at LIKE ?",
         (date_filter,),
