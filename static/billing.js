@@ -264,11 +264,37 @@ function renderCart() {
     });
     container.innerHTML = html;
     summary.style.display = 'block';
+
+    const pct = parseFloat(document.getElementById('discountPercentInput').value) || 0;
+    if (pct > 0) {
+        document.getElementById('discountAmountInput').value = round2(getCartSubtotal() * pct / 100);
+    }
+    recalculate();
+}
+
+function getCartSubtotal() {
+    return cartItems.reduce((sum, i) => sum + i.total_price, 0);
+}
+
+function onDiscountAmountChange() {
+    const subtotal = getCartSubtotal();
+    const amt = parseFloat(document.getElementById('discountAmountInput').value) || 0;
+    const pct = subtotal > 0 ? round2((Math.min(amt, subtotal) / subtotal) * 100) : 0;
+    document.getElementById('discountPercentInput').value = pct;
+    recalculate();
+}
+
+function onDiscountPercentChange() {
+    const subtotal = getCartSubtotal();
+    const pct = Math.min(Math.max(0, parseFloat(document.getElementById('discountPercentInput').value) || 0), 100);
+    document.getElementById('discountPercentInput').value = pct;
+    const amt = round2(subtotal * pct / 100);
+    document.getElementById('discountAmountInput').value = amt;
     recalculate();
 }
 
 function calculateTotals() {
-    const subtotal = cartItems.reduce((sum, i) => sum + i.total_price, 0);
+    const subtotal = getCartSubtotal();
     const discountInput = parseFloat(document.getElementById('discountAmountInput').value) || 0;
     const taxPct = parseFloat(document.getElementById('taxPercent').value) || 0;
 
