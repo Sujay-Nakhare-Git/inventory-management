@@ -384,6 +384,21 @@ async function submitBill() {
         return;
     }
 
+    const customerNameEl = document.getElementById('customerName');
+    const customerPhoneEl = document.getElementById('customerPhone');
+    const customerName = customerNameEl.value.trim();
+    const customerPhone = customerPhoneEl.value.trim();
+
+    if (!customerName || !customerPhone) {
+        alert('Customer name and phone number are required before generating a bill.');
+        if (!customerName) {
+            customerNameEl.focus();
+        } else {
+            customerPhoneEl.focus();
+        }
+        return;
+    }
+
     // Open early so browsers treat it as a direct user-initiated popup.
     const printWindow = window.open('', '_blank');
 
@@ -401,8 +416,8 @@ async function submitBill() {
     }
 
     const payload = {
-        customer_name: document.getElementById('customerName').value.trim(),
-        customer_phone: document.getElementById('customerPhone').value.trim(),
+        customer_name: customerName,
+        customer_phone: customerPhone,
         discount_amount: parseFloat(document.getElementById('discountAmountInput').value) || 0,
         tax_percent: parseFloat(document.getElementById('taxPercent').value) || 0,
         payment_method: paymentPayload.payment_method,

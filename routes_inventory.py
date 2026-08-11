@@ -622,9 +622,12 @@ def create_bill():
     if not data or not data.get("items"):
         return jsonify({"error": "No items provided"}), 400
 
-    db = get_db()
     customer_name = data.get("customer_name", "").strip()
     customer_phone = data.get("customer_phone", "").strip()
+    if not customer_name or not customer_phone:
+        return jsonify({"error": "Customer name and phone number are required."}), 400
+
+    db = get_db()
     discount_amount_input = data.get("discount_amount", None)
     discount_percent_input = data.get("discount_percent", 0)
     tax_percent = float(data.get("tax_percent", 0))

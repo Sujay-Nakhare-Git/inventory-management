@@ -58,8 +58,8 @@
                 {% for b in bills %}
                 <tr>
                     <td><strong>{{ display_bill_ref(b) }}</strong></td>
-                    <td>{{ b.customer_name or 'Walk-in' }}</td>
-                    <td>{{ b.customer_phone or '—' }}</td>
+                    <td>{{ b.customer_name }}</td>
+                    <td>{{ b.customer_phone }}</td>
                     <td>₹{{ "%.2f"|format(b.subtotal) }}</td>
                     <td>{% if b.discount_amount > 0 %}-₹{{ "%.2f"|format(b.discount_amount) }}{% else %}—{% endif %}</td>
                     <td>{% if b.tax_amount > 0 %}+₹{{ "%.2f"|format(b.tax_amount) }}{% else %}—{% endif %}</td>
