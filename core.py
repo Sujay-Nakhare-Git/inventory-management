@@ -30,6 +30,19 @@ def now_ist():
     return datetime.now(IST)
 
 
+def profit_percent_on_cost(profit, cost):
+    try:
+        cost_value = float(cost or 0)
+        profit_value = float(profit or 0)
+    except (TypeError, ValueError):
+        return None
+
+    if cost_value <= 0:
+        return None
+
+    return round((profit_value / cost_value) * 100, 2)
+
+
 @app.template_filter("billdate")
 def _format_bill_date(value):
     if not value:

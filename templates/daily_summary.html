@@ -38,23 +38,23 @@
     </div>
     <div class="stat-card {% if gross_profit >= 0 %}stat-blue{% else %}stat-red{% endif %}">
         <div class="stat-value">
-            {% if sales_total > 0 %}
-                {{ "%.1f"|format(gross_profit / sales_total * 100) }}%
+            {% if gross_profit_percent is not none %}
+                {{ "%.1f"|format(gross_profit_percent) }}%
             {% else %}
                 0.0%
             {% endif %}
         </div>
-        <div class="stat-label">Profit % (Without Expense)</div>
+        <div class="stat-label">Profit % (Cost Basis, Without Expense)</div>
     </div>
     <div class="stat-card {% if net_after_expenses >= 0 %}stat-blue{% else %}stat-red{% endif %}">
         <div class="stat-value">
-            {% if sales_total > 0 %}
-                {{ "%.1f"|format(net_after_expenses / sales_total * 100) }}%
+            {% if net_after_expenses_percent is not none %}
+                {{ "%.1f"|format(net_after_expenses_percent) }}%
             {% else %}
                 0.0%
             {% endif %}
         </div>
-        <div class="stat-label">Profit % (Including Expense)</div>
+        <div class="stat-label">Profit % (Cost Basis, Including Expense)</div>
     </div>
 </div>
 
@@ -87,10 +87,10 @@
                 <span><strong>₹{{ "%.2f"|format(net_after_expenses) }}</strong></span>
             </div>
         </div>
-        {% if sales_total > 0 %}
+        {% if gross_profit_percent is not none %}
         <div class="pl-margins">
-            <span>Profit % (Without Expense): <strong>{{ "%.1f"|format(gross_profit / sales_total * 100) }}%</strong></span>
-            <span>Profit % (Including Expense): <strong>{{ "%.1f"|format(net_after_expenses / sales_total * 100) }}%</strong></span>
+            <span>Profit % (Cost Basis, Without Expense): <strong>{{ "%.1f"|format(gross_profit_percent) }}%</strong></span>
+            <span>Profit % (Cost Basis, Including Expense): <strong>{{ "%.1f"|format(net_after_expenses_percent) }}%</strong></span>
         </div>
         {% endif %}
     </div>

@@ -132,6 +132,15 @@ def admin_sales_summary():
         "LIMIT 1"
     ).fetchone()
 
+    top_selling_category_cost = db.execute(
+        "SELECT COALESCE(SUM(bi.quantity * p.cost_price), 0) as sold_cost "
+        "FROM bill_items bi "
+        "LEFT JOIN products p ON p.id = bi.product_id "
+        "LEFT JOIN categories c ON c.id = p.category_id "
+        "WHERE COALESCE(c.name, 'Uncategorized') = ?",
+        (top_selling_category["name"] if top_selling_category else "Uncategorized",),
+    ).fetchone()[0]
+
     top_selling_size = db.execute(
         "SELECT COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') as name, "
         "COALESCE(SUM(bi.quantity), 0) as sold_qty, "
@@ -142,6 +151,14 @@ def admin_sales_summary():
         "ORDER BY sold_qty DESC, sold_amount DESC "
         "LIMIT 1"
     ).fetchone()
+
+    top_selling_size_cost = db.execute(
+        "SELECT COALESCE(SUM(bi.quantity * p.cost_price), 0) as sold_cost "
+        "FROM bill_items bi "
+        "LEFT JOIN products p ON p.id = bi.product_id "
+        "WHERE COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') = ?",
+        (top_selling_size["name"] if top_selling_size else "No Size",),
+    ).fetchone()[0]
 
     sales_breakdown = db.execute(
         "SELECT COALESCE(c.name, 'Uncategorized') as category, "
@@ -648,6 +665,7 @@ def vendor_summary():
         "stock_retail_value": 0.0,
         "sold_qty": 0,
         "sold_amount": 0.0,
+        "sold_cost": 0.0,
         "gross_profit": 0.0,
     }
     for row in stock_rows:
@@ -657,7 +675,7 @@ def vendor_summary():
         sold_cost = round(sales["sold_cost"], 2) if sales else 0.0
         bills_count = sales["bills_count"] if sales else 0
         gross_profit = round(sold_amount - sold_cost, 2)
-        profit_percent = round((gross_profit / sold_amount) * 100, 2) if sold_amount > 0 else None
+        profit_percent = profit_percent_on_cost(gross_profit, sold_cost)
         summary.append({
             "vendor_id": row["vendor_id"],
             "vendor_name": row["vendor_name"],
@@ -677,17 +695,16 @@ def vendor_summary():
         totals["stock_retail_value"] += row["stock_retail_value"]
         totals["sold_qty"] += sold_qty
         totals["sold_amount"] += sold_amount
+        totals["sold_cost"] += sold_cost
         totals["gross_profit"] += gross_profit
 
     summary.sort(key=lambda x: (-x["sold_amount"], x["vendor_name"]))
     totals["stock_cost_value"] = round(totals["stock_cost_value"], 2)
     totals["stock_retail_value"] = round(totals["stock_retail_value"], 2)
     totals["sold_amount"] = round(totals["sold_amount"], 2)
+    totals["sold_cost"] = round(totals["sold_cost"], 2)
     totals["gross_profit"] = round(totals["gross_profit"], 2)
-    totals["profit_percent"] = (
-        round((totals["gross_profit"] / totals["sold_amount"]) * 100, 2)
-        if totals["sold_amount"] > 0 else None
-    )
+    totals["profit_percent"] = profit_percent_on_cost(totals["gross_profit"], totals["sold_cost"])
 
     return render_template("vendor_summary.html", summary=summary, totals=totals)
 

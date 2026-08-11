@@ -62,6 +62,8 @@ def daily_summary():
 
     gross_profit = sales_total - cogs_total
     net_after_expenses = gross_profit - expense_total - refund_total
+    gross_profit_percent = profit_percent_on_cost(gross_profit, cogs_total)
+    net_after_expenses_percent = profit_percent_on_cost(net_after_expenses, cogs_total)
 
     payment_rows = db.execute(
         "SELECT payment_method, payment_breakdown_json, total "
@@ -135,6 +137,8 @@ def daily_summary():
         cogs_total=cogs_total,
         gross_profit=gross_profit,
         net_after_expenses=net_after_expenses,
+        gross_profit_percent=gross_profit_percent,
+        net_after_expenses_percent=net_after_expenses_percent,
         payment_split=payment_split,
         top_products=top_products,
         recent_bills=recent_bills,
@@ -414,16 +418,15 @@ def profit_loss():
 
     selected_cost_total = round(selected_cost_total, 2)
     selected_cost_profit = round(gross_profit - selected_cost_total, 2)
+    gross_profit_percent = profit_percent_on_cost(gross_profit, cogs)
+    net_profit_percent = profit_percent_on_cost(net_profit, cogs)
+    selected_cost_profit_percent = profit_percent_on_cost(selected_cost_profit, cogs)
 
     # Total investment
     total_expenses_all = db.execute(
         "SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE created_at LIKE ?",
         (date_filter,),
     ).fetchone()[0]
-
-    gross_profit = revenue - cogs
-    net_profit = gross_profit - total_expenses
-    sales_minus_expenses = revenue - total_expenses_all
 
     # Total investment
     total_investment = db.execute(
@@ -520,11 +523,14 @@ def profit_loss():
         revenue=revenue,
         cogs=cogs,
         gross_profit=gross_profit,
+        gross_profit_percent=gross_profit_percent,
         total_expenses=total_expenses,
         net_profit=net_profit,
+        net_profit_percent=net_profit_percent,
         view=view,
         selected_cost_total=selected_cost_total,
         selected_cost_profit=selected_cost_profit,
+        selected_cost_profit_percent=selected_cost_profit_percent,
         selected_cost_breakdown=selected_cost_breakdown,
         expense_breakdown=expense_breakdown,
         recent_bills=recent_bills,
