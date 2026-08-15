@@ -24,6 +24,13 @@ def daily_summary():
         "SELECT COUNT(*) FROM bills WHERE created_at LIKE ?",
         (date_filter,),
     ).fetchone()[0]
+    daily_qty_sold = db.execute(
+        "SELECT COALESCE(SUM(bi.quantity), 0) "
+        "FROM bill_items bi "
+        "JOIN bills b ON bi.bill_id = b.id "
+        "WHERE b.created_at LIKE ?",
+        (date_filter,),
+    ).fetchone()[0]
 
     expense_total = db.execute(
         "SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE created_at LIKE ?",
@@ -130,6 +137,7 @@ def daily_summary():
         today_date=today_date,
         sales_total=sales_total,
         bill_count=bill_count,
+        daily_qty_sold=daily_qty_sold,
         expense_total=expense_total,
         expense_count=expense_count,
         refund_total=refund_total,
