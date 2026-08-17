@@ -66,7 +66,10 @@ def sku_size_checker():
                     "SELECT COALESCE(NULLIF(TRIM(size), ''), 'No Size') as size, "
                     "color, quantity FROM products "
                     "WHERE product_group_id = ? AND quantity > 0 "
-                    "ORDER BY size COLLATE NOCASE",
+                    "ORDER BY CASE UPPER(TRIM(size)) "
+                    "WHEN 'S' THEN 1 WHEN 'M' THEN 2 WHEN 'L' THEN 3 "
+                    "WHEN 'XL' THEN 4 WHEN 'XXL' THEN 5 WHEN '3XL' THEN 6 "
+                    "WHEN '4XL' THEN 7 ELSE 99 END, size COLLATE NOCASE",
                     (product["product_group_id"],),
                 ).fetchall()
             elif product["quantity"] > 0:
