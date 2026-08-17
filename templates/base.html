@@ -20,7 +20,7 @@
             <p class="brand-tagline">Handpicked Apparel</p>
         </div>
         <ul class="nav-links">
-            <li><a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">
+            <li><a href="{{ url_for('dashboard') }}" class="{% if request.endpoint in ['dashboard', 'sku_size_checker'] %}active{% endif %}">
                 <span class="nav-icon">📊</span> Dashboard
             </a></li>
             {# Inventory and Categories links moved to Admin page #}

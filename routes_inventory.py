@@ -46,6 +46,46 @@ def dashboard():
     )
 
 
+@app.route("/sku-size-checker")
+def sku_size_checker():
+    db = get_db()
+    sku = request.args.get("sku", "").strip().upper()
+    product = None
+    available_sizes = []
+
+    if sku:
+        product = db.execute(
+            "SELECT id, name, sku, size, color, quantity, product_group_id "
+            "FROM products WHERE UPPER(sku) = ? LIMIT 1",
+            (sku,),
+        ).fetchone()
+
+        if product:
+            if product["product_group_id"]:
+                available_sizes = db.execute(
+                    "SELECT COALESCE(NULLIF(TRIM(size), ''), 'No Size') as size, "
+                    "color, quantity FROM products "
+                    "WHERE product_group_id = ? AND quantity > 0 "
+                    "ORDER BY size COLLATE NOCASE",
+                    (product["product_group_id"],),
+                ).fetchall()
+            elif product["quantity"] > 0:
+                available_sizes = [
+                    {
+                        "size": product["size"] or "No Size",
+                        "color": product["color"],
+                        "quantity": product["quantity"],
+                    }
+                ]
+
+    return render_template(
+        "sku_size_checker.html",
+        sku=sku,
+        product=product,
+        available_sizes=available_sizes,
+    )
+
+
 # ── Inventory ────────────────────────────────────────────────────────────
 @app.route("/inventory")
 def inventory():

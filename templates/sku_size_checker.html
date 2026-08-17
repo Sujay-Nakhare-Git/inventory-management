@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Size Availability — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2>Size Availability</h2>
+        <p class="page-desc">Check which sizes are currently available for an item SKU.</p>
+    </div>
+</div>
+
+<div class="dashboard-tabs">
+    <a href="{{ url_for('dashboard') }}" class="tab-btn{% if request.endpoint == 'dashboard' %} active{% endif %}">Dashboard</a>
+    <a href="{{ url_for('sku_size_checker') }}" class="tab-btn{% if request.endpoint == 'sku_size_checker' %} active{% endif %}">Size Availability</a>
+    <a href="{{ url_for('billing') }}" class="tab-btn{% if request.endpoint == 'billing' %} active{% endif %}">New Bill</a>
+    <a href="{{ url_for('admin') }}" class="tab-btn">Admin</a>
+</div>
+
+<div class="card">
+    <form method="GET" action="{{ url_for('sku_size_checker') }}" class="filter-bar">
+        <label for="sku" style="font-weight:600;white-space:nowrap;">Item SKU</label>
+        <input type="text" id="sku" name="sku" value="{{ sku }}" class="input" placeholder="e.g. KUR-001" required autofocus>
+        <button type="submit" class="btn btn-primary">Check Sizes</button>
+    </form>
+</div>
+
+{% if sku and not product %}
+<div class="card">
+    <p class="empty-state">No item found for SKU <strong>{{ sku }}</strong>.</p>
+</div>
+{% elif product %}
+<div class="card">
+    <h3 class="card-title">{{ product.name or product.sku }}</h3>
+    <p class="page-desc" style="margin-bottom:1rem;">SKU: <strong>{{ product.sku }}</strong></p>
+
+    {% if available_sizes %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Available Size</th>
+                    <th>Color</th>
+                    <th>Quantity</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in available_sizes %}
+                <tr>
+                    <td><strong>{{ item.size }}</strong></td>
+                    <td>{{ item.color or '—' }}</td>
+                    <td><span class="badge badge-success">{{ item.quantity }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty-state">This item has no sizes currently available.</p>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
