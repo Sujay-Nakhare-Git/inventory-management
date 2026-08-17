@@ -75,8 +75,11 @@
 
     <div class="invoice-totals">
         <div class="summary-row"><span>Subtotal</span><span>₹{{ "%.2f"|format(bill.subtotal) }}</span></div>
+        {% if bill.store_credit_used and bill.store_credit_used > 0 %}
+        <div class="summary-row"><span>Store Credit</span><span>-₹{{ "%.2f"|format(bill.store_credit_used) }}</span></div>
+        {% endif %}
         {% if bill.discount_amount > 0 %}
-        <div class="summary-row"><span>{% if bill.payment_method == 'Exchange' %}Replacement value/Store Credit discount{% else %}Discount (₹){% endif %}</span><span>-₹{{ "%.2f"|format(bill.discount_amount) }}</span></div>
+        <div class="summary-row"><span>{% if bill.payment_method == 'Exchange' %}Exchange Amount{% else %}Discount (₹){% endif %}</span><span>-₹{{ "%.2f"|format(bill.discount_amount) }}</span></div>
         {% endif %}
         {% if bill.tax_amount > 0 %}
         <div class="summary-row"><span>Tax/GST ({{ bill.tax_percent }}%)</span><span>+₹{{ "%.2f"|format(bill.tax_amount) }}</span></div>
@@ -135,8 +138,11 @@
     </table>
     <div class="t-sep"></div>
     <div class="t-row"><span>Subtotal</span><span>Rs.{{ "%.2f"|format(bill.subtotal) }}</span></div>
+    {% if bill.store_credit_used and bill.store_credit_used > 0 %}
+    <div class="t-row"><span>Store Credit</span><span>-Rs.{{ "%.2f"|format(bill.store_credit_used) }}</span></div>
+    {% endif %}
     {% if bill.discount_amount > 0 %}
-            <div class="t-row"><span>{% if bill.payment_method == 'Exchange' %}Replacement value/Store Credit discount{% else %}Disc (₹){% endif %}</span><span>-Rs.{{ "%.2f"|format(bill.discount_amount) }}</span></div>
+            <div class="t-row"><span>{% if bill.payment_method == 'Exchange' %}Exchange Amount{% else %}Disc (₹){% endif %}</span><span>-Rs.{{ "%.2f"|format(bill.discount_amount) }}</span></div>
     {% endif %}
     {% if bill.tax_amount > 0 %}
     <div class="t-row"><span>Tax ({{ bill.tax_percent }}%)</span><span>+Rs.{{ "%.2f"|format(bill.tax_amount) }}</span></div>
