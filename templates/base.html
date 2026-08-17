@@ -24,7 +24,7 @@
                 <span class="nav-icon">📊</span> Dashboard
             </a></li>
             <li><a href="{{ url_for('sku_size_checker') }}" class="{% if request.endpoint == 'sku_size_checker' %}active{% endif %}">
-                <span class="nav-icon">📏</span> Size Check
+                <span class="nav-icon">📏</span> Size Availability
             </a></li>
             {# Inventory and Categories links moved to Admin page #}
             <li><a href="{{ url_for('billing') }}" class="{% if request.endpoint == 'billing' %}active{% endif %}">

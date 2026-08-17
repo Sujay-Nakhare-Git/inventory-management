@@ -645,6 +645,7 @@ def process_refund():
         exchange_product_name = None
         exchange_unit_price = None
         exchange_line_total = 0
+        replacement_discount_amount = 0
 
         if action == "refund":
             # Return stock
@@ -701,6 +702,8 @@ def process_refund():
                 price_diff = bi["unit_price"] - exchange_unit_price
             if price_diff > 0:
                 store_credit_refund += round(price_diff * qty, 2)
+            elif exchange_line_total > item_refund:
+                replacement_discount_amount = round(item_refund, 2)
 
         processed_items.append({
             "product_id": bi["product_id"],
@@ -713,6 +716,7 @@ def process_refund():
             "exchange_product_name": exchange_product_name,
             "exchange_unit_price": exchange_unit_price,
             "exchange_line_total": exchange_line_total,
+            "replacement_discount_amount": replacement_discount_amount,
         })
 
     if not processed_items:

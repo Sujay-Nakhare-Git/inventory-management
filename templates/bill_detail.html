@@ -76,7 +76,7 @@
     <div class="invoice-totals">
         <div class="summary-row"><span>Subtotal</span><span>₹{{ "%.2f"|format(bill.subtotal) }}</span></div>
         {% if bill.discount_amount > 0 %}
-        <div class="summary-row"><span>Discount (₹)</span><span>-₹{{ "%.2f"|format(bill.discount_amount) }}</span></div>
+        <div class="summary-row"><span>{% if bill.payment_method == 'Exchange' %}Replacement value/Store Credit discount{% else %}Discount (₹){% endif %}</span><span>-₹{{ "%.2f"|format(bill.discount_amount) }}</span></div>
         {% endif %}
         {% if bill.tax_amount > 0 %}
         <div class="summary-row"><span>Tax/GST ({{ bill.tax_percent }}%)</span><span>+₹{{ "%.2f"|format(bill.tax_amount) }}</span></div>
@@ -136,7 +136,7 @@
     <div class="t-sep"></div>
     <div class="t-row"><span>Subtotal</span><span>Rs.{{ "%.2f"|format(bill.subtotal) }}</span></div>
     {% if bill.discount_amount > 0 %}
-    <div class="t-row"><span>Disc (₹)</span><span>-Rs.{{ "%.2f"|format(bill.discount_amount) }}</span></div>
+            <div class="t-row"><span>{% if bill.payment_method == 'Exchange' %}Replacement value/Store Credit discount{% else %}Disc (₹){% endif %}</span><span>-Rs.{{ "%.2f"|format(bill.discount_amount) }}</span></div>
     {% endif %}
     {% if bill.tax_amount > 0 %}
     <div class="t-row"><span>Tax ({{ bill.tax_percent }}%)</span><span>+Rs.{{ "%.2f"|format(bill.tax_amount) }}</span></div>

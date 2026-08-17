@@ -508,6 +508,14 @@ def _insert_exchange_bill(db, source_bill, exchange_items):
         sum(item["exchange_line_total"] for item in exchange_items),
         2,
     )
+    replacement_discount = round(
+        sum(item.get("replacement_discount_amount", 0) for item in exchange_items),
+        2,
+    )
+    exchange_total = round(exchange_subtotal - replacement_discount, 2)
+    discount_percent = round(
+        replacement_discount / exchange_subtotal * 100, 2,
+    ) if exchange_subtotal else 0
     exchange_bill_number = get_next_bill_number(db)
     cursor = db.execute(
         "INSERT INTO bills (bill_number, customer_name, customer_phone, subtotal, "
@@ -519,11 +527,11 @@ def _insert_exchange_bill(db, source_bill, exchange_items):
             source_bill["customer_name"],
             source_bill["customer_phone"],
             exchange_subtotal,
+            discount_percent,
+            replacement_discount,
             0,
             0,
-            0,
-            0,
-            exchange_subtotal,
+            exchange_total,
             "Exchange",
             None,
             0,
