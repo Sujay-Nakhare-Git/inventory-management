@@ -1,6 +1,33 @@
 # Inventory Management System
 
-A boutique management web application for inventory, billing, refunds/exchanges, expenses, and admin analytics.
+# Inventory Management System
+
+A modern, lightweight **boutique management web application** built with **Python, Flask, SQLite, Jinja2, HTML, CSS, and JavaScript**. The system centralizes day-to-day boutique operations including inventory management, vendor tracking, sales billing, rental billing, refunds, exchanges, expenses, and business reporting.
+
+## Key Features
+
+* 📦 **Inventory Management** — Add, edit, delete, categorize, and filter products by category, size, vendor, and availability.
+* 🧾 **Sales & Billing** — Generate bills with discounts, taxes, payment methods, automatic bill numbering, and thermal receipt printing.
+* 👗 **Rental Management** — Create rental bills with rental duration, daily rent, refundable deposits, rental charges, and deposit-return receipts.
+* 🔄 **Refunds & Exchanges** — Process returns, refunds, and exchanges while automatically restoring inventory.
+* 🏪 **Vendor Management** — Manage vendors and view vendor-wise stock, sales, units sold, and gross profit.
+* 💰 **Expense Tracking** — Record and analyze business expenses with date-based filtering.
+* 📊 **Business Analytics** — Daily summaries, Profit & Loss reporting, sales analysis, category/size performance, and vendor-level reporting.
+* 📱 **WhatsApp Integration** — Optional WhatsApp Cloud API integration for automated customer notifications after billing.
+* 🔐 **Admin Security** — Password-protected administration with automatic inactivity locking and additional verification using WebAuthn/fingerprint or an admin PIN.
+* 🇮🇳 **IST Support** — All application dates and timestamps are normalized to India Standard Time.
+
+## Technology Stack
+
+* **Backend:** Python, Flask
+* **Frontend:** Jinja2, HTML, CSS, Vanilla JavaScript
+* **Database:** SQLite
+* **Deployment:** PythonAnywhere or any compatible Flask hosting environment
+
+## Project Goal
+
+The project is designed to provide a simple, practical, and centralized solution for managing the complete operational workflow of a small boutique — from **stock management and vendor purchases to sales, rentals, returns, expenses, and profitability analysis**.
+
 
 ## Release Notes
 
