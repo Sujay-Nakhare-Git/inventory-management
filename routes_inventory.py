@@ -691,6 +691,13 @@ def create_bill():
 
         rental_charges = round(rental_days * rent_amount, 2)
         total = round(rental_charges + deposit_amount, 2)
+        rental_payment_method = str(data.get("payment_method", "Cash")).strip()
+        if rental_payment_method not in ALLOWED_PAYMENT_METHODS:
+            rental_payment_method = "Cash"
+        rental_payment_breakdown = json.dumps([{
+            "method": rental_payment_method,
+            "amount": total,
+        }])
         bill_number = get_next_bill_number(db)
         cursor = db.execute(
             "INSERT INTO bills (bill_number, bill_type, customer_name, customer_phone, "
@@ -698,7 +705,7 @@ def create_bill():
             "payment_breakdown_json, created_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
             (bill_number, "rental", customer_name, customer_phone, rental_charges, rental_days, total,
-             rent_amount, deposit_amount, "Cash", json.dumps([{"method": "Cash", "amount": total}])),
+             rent_amount, deposit_amount, rental_payment_method, rental_payment_breakdown),
         )
         bill_id = cursor.lastrowid
         upsert_customer(db, customer_name, customer_phone)
@@ -706,7 +713,7 @@ def create_bill():
 
         log_update(
             "New Rental Bill Created",
-            f"Bill {bill_number} — ₹{rental_charges:.2f} rental charges + ₹{deposit_amount:.2f} deposit (Cash) — {customer_name}",
+            f"Bill {bill_number} — ₹{rental_charges:.2f} rental charges + ₹{deposit_amount:.2f} deposit ({rental_payment_method}) — {customer_name}",
             "billing",
         )
         whatsapp_status = send_whatsapp_bill_message(
@@ -720,6 +727,7 @@ def create_bill():
             "bill_number": bill_number,
             "total": total,
             "rental_charges": rental_charges,
+            "payment_method": rental_payment_method,
             "message": "Rental bill created!",
             "whatsapp_sent": whatsapp_status.get("sent", False),
             "whatsapp_reason": whatsapp_status.get("reason", "unknown"),

@@ -512,6 +512,7 @@ async function submitRentalBill() {
     const daysEl = document.getElementById('rentalDays');
     const rentEl = document.getElementById('rentAmount');
     const depositEl = document.getElementById('depositAmount');
+    const paymentMethodEl = document.getElementById('rentalPaymentMethod');
     const customerName = nameEl.value.trim();
     const customerPhone = phoneEl.value.trim();
     const rentalDays = parseInt(daysEl.value, 10);
@@ -554,8 +555,8 @@ async function submitRentalBill() {
                 rental_days: rentalDays,
                 rent_amount: round2(rentAmount),
                 deposit_amount: round2(depositAmount),
-                payment_method: 'Cash',
-                payment_breakdown: [{ method: 'Cash', amount: total }]
+                payment_method: paymentMethodEl.value,
+                payment_breakdown: [{ method: paymentMethodEl.value, amount: total }]
             })
         });
 
@@ -580,6 +581,7 @@ async function submitRentalBill() {
         daysEl.value = '1';
         rentEl.value = '';
         depositEl.value = '';
+        paymentMethodEl.value = 'UPI';
         updateRentalTotal();
     } catch (err) {
         if (printWindow && !printWindow.closed) printWindow.close();

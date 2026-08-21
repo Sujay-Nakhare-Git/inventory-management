@@ -191,6 +191,15 @@
             <label for="depositAmount">Deposit Amount (₹)</label>
             <input type="number" id="depositAmount" class="input" placeholder="0.00" min="0" step="0.01" required>
         </div>
+        <div class="form-group">
+            <label for="rentalPaymentMethod">Payment Method</label>
+            <select id="rentalPaymentMethod" class="input">
+                <option value="UPI">UPI</option>
+                <option value="Cash">Cash</option>
+                <option value="Card">Card</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+            </select>
+        </div>
     </div>
     <div class="rental-total">
         <span>Rental Charges (Days × Rent)</span>
