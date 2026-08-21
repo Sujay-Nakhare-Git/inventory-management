@@ -31,7 +31,7 @@
                     <td>{{ r.customer_name or 'Walk-in' }}</td>
                     <td>
                         <span class="badge {% if r.type == 'refund' %}badge-danger{% elif r.type == 'exchange' %}badge-info{% else %}badge-success{% endif %}">
-                            {{ r.type|capitalize }}
+                            {% if r.type == 'deposit_return' %}Deposit Return{% else %}{{ r.type|capitalize }}{% endif %}
                         </span>
                     </td>
                     <td>{{ r.products or '—' }}</td>

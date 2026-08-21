@@ -6,7 +6,12 @@
     <h2>Create New Bill</h2>
 </div>
 
-<div class="billing-layout">
+<div class="billing-tabs" role="tablist" aria-label="Bill type">
+    <button type="button" class="billing-tab active" id="salesTab" role="tab" aria-selected="true" aria-controls="salesBillingPanel" onclick="switchBillingTab('sale')">🧾 Sales</button>
+    <button type="button" class="billing-tab" id="rentalsTab" role="tab" aria-selected="false" aria-controls="rentalBillingPanel" onclick="switchBillingTab('rental')">🏷️ Rentals</button>
+</div>
+
+<div class="billing-layout" id="salesBillingPanel" role="tabpanel" aria-labelledby="salesTab">
     <div class="card billing-products">
         <h3 class="card-title">Select Products</h3>
         <input type="text" id="productSearch" class="input" placeholder="Search products..." style="margin-bottom: 1rem;">
@@ -21,7 +26,7 @@
                     <span class="price">₹{{ "%.2f"|format(p.selling_price) }}</span>
                     <span class="stock">Stock: {{ p.quantity }}</span>
                 </div>
-                <button class="btn btn-sm btn-primary add-to-bill" onclick="addItem({{ p.id }}, '{{ p.name|e }}', {{ p.selling_price }}, {{ p.quantity }})">+ Add</button>
+                <button class="btn btn-sm btn-primary add-to-bill" onclick="addItem(Number(this.parentElement.dataset.id), this.parentElement.dataset.name, Number(this.parentElement.dataset.price), Number(this.parentElement.dataset.stock))">+ Add</button>
             </div>
             {% else %}
             <p class="empty-state">No products in stock.</p>
@@ -161,6 +166,41 @@
             <button class="btn btn-primary btn-block" onclick="submitBill()">Generate Bill</button>
         </div>
     </div>
+</div>
+
+<div class="card rental-panel" id="rentalBillingPanel" role="tabpanel" aria-labelledby="rentalsTab" hidden>
+    <h3 class="card-title">Create Rental Bill</h3>
+    <div class="form-grid">
+        <div class="form-group">
+            <label for="rentalName">Name</label>
+            <input type="text" id="rentalName" class="input" placeholder="Customer Name" autocomplete="name" required>
+        </div>
+        <div class="form-group">
+            <label for="rentalPhone">Phone Number</label>
+            <input type="tel" id="rentalPhone" class="input" placeholder="Phone Number" autocomplete="tel" required>
+        </div>
+        <div class="form-group">
+            <label for="rentalDays">Number of Days</label>
+            <input type="number" id="rentalDays" class="input" placeholder="1" min="1" step="1" value="1" required>
+        </div>
+        <div class="form-group">
+            <label for="rentAmount">Rent Amount / Day (₹)</label>
+            <input type="number" id="rentAmount" class="input" placeholder="0.00" min="0" step="0.01" required>
+        </div>
+        <div class="form-group">
+            <label for="depositAmount">Deposit Amount (₹)</label>
+            <input type="number" id="depositAmount" class="input" placeholder="0.00" min="0" step="0.01" required>
+        </div>
+    </div>
+    <div class="rental-total">
+        <span>Rental Charges (Days × Rent)</span>
+        <strong id="rentalCharges">₹0.00</strong>
+    </div>
+    <div class="rental-total">
+        <span>Total Payable (including deposit)</span>
+        <strong id="rentalTotalAmount">₹0.00</strong>
+    </div>
+    <button type="button" class="btn btn-primary btn-block" onclick="submitRentalBill()">Generate Rental Bill</button>
 </div>
 
 <div id="billModal" class="modal" style="display:none;">

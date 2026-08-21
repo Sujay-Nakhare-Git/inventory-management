@@ -43,6 +43,7 @@
             <thead>
                 <tr>
                     <th>Bill #</th>
+                    <th>Type</th>
                     <th>Customer</th>
                     <th>Phone</th>
                     <th>Subtotal</th>
@@ -58,6 +59,7 @@
                 {% for b in bills %}
                 <tr>
                     <td><strong>{{ display_bill_ref(b) }}</strong></td>
+                    <td><span class="badge {% if b.bill_type == 'rental' %}badge-success{% else %}badge-info{% endif %}">{{ 'Rental' if b.bill_type == 'rental' else 'Sale' }}</span></td>
                     <td>{{ b.customer_name }}</td>
                     <td>{{ b.customer_phone }}</td>
                     <td>₹{{ "%.2f"|format(b.subtotal) }}</td>
@@ -75,7 +77,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="10" class="empty-state">{% if search %}No bills found matching "{{ search }}". {% elif selected_month %}No bills found for {{ selected_month }}. {% else %}No bills yet.{% endif %} {% if not search and not selected_month %}<a href="{{ url_for('billing') }}" style="color:#3498db;text-decoration:underline;">Create your first bill!</a>{% endif %}</td></tr>
+                <tr><td colspan="11" class="empty-state">{% if search %}No bills found matching "{{ search }}". {% elif selected_month %}No bills found for {{ selected_month }}. {% else %}No bills yet.{% endif %} {% if not search and not selected_month %}<a href="{{ url_for('billing') }}" style="color:#3498db;text-decoration:underline;">Create your first bill!</a>{% endif %}</td></tr>
                 {% endfor %}
             </tbody>
         </table>

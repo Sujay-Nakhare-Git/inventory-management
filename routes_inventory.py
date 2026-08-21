@@ -662,7 +662,13 @@ def api_customers_search():
 @app.route("/api/billing", methods=["POST"])
 def create_bill():
     data = request.get_json()
-    if not data or not data.get("items"):
+    if not data:
+        return jsonify({"error": "No bill data provided"}), 400
+
+    bill_type = str(data.get("bill_type", "sale")).strip().lower()
+    if bill_type not in {"sale", "rental"}:
+        return jsonify({"error": "Invalid bill type"}), 400
+    if bill_type == "sale" and not data.get("items"):
         return jsonify({"error": "No items provided"}), 400
 
     customer_name = data.get("customer_name", "").strip()
@@ -671,6 +677,55 @@ def create_bill():
         return jsonify({"error": "Customer name and phone number are required."}), 400
 
     db = get_db()
+
+    if bill_type == "rental":
+        try:
+            rental_days = int(data.get("rental_days", 0))
+            rent_amount = round(float(data.get("rent_amount", 0)), 2)
+            deposit_amount = round(float(data.get("deposit_amount", 0)), 2)
+        except (TypeError, ValueError):
+            return jsonify({"error": "Rental days, rent, and deposit amounts must be valid numbers."}), 400
+
+        if rental_days <= 0 or rent_amount <= 0 or deposit_amount < 0:
+            return jsonify({"error": "Rental days must be at least 1, rent must be greater than zero, and deposit cannot be negative."}), 400
+
+        rental_charges = round(rental_days * rent_amount, 2)
+        total = round(rental_charges + deposit_amount, 2)
+        bill_number = get_next_bill_number(db)
+        cursor = db.execute(
+            "INSERT INTO bills (bill_number, bill_type, customer_name, customer_phone, "
+            "subtotal, rental_days, total, rent_amount, deposit_amount, payment_method, "
+            "payment_breakdown_json, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
+            (bill_number, "rental", customer_name, customer_phone, rental_charges, rental_days, total,
+             rent_amount, deposit_amount, "Cash", json.dumps([{"method": "Cash", "amount": total}])),
+        )
+        bill_id = cursor.lastrowid
+        upsert_customer(db, customer_name, customer_phone)
+        db.commit()
+
+        log_update(
+            "New Rental Bill Created",
+            f"Bill {bill_number} — ₹{rental_charges:.2f} rental charges + ₹{deposit_amount:.2f} deposit (Cash) — {customer_name}",
+            "billing",
+        )
+        whatsapp_status = send_whatsapp_bill_message(
+            customer_phone=customer_phone,
+            customer_name=customer_name,
+            bill_number=bill_number,
+            total=total,
+        )
+        return jsonify({
+            "bill_id": bill_id,
+            "bill_number": bill_number,
+            "total": total,
+            "rental_charges": rental_charges,
+            "message": "Rental bill created!",
+            "whatsapp_sent": whatsapp_status.get("sent", False),
+            "whatsapp_reason": whatsapp_status.get("reason", "unknown"),
+            "whatsapp_error": (whatsapp_status.get("error", "") or "")[:220],
+        })
+
     discount_amount_input = data.get("discount_amount", None)
     discount_percent_input = data.get("discount_percent", 0)
     tax_percent = float(data.get("tax_percent", 0))

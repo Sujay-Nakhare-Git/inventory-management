@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Deposit Return Receipt {{ display_bill_ref(bill) }}</title>
+    <style>
+        @page { size: 76mm auto; margin: 0; }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 76mm;
+            background: #fff;
+            color: #000;
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.25;
+        }
+        .receipt {
+            box-sizing: border-box;
+            width: 73mm;
+            padding: 1.5mm 1mm;
+        }
+        .center { text-align: center; }
+        .line { border-top: 1.5px solid #000; margin: 1.5mm 0; }
+        .row { display: flex; justify-content: space-between; gap: 2mm; }
+        .row span:first-child { flex: 0 0 auto; padding-right: 1mm; }
+        .row span:last-child { flex: 1 1 auto; text-align: right; overflow-wrap: anywhere; }
+        .brand { font-size: 18px; font-weight: 700; line-height: 1.05; }
+        .subtitle { font-size: 11px; font-weight: 600; margin-top: 0.5mm; }
+        .title { font-size: 13px; font-weight: 700; }
+        .section { font-weight: 700; margin: 1mm 0; }
+        .total { font-size: 14px; font-weight: 700; }
+        .small { font-size: 10px; }
+        .feed { height: 6mm; }
+        .screen-actions { margin: 1rem; font-family: Helvetica, Arial, sans-serif; }
+        .screen-actions a { color: #1B4D3E; }
+        @media print {
+            .screen-actions { display: none; }
+            html, body { width: 76mm; min-width: 76mm; max-width: 76mm; }
+            .receipt { width: 73mm; max-width: 73mm; }
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt">
+        <div class="center brand">Gulmohar by Ankita</div>
+        <div class="center subtitle">Handpicked Apparel</div>
+        <div class="center small">Shop C-23, Azure by Paranjape</div>
+        <div class="center small">Tathawade, Pune - 411033</div>
+        <div class="center small">7620 563 984</div>
+
+        <div class="line"></div>
+        <div class="center title">Rental Deposit Return Receipt</div>
+        <div class="line"></div>
+
+        <div class="row"><span>Bill</span><span>{{ display_bill_ref(bill) }}</span></div>
+        <div class="row"><span>Customer</span><span>{{ bill.customer_name or 'Walk-in' }}</span></div>
+        {% if bill.customer_phone %}<div class="row"><span>Phone</span><span>{{ bill.customer_phone }}</span></div>{% endif %}
+        <div class="row"><span>Rental Date</span><span>{{ bill.created_at | istdatetime }}</span></div>
+        <div class="row"><span>Deposit Return Date</span><span>{{ bill.deposit_returned_at | istdatetime }}</span></div>
+
+        <div class="line"></div>
+        <div class="section">Rental Summary</div>
+        <div class="row"><span>Number of Days</span><span>{{ bill.rental_days }}</span></div>
+        <div class="row"><span>Rent Amount / Day</span><span>Rs.{{ "%.2f"|format(bill.rent_amount) }}</span></div>
+        <div class="row"><span>Rental Charges</span><span>Rs.{{ "%.2f"|format(bill.total - bill.deposit_amount) }}</span></div>
+        <div class="row"><span>Deposit Paid</span><span>Rs.{{ "%.2f"|format(bill.deposit_amount) }}</span></div>
+        <div class="row"><span>Total Paid</span><span>Rs.{{ "%.2f"|format(bill.total) }}</span></div>
+        <div class="row"><span>Deposit Returned</span><span>-Rs.{{ "%.2f"|format(bill.deposit_returned) }}</span></div>
+        <div class="line"></div>
+        <div class="row total"><span>NET RENTAL</span><span>Rs.{{ "%.2f"|format(bill.total - bill.deposit_returned) }}</span></div>
+
+        <div class="line"></div>
+        <div class="center small">Deposit returned to customer in full.</div>
+        <div class="center small">Thank you!</div>
+        <div class="feed">&nbsp;</div>
+    </div>
+
+    <div class="screen-actions">
+        <a href="{{ url_for('bill_detail', bill_id=bill.id) }}">Back to bill</a>
+    </div>
+
+    <script>
+        window.addEventListener('load', function () {
+            setTimeout(function () {
+                window.print();
+            }, 250);
+        });
+    </script>
+</body>
+</html>

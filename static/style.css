@@ -461,6 +461,44 @@ textarea.input { resize: vertical; }
 }
 
 /* ── Billing Layout ──────────────────────────────────────────────────── */
+.billing-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.billing-tab {
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+    color: var(--gray-500);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    padding: 0.7rem 1.1rem;
+}
+
+.billing-tab:hover,
+.billing-tab.active {
+    color: var(--emerald);
+    border-bottom-color: var(--gold);
+}
+
+.rental-panel { max-width: 900px; }
+
+.rental-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--gray-100);
+    margin-top: 1.5rem;
+    padding: 1rem 0;
+    font-size: 1.05rem;
+}
+
+.rental-total strong { color: var(--emerald); font-size: 1.35rem; }
+
 .billing-layout {
     display: grid;
     grid-template-columns: 1fr 1fr;

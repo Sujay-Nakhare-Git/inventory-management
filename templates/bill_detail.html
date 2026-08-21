@@ -6,7 +6,9 @@
 <div class="page-header no-print">
     <h2>Bill {{ display_bill_ref(bill) }}</h2>
     <div>
+        {% if bill.bill_type != 'rental' %}
         <a href="{{ url_for('new_refund', bill_id=bill.id) }}" class="btn btn-outline">🔄 Refund / Exchange</a>
+        {% endif %}
         <a href="{{ url_for('edit_bill', bill_id=bill.id) }}" class="btn btn-outline">✏️ Edit Details</a>
         <a href="{{ url_for('bill_thermal_print', bill_id=bill.id) }}" class="btn btn-primary" target="_blank" rel="noopener">Print</a>
         <form method="POST" action="{{ url_for('delete_bill', bill_id=bill.id) }}" style="display:inline" onsubmit="return confirm('Delete this bill? Stock will be restored.')">
@@ -48,6 +50,13 @@
     </div>
     {% endif %}
 
+    {% if bill.bill_type == 'rental' %}
+    <div class="invoice-customer">
+        <h4>Rental Details</h4>
+        <p><strong>Rent Amount:</strong> ₹{{ "%.2f"|format(bill.rent_amount) }}</p>
+        <p><strong>Deposit Amount:</strong> ₹{{ "%.2f"|format(bill.deposit_amount) }}</p>
+    </div>
+    {% else %}
     <table class="invoice-table">
         <thead>
             <tr>
@@ -72,8 +81,18 @@
             {% endfor %}
         </tbody>
     </table>
+    {% endif %}
 
     <div class="invoice-totals">
+        {% if bill.bill_type == 'rental' %}
+        <div class="summary-row"><span>Number of Days</span><span>{{ bill.rental_days }}</span></div>
+        <div class="summary-row"><span>Rent Amount / Day</span><span>₹{{ "%.2f"|format(bill.rent_amount) }}</span></div>
+        <div class="summary-row"><span>Rental Charges</span><span>₹{{ "%.2f"|format(bill.total - bill.deposit_amount) }}</span></div>
+        <div class="summary-row"><span>Deposit Amount</span><span>₹{{ "%.2f"|format(bill.deposit_amount) }}</span></div>
+        {% if bill.deposit_returned and bill.deposit_returned > 0 %}
+        <div class="summary-row"><span>Deposit Returned</span><span style="color:#b91c1c;">-₹{{ "%.2f"|format(bill.deposit_returned) }}</span></div>
+        {% endif %}
+        {% else %}
         <div class="summary-row"><span>Subtotal</span><span>₹{{ "%.2f"|format(bill.subtotal) }}</span></div>
         {% if bill.store_credit_used and bill.store_credit_used > 0 %}
         <div class="summary-row"><span>Store Credit</span><span>-₹{{ "%.2f"|format(bill.store_credit_used) }}</span></div>
@@ -84,7 +103,22 @@
         {% if bill.tax_amount > 0 %}
         <div class="summary-row"><span>Tax/GST ({{ bill.tax_percent }}%)</span><span>+₹{{ "%.2f"|format(bill.tax_amount) }}</span></div>
         {% endif %}
-        <div class="summary-row summary-total"><span>Total</span><span>₹{{ "%.2f"|format(bill.total) }}</span></div>
+        {% endif %}
+        <div class="summary-row summary-total"><span>{% if bill.bill_type == 'rental' %}Total Paid{% else %}Total{% endif %}</span><span>₹{{ "%.2f"|format(bill.total) }}</span></div>
+        {% if bill.bill_type == 'rental' and bill.deposit_returned and bill.deposit_returned > 0 %}
+        <div class="summary-row summary-total"><span>Net Amount</span><span>₹{{ "%.2f"|format(bill.total - bill.deposit_returned) }}</span></div>
+        {% endif %}
+        {% if bill.bill_type == 'rental' and bill.deposit_amount > 0 %}
+        <div class="no-print" style="margin-top:1rem; text-align:right;">
+            {% if bill.deposit_returned and bill.deposit_returned > 0 %}
+            <span class="badge badge-success">Deposit Returned: ₹{{ "%.2f"|format(bill.deposit_returned) }}</span>
+            {% else %}
+            <form method="POST" action="{{ url_for('return_rental_deposit', bill_id=bill.id) }}" target="_blank" style="display:inline;" onsubmit="return confirm('Return this rental deposit to the customer?')">
+                <button type="submit" class="btn btn-outline">↩ Return Deposit (₹{{ "%.2f"|format(bill.deposit_amount) }})</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
 
     <div class="invoice-footer">
@@ -118,6 +152,10 @@
     {% if bill.customer_name %}<div class="t-row"><span>Cust</span><span>{{ bill.customer_name }}</span></div>{% endif %}
     {% if bill.customer_phone %}<div class="t-row"><span>Ph</span><span>{{ bill.customer_phone }}</span></div>{% endif %}
     <div class="t-sep"></div>
+    {% if bill.bill_type == 'rental' %}
+    <div class="t-row"><span>Rent</span><span>Rs.{{ "%.2f"|format(bill.rent_amount) }}</span></div>
+    <div class="t-row"><span>Deposit</span><span>Rs.{{ "%.2f"|format(bill.deposit_amount) }}</span></div>
+    {% else %}
     <table class="t-items">
         <thead>
             <tr><th class="t-l">Item</th><th class="t-r">Qty</th><th class="t-r">Rate</th><th class="t-r">Amt</th></tr>
@@ -136,7 +174,9 @@
             {% endfor %}
         </tbody>
     </table>
+    {% endif %}
     <div class="t-sep"></div>
+    {% if bill.bill_type != 'rental' %}
     <div class="t-row"><span>Subtotal</span><span>Rs.{{ "%.2f"|format(bill.subtotal) }}</span></div>
     {% if bill.store_credit_used and bill.store_credit_used > 0 %}
     <div class="t-row"><span>Store Credit</span><span>-Rs.{{ "%.2f"|format(bill.store_credit_used) }}</span></div>
@@ -146,6 +186,7 @@
     {% endif %}
     {% if bill.tax_amount > 0 %}
     <div class="t-row"><span>Tax ({{ bill.tax_percent }}%)</span><span>+Rs.{{ "%.2f"|format(bill.tax_amount) }}</span></div>
+    {% endif %}
     {% endif %}
     <div class="t-sep"></div>
     <div class="t-row t-total"><span>TOTAL</span><span>Rs.{{ "%.2f"|format(bill.total) }}</span></div>
@@ -175,7 +216,7 @@
                 {% for r in refunds %}
                 <tr>
                     <td><strong>#{{ r.id }}</strong></td>
-                    <td><span class="badge {% if r.type == 'refund' %}badge-danger{% elif r.type == 'exchange' %}badge-info{% else %}badge-success{% endif %}">{{ r.type|capitalize }}</span></td>
+                    <td><span class="badge {% if r.type == 'refund' %}badge-danger{% elif r.type == 'exchange' %}badge-info{% else %}badge-success{% endif %}">{% if r.type == 'deposit_return' %}Deposit Return{% else %}{{ r.type|capitalize }}{% endif %}</span></td>
                     <td>{{ r.reason or '—' }}</td>
                     <td>{% if r.refund_amount > 0 %}₹{{ "%.2f"|format(r.refund_amount) }}{% else %}—{% endif %}</td>
                     <td>{{ r.created_at | istdatetime }}</td>

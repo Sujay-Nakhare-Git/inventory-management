@@ -3,6 +3,25 @@ let cartItems = [];
 let currentStoreCredit = null;  // Store current credit info
 let pendingCustomerCredit = null;  // Credit info detected from customer autocomplete
 
+function switchBillingTab(type) {
+    const isRental = type === 'rental';
+    document.getElementById('salesBillingPanel').hidden = isRental;
+    document.getElementById('rentalBillingPanel').hidden = !isRental;
+    document.getElementById('salesTab').classList.toggle('active', !isRental);
+    document.getElementById('rentalsTab').classList.toggle('active', isRental);
+    document.getElementById('salesTab').setAttribute('aria-selected', String(!isRental));
+    document.getElementById('rentalsTab').setAttribute('aria-selected', String(isRental));
+}
+
+function updateRentalTotal() {
+    const rentalDays = parseInt(document.getElementById('rentalDays').value, 10) || 0;
+    const rentAmount = parseFloat(document.getElementById('rentAmount').value) || 0;
+    const depositAmount = parseFloat(document.getElementById('depositAmount').value) || 0;
+    const rentalCharges = rentalDays * rentAmount;
+    document.getElementById('rentalCharges').textContent = `₹${rentalCharges.toFixed(2)}`;
+    document.getElementById('rentalTotalAmount').textContent = `₹${(rentalCharges + depositAmount).toFixed(2)}`;
+}
+
 function round2(value) {
     return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 }
@@ -148,6 +167,10 @@ function bindCustomerAutocomplete() {
 
 bindCustomerAutocomplete();
 // ---------- /Customer autocomplete ----------
+
+document.getElementById('rentalDays').addEventListener('input', updateRentalTotal);
+document.getElementById('rentAmount').addEventListener('input', updateRentalTotal);
+document.getElementById('depositAmount').addEventListener('input', updateRentalTotal);
 
 function toggleStoreCredit() {
     const useCredit = document.getElementById('useStoreCredit').checked;
@@ -479,6 +502,87 @@ async function submitBill() {
         if (printWindow && !printWindow.closed) {
             printWindow.close();
         }
+        alert('Network error. Please try again.');
+    }
+}
+
+async function submitRentalBill() {
+    const nameEl = document.getElementById('rentalName');
+    const phoneEl = document.getElementById('rentalPhone');
+    const daysEl = document.getElementById('rentalDays');
+    const rentEl = document.getElementById('rentAmount');
+    const depositEl = document.getElementById('depositAmount');
+    const customerName = nameEl.value.trim();
+    const customerPhone = phoneEl.value.trim();
+    const rentalDays = parseInt(daysEl.value, 10);
+    const rentAmount = parseFloat(rentEl.value);
+    const depositAmount = parseFloat(depositEl.value);
+
+    if (!customerName || !customerPhone) {
+        alert('Name and phone number are required before generating a rental bill.');
+        (!customerName ? nameEl : phoneEl).focus();
+        return;
+    }
+    if (!Number.isInteger(rentalDays) || rentalDays <= 0) {
+        alert('Please enter at least 1 rental day.');
+        daysEl.focus();
+        return;
+    }
+    if (!Number.isFinite(rentAmount) || rentAmount <= 0) {
+        alert('Please enter a rent amount greater than ₹0.');
+        rentEl.focus();
+        return;
+    }
+    if (!Number.isFinite(depositAmount) || depositAmount < 0) {
+        alert('Please enter a valid deposit amount.');
+        depositEl.focus();
+        return;
+    }
+
+    const rentalCharges = round2(rentalDays * rentAmount);
+    const total = round2(rentalCharges + depositAmount);
+    const printWindow = window.open('', '_blank');
+
+    try {
+        const resp = await fetch('/api/billing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                bill_type: 'rental',
+                customer_name: customerName,
+                customer_phone: customerPhone,
+                rental_days: rentalDays,
+                rent_amount: round2(rentAmount),
+                deposit_amount: round2(depositAmount),
+                payment_method: 'Cash',
+                payment_breakdown: [{ method: 'Cash', amount: total }]
+            })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) {
+            if (printWindow && !printWindow.closed) printWindow.close();
+            alert(data.error || 'Failed to create rental bill.');
+            return;
+        }
+
+        const billRef = data.bill_number || `#${data.bill_id}`;
+        const thermalUrl = `/bills/${data.bill_id}/thermal`;
+        if (printWindow && !printWindow.closed) printWindow.location.href = thermalUrl;
+        document.getElementById('billMessage').textContent =
+            `Rental bill ${billRef} created — Rental charges: ₹${rentalCharges.toFixed(2)}; total payable: ₹${data.total.toFixed(2)}.`;
+        document.getElementById('viewBillLink').href = `/bills/${data.bill_id}`;
+        document.getElementById('billModal').style.display = 'flex';
+        if (!printWindow) window.open(thermalUrl, '_blank');
+
+        nameEl.value = '';
+        phoneEl.value = '';
+        daysEl.value = '1';
+        rentEl.value = '';
+        depositEl.value = '';
+        updateRentalTotal();
+    } catch (err) {
+        if (printWindow && !printWindow.closed) printWindow.close();
         alert('Network error. Please try again.');
     }
 }

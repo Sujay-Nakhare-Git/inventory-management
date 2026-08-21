@@ -163,6 +163,64 @@ def edit_bill(bill_id):
     return redirect(url_for("bill_detail", bill_id=bill_id))
 
 
+@app.route("/bills/<int:bill_id>/return-deposit", methods=["POST"])
+def return_rental_deposit(bill_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to return a rental deposit.", "error")
+        return redirect(url_for("admin", next=url_for("bill_detail", bill_id=bill_id)))
+
+    db = get_db()
+    bill = db.execute("SELECT * FROM bills WHERE id = ?", (bill_id,)).fetchone()
+    if not bill:
+        flash("Bill not found.", "error")
+        return redirect(url_for("bills_list"))
+    if bill["bill_type"] != "rental":
+        flash("Only rental bills can have a returned deposit.", "error")
+        return redirect(url_for("bill_detail", bill_id=bill_id))
+
+    deposit_amount = round(float(bill["deposit_amount"] or 0), 2)
+    deposit_returned = round(float(bill["deposit_returned"] or 0), 2)
+    if deposit_amount <= 0:
+        flash("This rental bill has no deposit to return.", "error")
+        return redirect(url_for("bill_detail", bill_id=bill_id))
+    if deposit_returned >= deposit_amount:
+        flash("The rental deposit has already been returned.", "error")
+        return redirect(url_for("bill_detail", bill_id=bill_id))
+
+    db.execute(
+        "UPDATE bills SET deposit_returned = ?, "
+        "deposit_returned_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+        (deposit_amount, bill_id),
+    )
+    db.execute(
+        "INSERT INTO refunds (bill_id, customer_name, type, reason, refund_amount, created_at) "
+        "VALUES (?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
+        (bill_id, bill["customer_name"], "deposit_return", "Rental deposit returned", deposit_amount),
+    )
+    db.commit()
+
+    log_update(
+        "Rental Deposit Returned",
+        f"Bill {display_bill_ref(bill)} — ₹{deposit_amount:.2f} returned to {bill['customer_name'] or 'Walk-in'}",
+        "billing",
+    )
+    flash(f"Rental deposit returned: ₹{deposit_amount:.2f}.", "success")
+    return redirect(url_for("rental_deposit_return_receipt", bill_id=bill_id))
+
+
+@app.route("/bills/<int:bill_id>/deposit-return/receipt")
+def rental_deposit_return_receipt(bill_id):
+    db = get_db()
+    bill = db.execute("SELECT * FROM bills WHERE id = ?", (bill_id,)).fetchone()
+    if not bill:
+        flash("Bill not found.", "error")
+        return redirect(url_for("bills_list"))
+    if bill["bill_type"] != "rental" or not bill["deposit_returned"]:
+        flash("Deposit return receipt is available only after returning a rental deposit.", "error")
+        return redirect(url_for("bill_detail", bill_id=bill_id))
+    return render_template("rental_deposit_return_receipt.html", bill=bill)
+
+
 @app.route("/bills/<int:bill_id>/thermal")
 def bill_thermal_print(bill_id):
     db = get_db()

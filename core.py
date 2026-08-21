@@ -208,14 +208,20 @@ def init_db():
         CREATE TABLE IF NOT EXISTS bills (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             bill_number TEXT UNIQUE,
+            bill_type TEXT NOT NULL DEFAULT 'sale',
             customer_name TEXT,
             customer_phone TEXT,
             subtotal REAL NOT NULL DEFAULT 0,
+            rental_days INTEGER NOT NULL DEFAULT 1,
             discount_percent REAL NOT NULL DEFAULT 0,
             discount_amount REAL NOT NULL DEFAULT 0,
             tax_percent REAL NOT NULL DEFAULT 0,
             tax_amount REAL NOT NULL DEFAULT 0,
             total REAL NOT NULL DEFAULT 0,
+            rent_amount REAL NOT NULL DEFAULT 0,
+            deposit_amount REAL NOT NULL DEFAULT 0,
+            deposit_returned REAL NOT NULL DEFAULT 0,
+            deposit_returned_at TEXT,
             payment_method TEXT DEFAULT 'Cash',
             payment_breakdown_json TEXT,
             created_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes'))
@@ -384,6 +390,18 @@ def init_db():
         db.execute("ALTER TABLE bills ADD COLUMN bill_number TEXT")
     if "payment_breakdown_json" not in bills_columns:
         db.execute("ALTER TABLE bills ADD COLUMN payment_breakdown_json TEXT")
+    if "bill_type" not in bills_columns:
+        db.execute("ALTER TABLE bills ADD COLUMN bill_type TEXT NOT NULL DEFAULT 'sale'")
+    if "rent_amount" not in bills_columns:
+        db.execute("ALTER TABLE bills ADD COLUMN rent_amount REAL NOT NULL DEFAULT 0")
+    if "deposit_amount" not in bills_columns:
+        db.execute("ALTER TABLE bills ADD COLUMN deposit_amount REAL NOT NULL DEFAULT 0")
+    if "deposit_returned" not in bills_columns:
+        db.execute("ALTER TABLE bills ADD COLUMN deposit_returned REAL NOT NULL DEFAULT 0")
+    if "deposit_returned_at" not in bills_columns:
+        db.execute("ALTER TABLE bills ADD COLUMN deposit_returned_at TEXT")
+    if "rental_days" not in bills_columns:
+        db.execute("ALTER TABLE bills ADD COLUMN rental_days INTEGER NOT NULL DEFAULT 1")
 
     db.execute(
         "INSERT OR IGNORE INTO counters (name, value) VALUES ('bill_number', 0)"

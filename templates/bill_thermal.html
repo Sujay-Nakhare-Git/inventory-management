@@ -145,6 +145,17 @@
 
         <div class="line"></div>
 
+        {% if bill.bill_type == 'rental' %}
+        <div class="line"></div>
+        <div class="left">Rental Details</div>
+            <div class="row"><span>Days</span><span>{{ bill.rental_days }}</span></div>
+            <div class="row"><span>Rent/Day</span><span>{{ "%.2f"|format(bill.rent_amount) }}</span></div>
+            <div class="row"><span>Rental Charges</span><span>{{ "%.2f"|format(bill.total - bill.deposit_amount) }}</span></div>
+        <div class="row"><span>Deposit Amount</span><span>{{ "%.2f"|format(bill.deposit_amount) }}</span></div>
+        {% if bill.deposit_returned and bill.deposit_returned > 0 %}
+        <div class="row"><span>Deposit Returned</span><span>-{{ "%.2f"|format(bill.deposit_returned) }}</span></div>
+        {% endif %}
+        {% else %}
         <table>
             <thead>
                 <tr>
@@ -165,10 +176,14 @@
                 {% endfor %}
             </tbody>
         </table>
+        {% endif %}
 
         <div class="line"></div>
 
-        <div class="row"><span>Subtotal</span><span>{{ "%.2f"|format(bill.subtotal) }}</span></div>
+        {% if bill.bill_type != 'rental' %}
+        <div class="t-row"><span>Days</span><span>{{ bill.rental_days }}</span></div>
+        <div class="t-row"><span>Rent/Day</span><span>Rs.{{ "%.2f"|format(bill.rent_amount) }}</span></div>
+        <div class="t-row"><span>Rental Charges</span><span>Rs.{{ "%.2f"|format(bill.total - bill.deposit_amount) }}</span></div>
         {% if bill.discount_amount > 0 %}
         <div class="row"><span>{% if bill.payment_method == 'Exchange' %}Replacement value/Store Credit discount{% else %}Disc (₹){% endif %}</span><span>-{{ "%.2f"|format(bill.discount_amount) }}</span></div>
         {% endif %}
@@ -178,10 +193,11 @@
         {% if bill.store_credit_used and bill.store_credit_used > 0 %}
         <div class="row"><span>Store Credit</span><span>-{{ "%.2f"|format(bill.store_credit_used) }}</span></div>
         {% endif %}
+        {% endif %}
 
         <div class="line"></div>
 
-        <div class="row total"><span>TOTAL</span><span>Rs {{ "%.2f"|format(bill.total) }}</span></div>
+        <div class="row total"><span>{% if bill.bill_type == 'rental' and bill.deposit_returned and bill.deposit_returned > 0 %}NET AMOUNT{% else %}TOTAL{% endif %}</span><span>Rs {{ "%.2f"|format(bill.total - bill.deposit_returned if bill.bill_type == 'rental' else bill.total) }}</span></div>
         <div class="line"></div>
         <div class="center small">No Returns, Exchange within 1 week.</div>
         <div class="center small">(For exchange keep the tags on)</div>
