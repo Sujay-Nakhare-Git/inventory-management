@@ -1,7 +1,5 @@
 # Inventory Management System
 
-# Inventory Management System
-
 A modern, lightweight **boutique management web application** built with **Python, Flask, SQLite, Jinja2, HTML, CSS, and JavaScript**. The system centralizes day-to-day boutique operations including inventory management, vendor tracking, sales billing, rental billing, refunds, exchanges, expenses, and business reporting.
 
 ## Key Features
