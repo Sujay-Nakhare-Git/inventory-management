@@ -1,5 +1,32 @@
 # Release Notes
 
+## v3.0.0 - 2026-08-21
+
+### Rentals
+- Added a dedicated Rentals tab in Create New Bill.
+- Rental bills capture:
+  - Customer name and phone number
+  - Number of rental days
+  - Daily rent amount
+  - Refundable deposit amount
+- Rental charges are calculated as `Number of Days × Daily Rent`.
+- Total payable is calculated as `Rental Charges + Refundable Deposit`.
+- Rental bills are available in bill history with rental-specific details and totals.
+
+### Deposit Returns
+- Added a one-time Return Deposit action for rental bills.
+- Deposit returns are recorded in the refund history with the return timestamp.
+- Added a dedicated printable deposit-return receipt showing:
+  - Rental date
+  - Deposit return date
+  - Number of rental days
+  - Daily rent and rental charges
+  - Deposit paid, deposit returned, and net rental amount
+
+### Compatibility
+- Existing Sales billing, inventory deduction, refunds, and exchanges remain unchanged.
+- Existing rental records continue to work with a default rental duration of one day.
+
 ## v2.0.0 - 2026-07-13
 
 ### Security

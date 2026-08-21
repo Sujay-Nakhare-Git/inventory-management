@@ -4,6 +4,22 @@ A boutique management web application for inventory, billing, refunds/exchanges,
 
 ## Release Notes
 
+### 3.0.0 — 2026-08-21
+
+- Added a complete Rentals billing workflow:
+	- New Rentals tab in Create New Bill.
+	- Rental customer name and phone number fields.
+	- Number of rental days and daily rent amount.
+	- Refundable deposit amount.
+	- Rental charges calculated as Number of Days × Daily Rent.
+	- Total payable calculated as Rental Charges + Refundable Deposit.
+- Rental bill details and thermal receipts now show the rental duration, daily rate, rental charges, deposit, and totals.
+- Added one-time rental deposit return:
+	- Deposit return is recorded with a timestamp and appears in refund history.
+	- A separate printable receipt shows the rental date and deposit return date.
+	- The receipt includes the rental calculation and net rental amount after returning the deposit.
+- Existing Sales billing and inventory workflows remain unchanged.
+
 ### 2.0.0 — 2026-07-13
 
 - Security hardening for Admin access:
@@ -64,6 +80,7 @@ Inventory Management System helps manage day-to-day boutique operations in one p
 - Inventory and category management
 - Vendor management with per-vendor sale & stock summary
 - Billing and bill history
+- Rental billing with refundable deposits and deposit-return receipts
 - Auto bill numbering in `G001` format
 - Refund and exchange workflow
 - Expense tracking
