@@ -487,6 +487,11 @@ textarea.input { resize: vertical; }
 
 .rental-panel { max-width: 900px; }
 
+#salesBillingPanel[hidden],
+#rentalBillingPanel[hidden] {
+    display: none !important;
+}
+
 .rental-total {
     display: flex;
     justify-content: space-between;

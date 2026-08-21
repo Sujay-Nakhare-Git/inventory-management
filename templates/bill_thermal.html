@@ -148,9 +148,10 @@
         {% if bill.bill_type == 'rental' %}
         <div class="line"></div>
         <div class="left">Rental Details</div>
+        <div class="line"></div>
             <div class="row"><span>Days</span><span>{{ bill.rental_days }}</span></div>
             <div class="row"><span>Rent/Day</span><span>{{ "%.2f"|format(bill.rent_amount) }}</span></div>
-            <div class="row"><span>Rental Charges</span><span>{{ "%.2f"|format(bill.total - bill.deposit_amount) }}</span></div>
+            <div class="row"><span>Total Rental Charges</span><span>{{ "%.2f"|format(bill.total - bill.deposit_amount) }}</span></div>
         <div class="row"><span>Deposit Amount</span><span>{{ "%.2f"|format(bill.deposit_amount) }}</span></div>
         {% if bill.deposit_returned and bill.deposit_returned > 0 %}
         <div class="row"><span>Deposit Returned</span><span>-{{ "%.2f"|format(bill.deposit_returned) }}</span></div>

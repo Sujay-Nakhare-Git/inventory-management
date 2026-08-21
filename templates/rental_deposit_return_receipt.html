@@ -26,8 +26,13 @@
         .row { display: flex; justify-content: space-between; gap: 2mm; }
         .row span:first-child { flex: 0 0 auto; padding-right: 1mm; }
         .row span:last-child { flex: 1 1 auto; text-align: right; overflow-wrap: anywhere; }
-        .brand { font-size: 18px; font-weight: 700; line-height: 1.05; }
-        .subtitle { font-size: 11px; font-weight: 600; margin-top: 0.5mm; }
+        .logo {
+            display: block;
+            margin: 0 auto 1mm auto;
+            max-width: 60mm;
+            width: 100%;
+            height: auto;
+        }
         .title { font-size: 13px; font-weight: 700; }
         .section { font-weight: 700; margin: 1mm 0; }
         .total { font-size: 14px; font-weight: 700; }
@@ -44,8 +49,10 @@
 </head>
 <body>
     <div class="receipt">
-        <div class="center brand">Gulmohar by Ankita</div>
-        <div class="center subtitle">Handpicked Apparel</div>
+        <img src="{{ url_for('static', filename='logo-receipt.png') }}" alt="Gulmohar by Ankita" class="logo">
+
+        <div class="line"></div>
+
         <div class="center small">Shop C-23, Azure by Paranjape</div>
         <div class="center small">Tathawade, Pune - 411033</div>
         <div class="center small">7620 563 984</div>
