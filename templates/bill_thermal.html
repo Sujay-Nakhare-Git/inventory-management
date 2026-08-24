@@ -181,10 +181,11 @@
 
         <div class="line"></div>
 
-        {% if bill.bill_type != 'rental' %}
+        {% if bill.bill_type == 'rental' %}
         <div class="t-row"><span>Days</span><span>{{ bill.rental_days }}</span></div>
         <div class="t-row"><span>Rent/Day</span><span>Rs.{{ "%.2f"|format(bill.rent_amount) }}</span></div>
         <div class="t-row"><span>Rental Charges</span><span>Rs.{{ "%.2f"|format(bill.total - bill.deposit_amount) }}</span></div>
+        {% else %}
         {% if bill.discount_amount > 0 %}
         <div class="row"><span>{% if bill.payment_method == 'Exchange' %}Replacement value/Store Credit discount{% else %}Disc (₹){% endif %}</span><span>-{{ "%.2f"|format(bill.discount_amount) }}</span></div>
         {% endif %}
