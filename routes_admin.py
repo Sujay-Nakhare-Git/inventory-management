@@ -522,6 +522,9 @@ def customers():
     query = (
         "SELECT c.id AS id, c.name AS name, c.phone AS phone, "
         "COUNT(b.id) AS bill_count, "
+        "COALESCE((SELECT SUM(bi.quantity) FROM bill_items bi "
+        "JOIN bills b2 ON b2.id = bi.bill_id "
+        "WHERE TRIM(b2.customer_phone) = c.phone), 0) AS items_bought, "
         "COALESCE(SUM(b.total), 0) AS total_value, "
         "MAX(b.created_at) AS last_purchase "
         "FROM customers c "

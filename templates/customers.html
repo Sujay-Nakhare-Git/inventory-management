@@ -31,6 +31,7 @@
                     <th>{{ sort_link('name', 'Name') }}</th>
                     <th>Phone</th>
                     <th>{{ sort_link('bills', 'Bills') }}</th>
+                    <th>Items Bought (Qty)</th>
                     <th>{{ sort_link('total', 'Total Purchase Value') }}</th>
                     <th>Last Purchase</th>
                     <th>Actions</th>
@@ -42,6 +43,7 @@
                     <td><strong>{{ c.name or 'Walk-in' }}</strong></td>
                     <td>{{ c.phone }}</td>
                     <td>{{ c.bill_count }}</td>
+                    <td>{{ c.items_bought }}</td>
                     <td>₹{{ "%.2f"|format(c.total_value) }}</td>
                     <td>{{ c.last_purchase | istdatetime if c.last_purchase else '—' }}</td>
                     <td>
@@ -50,7 +52,7 @@
                     </td>
                 </tr>
                 <tr id="customer-edit-{{ c.id }}" style="display:none;background:#f9fafb;">
-                    <td colspan="6">
+                    <td colspan="7">
                         <form method="POST" action="{{ url_for('edit_customer', customer_id=c.id) }}">
                             <div class="form-grid">
                                 <div class="form-group">
