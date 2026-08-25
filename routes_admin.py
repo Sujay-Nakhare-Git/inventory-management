@@ -513,11 +513,18 @@ def customers():
     search = request.args.get("search", "").strip()
     sort = request.args.get("sort", "name")
     direction = request.args.get("dir", "asc")
-    if sort not in ("name", "bills", "total"):
+    if sort not in ("name", "phone", "bills", "items_bought", "total", "last_purchase"):
         sort = "name"
     if direction not in ("asc", "desc"):
         direction = "asc"
-    sort_column = {"name": "c.name", "bills": "bill_count", "total": "total_value"}[sort]
+    sort_column = {
+        "name": "c.name",
+        "phone": "c.phone",
+        "bills": "bill_count",
+        "items_bought": "items_bought",
+        "total": "total_value",
+        "last_purchase": "last_purchase",
+    }[sort]
 
     query = (
         "SELECT c.id AS id, c.name AS name, c.phone AS phone, "
