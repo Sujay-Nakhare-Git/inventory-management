@@ -756,6 +756,12 @@ def create_bill():
                 "error": f"Insufficient stock for '{product['name']}'. Available: {product['quantity']}"
             }), 400
         line_total = product["selling_price"] * qty
+        
+        # Check for active sale discount on this product
+        sale_discount_percent = get_active_sale_discount(db, product["id"])
+        if sale_discount_percent > 0:
+            line_total = round(line_total * (1 - sale_discount_percent / 100), 2)
+        
         subtotal += line_total
         validated_items.append({
             "product_id": product["id"],

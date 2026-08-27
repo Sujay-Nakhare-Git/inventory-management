@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}{% if sale %}Edit Sale{% else %}New Sale{% endif %} — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>{% if sale %}✏️ Edit Sale{% else %}🎉 New Sale/Exhibition{% endif %}</h2>
+    <a href="{{ url_for('sales_list') }}" class="btn btn-outline">← Back to Sales</a>
+</div>
+
+<div class="card form-card">
+    <form method="POST" action="{{ url_for('sales_add') }}">
+        {% if sale %}
+        <input type="hidden" name="sale_id" value="{{ sale.id }}">
+        {% endif %}
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="name">Sale Name *</label>
+                <input type="text" id="name" name="name" class="input" required 
+                       placeholder="e.g. Summer Collection Sale" 
+                       value="{{ sale.name or '' }}">
+            </div>
+
+            <div class="form-group">
+                <label for="discount_percent">Discount Percent *</label>
+                <input type="number" id="discount_percent" name="discount_percent" class="input" 
+                       required min="0" max="100" step="0.01"
+                       placeholder="e.g. 20"
+                       value="{{ sale.discount_percent or '0' }}">
+            </div>
+
+            <div class="form-group">
+                <label for="start_date">Start Date *</label>
+                <input type="date" id="start_date" name="start_date" class="input" 
+                       required value="{{ sale.start_date or '' }}">
+            </div>
+
+            <div class="form-group">
+                <label for="end_date">End Date *</label>
+                <input type="date" id="end_date" name="end_date" class="input" 
+                       required value="{{ sale.end_date or '' }}">
+            </div>
+
+            <div class="form-group" style="grid-column:1/-1;">
+                <label for="description">Description</label>
+                <input type="text" id="description" name="description" class="input" 
+                       placeholder="Sale description (optional)"
+                       value="{{ sale.description or '' }}">
+            </div>
+        </div>
+
+        <div style="margin-top:2rem;margin-bottom:1rem;">
+            <h4>Select Products for this Sale</h4>
+            <p style="font-size:0.875rem;color:#666;margin-bottom:1rem;">
+                Choose individual products or use category filters to select all products in a category.
+            </p>
+        </div>
+
+        <div class="card" style="background:#f8f9fa;margin-bottom:1.5rem;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+                <div>
+                    <label for="filter_category">Filter by Category</label>
+                    <select id="filter_category" class="input">
+                        <option value="">All Categories</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}">{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:0.5rem;">
+                    <button type="button" class="btn btn-sm btn-primary" onclick="selectByCategory()">
+                        Add All in Category
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="clearAllProducts()">
+                        Clear All
+                    </button>
+                </div>
+            </div>
+
+            <div style="max-height:400px;overflow-y:auto;border:1px solid #ddd;border-radius:4px;padding:1rem;">
+                <div id="products-list">
+                    {% for product in products %}
+                    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;padding:0.75rem;background:white;border-radius:4px;border:1px solid #e0e0e0;">
+                        <input type="checkbox" name="products" value="{{ product.id }}" 
+                               class="product-checkbox"
+                               data-category="{{ product.category_id or '' }}"
+                               {% if selected_product_ids and product.id in selected_product_ids %}checked{% endif %}>
+                        <div style="flex:1;">
+                            <div><strong>{{ product.name }}</strong></div>
+                            <div style="font-size:0.875rem;color:#666;">
+                                SKU: {{ product.sku or '—' }} | Size: {{ product.size or '—' }} | Stock: {{ product.quantity }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div style="margin-top:1rem;padding:1rem;background:#ecf0f1;border-radius:4px;text-align:center;">
+                <strong id="selected-count">0</strong> products selected
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                {% if sale %}Update Sale{% else %}Create Sale{% endif %}
+            </button>
+            <a href="{{ url_for('sales_list') }}" class="btn btn-outline">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+function selectByCategory() {
+    const categoryId = document.getElementById('filter_category').value;
+    if (!categoryId) {
+        alert('Please select a category');
+        return;
+    }
+    
+    document.querySelectorAll('.product-checkbox[data-category="' + categoryId + '"]').forEach(cb => {
+        cb.checked = true;
+    });
+    updateSelectedCount();
+}
+
+function clearAllProducts() {
+    document.querySelectorAll('.product-checkbox').forEach(cb => {
+        cb.checked = false;
+    });
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const count = document.querySelectorAll('.product-checkbox:checked').length;
+    document.getElementById('selected-count').textContent = count;
+}
+
+// Update count on load and whenever checkboxes change
+document.querySelectorAll('.product-checkbox').forEach(cb => {
+    cb.addEventListener('change', updateSelectedCount);
+});
+updateSelectedCount();
+</script>
+
+<style>
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

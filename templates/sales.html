@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Sales/Exhibition — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>🎉 Sales/Exhibition</h2>
+    <div>
+        <a href="{{ url_for('sales_create_form') }}" class="btn btn-primary">+ New Sale</a>
+        <a href="{{ url_for('admin') }}" class="btn btn-outline">← Back to Admin</a>
+    </div>
+</div>
+
+<div class="card">
+    {% if sales %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Sale Name</th>
+                    <th>Discount</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Products</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sale in sales %}
+                <tr>
+                    <td>
+                        <strong>{{ sale.name }}</strong>
+                        {% if sale.description %}
+                        <div style="font-size:0.875rem;color:#666;margin-top:0.25rem;">{{ sale.description }}</div>
+                        {% endif %}
+                    </td>
+                    <td><strong style="color:#2ecc71;">{{ sale.discount_percent }}%</strong></td>
+                    <td>{{ sale.start_date|istdate }}</td>
+                    <td>{{ sale.end_date|istdate }}</td>
+                    <td><span class="badge">{{ sale.product_count }} products</span></td>
+                    <td>
+                        {% if sale.status == 'active' %}
+                        <span class="badge" style="background:#2ecc71;color:white;">🔴 Active</span>
+                        {% elif sale.status == 'upcoming' %}
+                        <span class="badge" style="background:#3498db;color:white;">📅 Upcoming</span>
+                        {% elif sale.status == 'expired' %}
+                        <span class="badge" style="background:#95a5a6;color:white;">⏰ Expired</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('sales_edit_form', sale_id=sale.id) }}" class="btn btn-sm btn-outline">Edit</a>
+                        <a href="{{ url_for('sales_summary', sale_id=sale.id) }}" class="btn btn-sm btn-primary">Summary</a>
+                        <form method="POST" action="{{ url_for('sales_delete', sale_id=sale.id) }}" style="display:inline;"
+                            onsubmit="return confirm('Delete sale &quot;{{ sale.name }}&quot;? This will only remove the sale, not the products.')">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="text-align:center;color:#999;padding:2rem;">No sales found. <a href="{{ url_for('sales_create_form') }}">Create your first sale →</a></p>
+    {% endif %}
+</div>
+
+<style>
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: #ecf0f1;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+</style>
+{% endblock %}

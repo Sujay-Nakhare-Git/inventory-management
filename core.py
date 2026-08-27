@@ -346,6 +346,27 @@ def init_db():
             created_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes')),
             updated_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes'))
         );
+
+        CREATE TABLE IF NOT EXISTS sales (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            discount_percent REAL NOT NULL DEFAULT 0,
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes')),
+            updated_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes'))
+        );
+
+        CREATE TABLE IF NOT EXISTS sale_products (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sale_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            created_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes')),
+            FOREIGN KEY (sale_id) REFERENCES sales(id),
+            FOREIGN KEY (product_id) REFERENCES products(id),
+            UNIQUE (sale_id, product_id)
+        );
     """)
 
     # Seed default categories if empty
@@ -597,6 +618,30 @@ def display_bill_ref(bill):
     if bill_id is not None:
         return f"#{bill_id}"
     return "-"
+
+
+def get_active_sale_discount(db, product_id):
+    """Get the discount percent for a product if it's part of an active sale.
+    
+    Returns the discount percent (float) if product is in an active sale, 0 otherwise.
+    """
+    current_date = now_ist().strftime("%Y-%m-%d")
+    sale = db.execute(
+        """
+        SELECT discount_percent FROM sales s
+        JOIN sale_products sp ON s.id = sp.sale_id
+        WHERE sp.product_id = ?
+        AND s.start_date <= ?
+        AND s.end_date >= ?
+        ORDER BY s.discount_percent DESC
+        LIMIT 1
+        """,
+        (product_id, current_date, current_date),
+    ).fetchone()
+    
+    if sale:
+        return float(sale["discount_percent"] or 0)
+    return 0
 
 
 def normalize_phone_for_whatsapp_cloud(raw_phone):
