@@ -10,10 +10,10 @@
 </div>
 
 <div class="dashboard-tabs">
-    <a href="{{ url_for('dashboard') }}" class="tab-btn{% if request.endpoint == 'dashboard' %} active{% endif %}">Dashboard</a>
-    <a href="{{ url_for('sku_size_checker') }}" class="tab-btn{% if request.endpoint == 'sku_size_checker' %} active{% endif %}">Size Availability</a>
-    <a href="{{ url_for('billing') }}" class="tab-btn{% if request.endpoint == 'billing' %} active{% endif %}">New Bill</a>
-    <a href="{{ url_for('admin') }}" class="tab-btn">Admin</a>
+    {% if can('dashboard') %}<a href="{{ url_for('dashboard') }}" class="tab-btn{% if request.endpoint == 'dashboard' %} active{% endif %}">Dashboard</a>{% endif %}
+    {% if can('sku_size_checker') %}<a href="{{ url_for('sku_size_checker') }}" class="tab-btn{% if request.endpoint == 'sku_size_checker' %} active{% endif %}">Size Availability</a>{% endif %}
+    {% if can('billing') %}<a href="{{ url_for('billing') }}" class="tab-btn{% if request.endpoint == 'billing' %} active{% endif %}">New Bill</a>{% endif %}
+    {% if can(*admin_permission_keys) %}<a href="{{ url_for('admin') }}" class="tab-btn">Admin</a>{% endif %}
 </div>
 
 <div class="card">

@@ -14,6 +14,7 @@ from flask import (
     flash, jsonify, g, session, Response
 )
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 
 try:
     from PIL import Image, UnidentifiedImageError
@@ -366,6 +367,23 @@ def init_db():
             FOREIGN KEY (sale_id) REFERENCES sales(id),
             FOREIGN KEY (product_id) REFERENCES products(id),
             UNIQUE (sale_id, product_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            is_superadmin INTEGER NOT NULL DEFAULT 0,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes')),
+            last_login_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS user_permissions (
+            user_id INTEGER NOT NULL,
+            permission_key TEXT NOT NULL,
+            PRIMARY KEY (user_id, permission_key),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
     """)
 
@@ -824,47 +842,281 @@ def save_optimized_image(uploaded_file, saved_path, extension):
         uploaded_file.save(saved_path)
 
 
-ADMIN_PASSWORD_HASH = "d1215baec4cf39b5c9cc710527fbbfcb3d4290caaf9b0f095d32198c9d5e28aa"
-ADMIN_IDLE_TIMEOUT_SECONDS = 20 * 60
+# Legacy shared admin password hash. Kept only to let the very first login
+# ("admin", before any users exist) migrate seamlessly into a real account.
+LEGACY_ADMIN_PASSWORD_HASH = "d1215baec4cf39b5c9cc710527fbbfcb3d4290caaf9b0f095d32198c9d5e28aa"
+SESSION_IDLE_TIMEOUT_SECONDS = 20 * 60
+
+# Permission registry: (key, label) pairs, grouped for the checkbox UI used
+# when creating/editing a user. Keys map to the tabs/sections of the app.
+MAIN_PERMISSIONS = [
+    ("dashboard", "Dashboard"),
+    ("sku_size_checker", "Size Availability"),
+    ("billing", "New Bill / Billing"),
+]
+
+ADMIN_PERMISSIONS = [
+    ("daily_summary", "Daily Summary"),
+    ("bills", "Bill History"),
+    ("refunds", "Refund Details"),
+    ("expenses", "Expenses"),
+    ("profit_loss", "Profit & Loss"),
+    ("store_credits", "Store Credits"),
+    ("categories", "Categories"),
+    ("vendors", "Vendors"),
+    ("customers", "Customers"),
+    ("vendor_summary", "Vendor Summary"),
+    ("inventory", "Inventory"),
+    ("inventory_overview", "Inventory Overview"),
+    ("sales_summary", "Sales Summary"),
+    ("sales_exhibition", "Sales / Exhibition"),
+    ("investments", "Initial Investments"),
+    ("labels", "Print Labels"),
+    ("low_stock_alerts", "Low Stock Alerts"),
+    ("admin_tools", "Tools & Danger Zone"),
+]
+
+ALL_PERMISSION_KEYS = {key for key, _ in MAIN_PERMISSIONS + ADMIN_PERMISSIONS}
+ADMIN_PERMISSION_KEYS = [key for key, _ in ADMIN_PERMISSIONS]
+
+# Sentinel required-permission value for routes only a superadmin may access.
+SUPERADMIN_ONLY = object()
+
+# endpoint -> required permission key, a tuple of keys (any one grants
+# access), or SUPERADMIN_ONLY. Endpoints missing from this map default to
+# SUPERADMIN_ONLY (fail closed) unless listed in LOGIN_ONLY_ENDPOINTS.
+ENDPOINT_PERMISSIONS = {
+    "dashboard": "dashboard",
+    "sku_size_checker": "sku_size_checker",
+    "billing": "billing",
+    "api_products": "billing",
+    "api_customers_search": "billing",
+    "create_bill": "billing",
+    "lookup_store_credit": "billing",
+    "bill_detail": ("billing", "bills"),
+    "bill_thermal_print": ("billing", "bills"),
+    "rental_deposit_return_receipt": ("billing", "bills"),
+    "bills_list": "bills",
+    "edit_bill": "bills",
+    "delete_bill": "bills",
+    "return_rental_deposit": "bills",
+    "export_sales": "bills",
+    "daily_summary": "daily_summary",
+    "refunds_list": "refunds",
+    "new_refund": "refunds",
+    "process_refund": "refunds",
+    "expenses": "expenses",
+    "add_expense": "expenses",
+    "edit_expense": "expenses",
+    "delete_expense": "expenses",
+    "export_expenses": "expenses",
+    "profit_loss": "profit_loss",
+    "store_credits": "store_credits",
+    "add_store_credit": "store_credits",
+    "add_credit_balance": "store_credits",
+    "credit_transactions": "store_credits",
+    "delete_store_credit": "store_credits",
+    "delete_credit_transaction": "store_credits",
+    "edit_credit_transaction": "store_credits",
+    "categories": "categories",
+    "edit_category": "categories",
+    "delete_category": "categories",
+    "vendors": "vendors",
+    "add_vendor": "vendors",
+    "edit_vendor": "vendors",
+    "delete_vendor": "vendors",
+    "customers": "customers",
+    "edit_customer": "customers",
+    "customer_detail": "customers",
+    "vendor_summary": "vendor_summary",
+    "inventory": "inventory",
+    "add_product": "inventory",
+    "edit_product": "inventory",
+    "delete_product": "inventory",
+    "bulk_assign_vendor": "inventory",
+    "next_sku": "inventory",
+    "product_variants": "inventory",
+    "product_bills": "inventory",
+    "link_variant": "inventory",
+    "unlink_variant": "inventory",
+    "admin_inventory_overview": "inventory_overview",
+    "admin_sales_summary": "sales_summary",
+    "sales_list": "sales_exhibition",
+    "sales_create_form": "sales_exhibition",
+    "sales_edit_form": "sales_exhibition",
+    "sales_add": "sales_exhibition",
+    "sales_delete": "sales_exhibition",
+    "sales_summary": "sales_exhibition",
+    "admin_investments": "investments",
+    "add_investment": "investments",
+    "delete_investment": "investments",
+    "inventory_labels": "labels",
+    "inventory_labels_print": "labels",
+    "low_stock_alerts": "low_stock_alerts",
+    "add_low_stock_alert": "low_stock_alerts",
+    "edit_low_stock_alert": "low_stock_alerts",
+    "delete_low_stock_alert": "low_stock_alerts",
+    "admin_tools": "admin_tools",
+    "admin_whatsapp_test": "admin_tools",
+    "clean_all_data": "admin_tools",
+    "manage_users": SUPERADMIN_ONLY,
+    "add_user": SUPERADMIN_ONLY,
+    "edit_user": SUPERADMIN_ONLY,
+    "delete_user": SUPERADMIN_ONLY,
+}
+
+# Endpoints that only require a logged-in session (no specific permission).
+LOGIN_ONLY_ENDPOINTS = {"admin", "logout", "no_access", "change_password", "updates", "add_update"}
+
+# Endpoints reachable without logging in at all.
+PUBLIC_ENDPOINTS = {"login", "static"}
 
 
-def _current_ts():
+def current_ts():
     return int(now_ist().timestamp())
 
 
-def mark_admin_session_active():
-    session["admin_last_activity_ts"] = _current_ts()
+def hash_password(password):
+    return generate_password_hash(password)
 
 
-def establish_admin_session():
-    session["admin_authenticated"] = True
-    mark_admin_session_active()
-
-
-def clear_admin_session():
-    session.pop("admin_authenticated", None)
-    session.pop("admin_last_activity_ts", None)
-    session.pop("pl_authenticated", None)
-
-
-def admin_authenticated():
-    if not session.get("admin_authenticated", False):
+def verify_password(password_hash, password):
+    try:
+        return check_password_hash(password_hash, password)
+    except ValueError:
         return False
 
-    last_active = session.get("admin_last_activity_ts")
+
+def get_user_permissions(db, user_id):
+    rows = db.execute(
+        "SELECT permission_key FROM user_permissions WHERE user_id = ?", (user_id,)
+    ).fetchall()
+    return {row["permission_key"] for row in rows}
+
+
+def get_current_user():
+    """Return the logged-in user dict (with permissions) for this request, or None.
+
+    Cached on ``g`` so repeated calls within one request don't re-query.
+    """
+    if "user" in g:
+        return g.user
+
+    g.user = None
+    user_id = session.get("user_id")
+    if not user_id:
+        return None
+
+    last_active = session.get("last_activity_ts")
     try:
         last_active = int(last_active)
     except (TypeError, ValueError):
         last_active = 0
 
-    now_ts = _current_ts()
-    if last_active <= 0 or (now_ts - last_active) > ADMIN_IDLE_TIMEOUT_SECONDS:
-        clear_admin_session()
-        session["admin_timeout_notice"] = True
-        return False
+    if last_active <= 0 or (current_ts() - last_active) > SESSION_IDLE_TIMEOUT_SECONDS:
+        session.clear()
+        session["session_timeout_notice"] = True
+        return None
 
-    mark_admin_session_active()
-    return True
+    db = get_db()
+    row = db.execute(
+        "SELECT id, username, is_superadmin, is_active FROM users WHERE id = ?",
+        (user_id,),
+    ).fetchone()
+    if not row or not row["is_active"]:
+        session.clear()
+        return None
+
+    session["last_activity_ts"] = current_ts()
+    permissions = set() if row["is_superadmin"] else get_user_permissions(db, row["id"])
+    g.user = {
+        "id": row["id"],
+        "username": row["username"],
+        "is_superadmin": bool(row["is_superadmin"]),
+        "permissions": permissions,
+    }
+    return g.user
+
+
+def user_can(user, *keys):
+    if not user:
+        return False
+    if user["is_superadmin"]:
+        return True
+    return any(key in user["permissions"] for key in keys)
+
+
+def default_landing_url(user):
+    """Best page to send a user to right after login."""
+    if user_can(user, "dashboard"):
+        return url_for("dashboard")
+    if user_can(user, "billing"):
+        return url_for("billing")
+    if user_can(user, "sku_size_checker"):
+        return url_for("sku_size_checker")
+    if user_can(user, *ADMIN_PERMISSION_KEYS):
+        return url_for("admin")
+    return url_for("no_access")
+
+
+@app.before_request
+def _enforce_access_control():
+    endpoint = request.endpoint
+    if endpoint is None or endpoint in PUBLIC_ENDPOINTS:
+        return None
+
+    user = get_current_user()
+    if not user:
+        timed_out = session.pop("session_timeout_notice", False)
+        if request.path.startswith("/api/") or request.is_json:
+            return jsonify({"error": "Please log in to continue."}), 401
+        if timed_out:
+            flash("You were logged out after 20 minutes of inactivity. Please log in again.", "error")
+        else:
+            flash("Please log in to continue.", "error")
+        next_path = request.path if request.method == "GET" else ""
+        return redirect(url_for("login", next=next_path))
+
+    if endpoint in LOGIN_ONLY_ENDPOINTS:
+        return None
+
+    required = ENDPOINT_PERMISSIONS.get(endpoint, SUPERADMIN_ONLY)
+    if required is SUPERADMIN_ONLY:
+        allowed = user["is_superadmin"]
+    else:
+        keys = required if isinstance(required, tuple) else (required,)
+        allowed = user_can(user, *keys)
+
+    if not allowed:
+        if request.path.startswith("/api/") or request.is_json:
+            return jsonify({"error": "You do not have permission to access this."}), 403
+        flash("You don't have permission to access that section.", "error")
+        return redirect(url_for("no_access"))
+    return None
+
+
+@app.context_processor
+def inject_auth_helpers():
+    user = get_current_user()
+    return {
+        "current_user": user,
+        "can": lambda *keys: user_can(user, *keys),
+        "main_permissions": MAIN_PERMISSIONS,
+        "admin_permissions": ADMIN_PERMISSIONS,
+        "admin_permission_keys": ADMIN_PERMISSION_KEYS,
+        "landing_url": default_landing_url(user) if user else url_for("login"),
+    }
+
+
+def admin_authenticated():
+    """Legacy in-view guard kept as defense-in-depth.
+
+    Real access control now happens centrally in ``_enforce_access_control``
+    (matched per-endpoint to a specific permission), so by the time a view
+    function runs, the caller has already been verified. This simply reflects
+    whether someone is logged in at all.
+    """
+    return get_current_user() is not None
 
 
 def get_triggered_low_stock_alerts(db):

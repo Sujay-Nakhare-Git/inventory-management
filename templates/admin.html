@@ -4,29 +4,11 @@
 {% block content %}
 <div class="page-header">
     <h2>Admin</h2>
-    {% if not locked %}
-    <a href="{{ url_for('admin_logout') }}" class="btn btn-outline">🔒 Lock Admin</a>
-    {% endif %}
 </div>
 
-{% if locked %}
-<div class="pl-login-wrapper">
-    <div class="pl-login-card">
-        <div class="pl-login-icon">🔐</div>
-        <h2>Admin Access</h2>
-        <p>Enter password to access admin. Admin auto-locks after 20 minutes of inactivity.</p>
-        <form method="POST" action="{{ url_for('admin') }}">
-            <input type="hidden" name="next_url" value="{{ next_url }}">
-            <div class="form-group">
-                <input type="password" name="password" class="input" placeholder="Enter admin password" required autofocus>
-            </div>
-            <button type="submit" class="btn btn-primary btn-block">Unlock Admin</button>
-        </form>
-    </div>
-</div>
-{% else %}
 <div class="stats-grid">
 
+    {% if can('daily_summary') %}
     <div class="card stat-card stat-blue" style="text-align:left;">
         <div class="card-title">📅 Daily Summary</div>
         <p class="page-desc">See today's sales, expenses, refunds, top products, and net summary.</p>
@@ -34,7 +16,9 @@
             <a href="{{ url_for('daily_summary') }}" class="btn btn-primary">Open Daily Summary</a>
         </div>
     </div>
+    {% endif %}
 
+    {% if can('bills') %}
     <div class="card stat-card stat-blue" style="text-align:left;">
         <div class="card-title">📋 Bill History</div>
         <p class="page-desc">View and search all previously generated bills.</p>
@@ -42,7 +26,9 @@
             <a href="{{ url_for('bills_list') }}" class="btn btn-primary">Open Bill History</a>
         </div>
     </div>
+    {% endif %}
 
+    {% if can('refunds') %}
     <div class="card stat-card stat-coral" style="text-align:left;">
         <div class="card-title">🔄 Refund Details</div>
         <p class="page-desc">Review refunds and exchanges processed across bills.</p>
@@ -50,7 +36,9 @@
             <a href="{{ url_for('refunds_list') }}" class="btn btn-primary">Open Refund Details</a>
         </div>
     </div>
+    {% endif %}
 
+    {% if can('expenses') %}
     <div class="card stat-card stat-gold" style="text-align:left;">
         <div class="card-title">💸 Expenses</div>
         <p class="page-desc">Manage operational expenses and keep business costs updated.</p>
@@ -58,7 +46,9 @@
             <a href="{{ url_for('expenses') }}" class="btn btn-primary">Open Expenses</a>
         </div>
     </div>
+    {% endif %}
 
+    {% if can('profit_loss') %}
     <div class="card stat-card stat-coral" style="text-align:left;">
         <div class="card-title">📈 Profit & Loss</div>
         <p class="page-desc">Track revenue, COGS, expenses, and net profit/loss by period.</p>
@@ -66,7 +56,9 @@
             <a href="{{ url_for('profit_loss') }}" class="btn btn-primary">Open Profit & Loss</a>
         </div>
     </div>
+    {% endif %}
 
+    {% if can('store_credits') %}
     <div class="card stat-card" style="text-align:left;border:2px solid #9b59b6;">
         <div class="card-title">💳 Store Credits</div>
         <p class="page-desc">Manage customer store credits, balances, and transaction history.</p>
@@ -74,7 +66,9 @@
             <a href="{{ url_for('store_credits') }}" class="btn btn-primary" style="background:#9b59b6;border-color:#9b59b6;">Open Store Credits</a>
         </div>
     </div>
+    {% endif %}
 
+    {% if can('categories') %}
     <div class="card stat-card stat-blue" style="text-align:left;">
         <div class="card-title">🗂️ Categories</div>
         <p class="page-desc">Add, edit, and manage product categories and SKU codes.</p>
@@ -82,7 +76,9 @@
             <a href="{{ url_for('categories') }}" class="btn btn-primary">Open Categories</a>
         </div>
     </div>
+    {% endif %}
 
+    {% if can('vendors') %}
     <div class="card stat-card stat-gold" style="text-align:left;">
         <div class="card-title">🏭 Vendors</div>
         <p class="page-desc">Add and update vendor details used across inventory.</p>
@@ -90,7 +86,9 @@
             <a href="{{ url_for('vendors') }}" class="btn btn-primary">Open Vendors</a>
         </div>
     </div>
+    {% endif %}
 
+    {% if can('customers') %}
     <div class="card stat-card stat-blue" style="text-align:left;">
         <div class="card-title">👤 Customers</div>
         <p class="page-desc">View customers, contact numbers, bill history, and total purchase value.</p>
@@ -98,7 +96,9 @@
             <a href="{{ url_for('customers') }}" class="btn btn-primary">Open Customers</a>
         </div>
     </div>
+    {% endif %}
 
+    {% if can('vendor_summary') %}
     <div class="card stat-card stat-gold" style="text-align:left;">
         <div class="card-title">📊 Vendor Summary</div>
         <p class="page-desc">See per-vendor stock value, units sold, and sales totals.</p>
@@ -106,7 +106,9 @@
             <a href="{{ url_for('vendor_summary') }}" class="btn btn-primary">Open Vendor Summary</a>
         </div>
     </div>
+    {% endif %}
 
+    {% if can('inventory') %}
     <div class="card stat-card stat-blue" style="text-align:left;">
         <div class="card-title">👗 Inventory</div>
         <p class="page-desc">Manage and view all products in stock.</p>
@@ -114,7 +116,9 @@
             <a href="{{ url_for('inventory') }}" class="btn btn-primary">Open Inventory</a>
         </div>
     </div>
+    {% endif %}
 
+    {% if can('inventory_overview') %}
     <div class="card stat-card stat-green" style="text-align:left;">
         <div class="card-title">📦 Inventory Overview</div>
         <p class="page-desc">Stock totals and counts broken down by category and size.</p>
@@ -122,7 +126,9 @@
             <a href="{{ url_for('admin_inventory_overview') }}" class="btn btn-primary">Open Inventory Overview</a>
         </div>
     </div>
+    {% endif %}
 
+    {% if can('sales_summary') %}
     <div class="card stat-card stat-coral" style="text-align:left;">
         <div class="card-title">🧾 Sales Summary</div>
         <p class="page-desc">Top-selling category and size with category × size breakdown.</p>
@@ -130,7 +136,9 @@
             <a href="{{ url_for('admin_sales_summary') }}" class="btn btn-primary">Open Sales Summary</a>
         </div>
     </div>
+    {% endif %}
 
+    {% if can('sales_exhibition') %}
     <div class="card stat-card" style="text-align:left;border:2px solid #e74c3c;">
         <div class="card-title">🎉 Sales/Exhibition</div>
         <p class="page-desc">Create sales events, select products, set discounts, and view performance reports.</p>
@@ -138,7 +146,9 @@
             <a href="{{ url_for('sales_list') }}" class="btn btn-primary" style="background:#e74c3c;border-color:#e74c3c;">Open Sales/Exhibition</a>
         </div>
     </div>
+    {% endif %}
 
+    {% if can('investments') %}
     <div class="card stat-card stat-green" style="text-align:left;">
         <div class="card-title">💰 Initial Investments</div>
         <p class="page-desc">Record and review initial business investments.</p>
@@ -146,7 +156,9 @@
             <a href="{{ url_for('admin_investments') }}" class="btn btn-primary">Open Investments</a>
         </div>
     </div>
+    {% endif %}
 
+    {% if can('labels') %}
     <div class="card stat-card stat-gold" style="text-align:left;">
         <div class="card-title">🏷️ Print Labels</div>
         <p class="page-desc">Generate 2&quot; × 3&quot; labels with SKU, Price, and Size.</p>
@@ -154,7 +166,9 @@
             <a href="{{ url_for('inventory_labels') }}" class="btn btn-primary">Open Label Generator</a>
         </div>
     </div>
+    {% endif %}
 
+    {% if can('low_stock_alerts') %}
     <div class="card stat-card" style="text-align:left;border:2px solid #e67e22;">
         <div class="card-title">🔔 Low Stock Alerts</div>
         <p class="page-desc">Set category &amp; size stock thresholds shown as alerts on the Dashboard.</p>
@@ -162,7 +176,9 @@
             <a href="{{ url_for('low_stock_alerts') }}" class="btn btn-primary" style="background:#e67e22;border-color:#e67e22;">Open Low Stock Alerts</a>
         </div>
     </div>
+    {% endif %}
 
+    {% if can('admin_tools') %}
     <div class="card stat-card" style="text-align:left;border:2px solid #e74c3c;">
         <div class="card-title">🛠️ Tools &amp; Danger Zone</div>
         <p class="page-desc">WhatsApp test message and the option to clean all data.</p>
@@ -170,7 +186,18 @@
             <a href="{{ url_for('admin_tools') }}" class="btn btn-primary">Open Tools</a>
         </div>
     </div>
+    {% endif %}
+
+    {% if current_user.is_superadmin %}
+    <div class="card stat-card" style="text-align:left;border:2px solid #1b4d3e;">
+        <div class="card-title">👥 Manage Users</div>
+        <p class="page-desc">Create staff accounts and choose which tabs each user can access.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('manage_users') }}" class="btn btn-primary">Open Manage Users</a>
+        </div>
+    </div>
+    {% endif %}
 </div>
-{% endif %}
 {% endblock %}
+
 

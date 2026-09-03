@@ -8,11 +8,11 @@
     <p class="page-desc">Welcome back! Here's your Boutique overview.</p>
 
     <div class="dashboard-tabs">
-        <a href="{{ url_for('dashboard') }}" class="tab-btn{% if request.endpoint == 'dashboard' %} active{% endif %}">Dashboard</a>
-        <a href="{{ url_for('sku_size_checker') }}" class="tab-btn{% if request.endpoint == 'sku_size_checker' %} active{% endif %}">Size Availability</a>
-        <a href="{{ url_for('billing') }}" class="tab-btn{% if request.endpoint == 'billing' %} active{% endif %}">New Bill</a>
+        {% if can('dashboard') %}<a href="{{ url_for('dashboard') }}" class="tab-btn{% if request.endpoint == 'dashboard' %} active{% endif %}">Dashboard</a>{% endif %}
+        {% if can('sku_size_checker') %}<a href="{{ url_for('sku_size_checker') }}" class="tab-btn{% if request.endpoint == 'sku_size_checker' %} active{% endif %}">Size Availability</a>{% endif %}
+        {% if can('billing') %}<a href="{{ url_for('billing') }}" class="tab-btn{% if request.endpoint == 'billing' %} active{% endif %}">New Bill</a>{% endif %}
         <!-- <a href="{{ url_for('categories') }}" class="tab-btn{% if request.endpoint == 'categories' %} active{% endif %}">Categories</a> -->
-        <a href="{{ url_for('admin') }}" class="tab-btn{% if request.endpoint in ['admin', 'expenses', 'profit_loss', 'daily_summary', 'bills_list', 'bill_detail', 'edit_bill', 'bill_thermal_print', 'delete_bill', 'refunds_list', 'new_refund', 'process_refund', 'low_stock_alerts'] %} active{% endif %}">Admin</a>
+        {% if can(*admin_permission_keys) %}<a href="{{ url_for('admin') }}" class="tab-btn{% if request.endpoint in ['admin', 'expenses', 'profit_loss', 'daily_summary', 'bills_list', 'bill_detail', 'edit_bill', 'bill_thermal_print', 'delete_bill', 'refunds_list', 'new_refund', 'process_refund', 'low_stock_alerts'] %} active{% endif %}">Admin</a>{% endif %}
     </div>
 </div>
 

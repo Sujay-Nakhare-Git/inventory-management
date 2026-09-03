@@ -20,20 +20,36 @@
             <p class="brand-tagline">Handpicked Apparel</p>
         </div>
         <ul class="nav-links">
+            {% if can('dashboard') %}
             <li><a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">
                 <span class="nav-icon">📊</span> Dashboard
             </a></li>
+            {% endif %}
+            {% if can('sku_size_checker') %}
             <li><a href="{{ url_for('sku_size_checker') }}" class="{% if request.endpoint == 'sku_size_checker' %}active{% endif %}">
                 <span class="nav-icon">📏</span> Size Availability
             </a></li>
+            {% endif %}
             {# Inventory and Categories links moved to Admin page #}
+            {% if can('billing') %}
             <li><a href="{{ url_for('billing') }}" class="{% if request.endpoint == 'billing' %}active{% endif %}">
                 <span class="nav-icon">🧾</span> New Bill
             </a></li>
-            <li><a href="{{ url_for('admin') }}" class="{% if request.endpoint in ['admin', 'categories', 'expenses', 'profit_loss', 'daily_summary', 'bills_list', 'bill_detail', 'edit_bill', 'bill_thermal_print', 'delete_bill', 'refunds_list', 'new_refund', 'process_refund', 'admin_inventory_overview', 'admin_sales_summary', 'admin_investments', 'admin_tools', 'low_stock_alerts', 'vendors', 'vendor_summary', 'customers', 'customer_detail'] %}active{% endif %}">
+            {% endif %}
+            {% if can(*admin_permission_keys) %}
+            <li><a href="{{ url_for('admin') }}" class="{% if request.endpoint in ['admin', 'categories', 'expenses', 'profit_loss', 'daily_summary', 'bills_list', 'bill_detail', 'edit_bill', 'bill_thermal_print', 'delete_bill', 'refunds_list', 'new_refund', 'process_refund', 'admin_inventory_overview', 'admin_sales_summary', 'admin_investments', 'admin_tools', 'low_stock_alerts', 'vendors', 'vendor_summary', 'customers', 'customer_detail', 'manage_users'] %}active{% endif %}">
                 <span class="nav-icon">🔒</span> Admin
             </a></li>
+            {% endif %}
         </ul>
+
+        {% if current_user %}
+        <div class="sidebar-footer">
+            <div class="sidebar-user">👤 {{ current_user.username }}</div>
+            <a href="{{ url_for('change_password') }}">🔑 Change Password</a><br>
+            <a href="{{ url_for('logout') }}">🚪 Logout</a>
+        </div>
+        {% endif %}
     </nav>
 
     <main class="content">

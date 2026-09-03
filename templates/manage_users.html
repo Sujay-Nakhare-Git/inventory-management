@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Manage Users — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>👥 Manage Users</h2>
+    <a href="{{ url_for('admin') }}" class="btn btn-outline">← Back to Admin</a>
+</div>
+
+<div class="card form-card">
+    <h3 class="card-title">Add New User</h3>
+    <form method="POST" action="{{ url_for('add_user') }}">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="new_username">Username</label>
+                <input type="text" id="new_username" name="username" class="input" required minlength="3" autocapitalize="none">
+            </div>
+            <div class="form-group">
+                <label for="new_password">Password</label>
+                <input type="password" id="new_password" name="password" class="input" required minlength="8">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Main Tabs</label>
+            <div class="permission-grid">
+                {% for key, label in main_permissions %}
+                <label class="permission-item">
+                    <input type="checkbox" name="permissions" value="{{ key }}"> {{ label }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Admin Tabs</label>
+            <div class="permission-grid">
+                {% for key, label in admin_permissions %}
+                <label class="permission-item">
+                    <input type="checkbox" name="permissions" value="{{ key }}"> {{ label }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Create User</button>
+    </form>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Last Login</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>{{ u.username }}</td>
+                    <td>
+                        {% if u.is_superadmin %}
+                        <span class="badge badge-info">Superadmin</span>
+                        {% else %}
+                        <span class="badge badge-success">Staff</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.is_active %}
+                        <span class="badge badge-success">Active</span>
+                        {% else %}
+                        <span class="badge badge-danger">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ u.last_login_at or '—' }}</td>
+                    <td class="actions">
+                        {% if not u.is_superadmin %}
+                        <button type="button" class="btn btn-sm btn-primary" onclick="document.getElementById('editUserModal-{{ u.id }}').classList.add('is-open')">Edit</button>
+                        <form method="POST" action="{{ url_for('delete_user', user_id=u.id) }}" style="display:inline" onsubmit="return confirm('Delete user {{ u.username }}? This cannot be undone.')">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                        {% else %}
+                        <span class="page-desc">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% for u in users %}
+{% if not u.is_superadmin %}
+<div class="modal" id="editUserModal-{{ u.id }}">
+    <div class="modal-content" style="text-align:left;max-width:500px;">
+        <h3>Edit {{ u.username }}</h3>
+        <form method="POST" action="{{ url_for('edit_user', user_id=u.id) }}">
+            <div class="form-group">
+                <label>New Password (leave blank to keep current)</label>
+                <input type="password" name="password" class="input" minlength="8">
+            </div>
+            <div class="form-group">
+                <label class="permission-item">
+                    <input type="checkbox" name="is_active" value="1" {% if u.is_active %}checked{% endif %}> Account Active
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label>Main Tabs</label>
+                <div class="permission-grid">
+                    {% for key, label in main_permissions %}
+                    <label class="permission-item">
+                        <input type="checkbox" name="permissions" value="{{ key }}" {% if key in permissions_by_user[u.id] %}checked{% endif %}> {{ label }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Admin Tabs</label>
+                <div class="permission-grid">
+                    {% for key, label in admin_permissions %}
+                    <label class="permission-item">
+                        <input type="checkbox" name="permissions" value="{{ key }}" {% if key in permissions_by_user[u.id] %}checked{% endif %}> {{ label }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('editUserModal-{{ u.id }}').classList.remove('is-open')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endblock %}

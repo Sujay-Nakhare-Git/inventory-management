@@ -4,6 +4,7 @@ The application is split into focused modules:
 
 - ``core``            – Flask app, configuration, database, shared helpers,
                         template filters, WhatsApp + image utilities, auth.
+- ``routes_auth``      – login, logout, and user/permission management.
 - ``routes_inventory`` – dashboard, inventory, categories, billing.
 - ``routes_sales``     – bills, store credits, refunds, updates.
 - ``routes_admin``     – admin panel, vendors, investments, tools, labels.
@@ -16,6 +17,7 @@ Importing the route modules registers their routes on the shared ``app``.
 from core import app
 
 # Importing these modules registers their @app.route handlers.
+import routes_auth  # noqa: E402,F401
 import routes_inventory  # noqa: E402,F401
 import routes_sales  # noqa: E402,F401
 import routes_admin  # noqa: E402,F401

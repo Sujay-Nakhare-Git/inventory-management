@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Login — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="pl-login-wrapper">
+    <div class="pl-login-card">
+        <div class="pl-login-icon">🔐</div>
+        <h2>Welcome Back</h2>
+        {% if first_time_setup %}
+        <p>First time setup: log in with username <strong>admin</strong> and your existing admin password to create the first superadmin account.</p>
+        {% else %}
+        <p>Enter your username and password to continue.</p>
+        {% endif %}
+        <form method="POST" action="{{ url_for('login') }}">
+            <input type="hidden" name="next" value="{{ next_url }}">
+            <div class="form-group">
+                <input type="text" name="username" class="input" placeholder="Username" required autofocus autocapitalize="none">
+            </div>
+            <div class="form-group">
+                <input type="password" name="password" class="input" placeholder="Password" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Log In</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

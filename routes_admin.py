@@ -2,29 +2,9 @@ from core import *  # noqa: F401,F403
 
 
 # ── Admin ────────────────────────────────────────────────────────────────
-@app.route("/admin", methods=["GET", "POST"])
+@app.route("/admin")
 def admin():
-    next_url = request.values.get("next", request.values.get("next_url", "")).strip()
-
-    if request.method == "GET" and session.pop("admin_timeout_notice", False):
-        flash("Admin auto-locked after 20 minutes of inactivity. Please unlock again.", "error")
-
-    if request.method == "POST":
-        password = request.form.get("password", "")
-        entered_hash = hashlib.sha256(password.encode()).hexdigest()
-        if hmac.compare_digest(entered_hash, ADMIN_PASSWORD_HASH):
-            establish_admin_session()
-            flash("Admin access granted.", "success")
-            if next_url.startswith("/"):
-                return redirect(next_url)
-            return redirect(url_for("admin"))
-        flash("Incorrect admin password.", "error")
-
-    return render_template(
-        "admin.html",
-        locked=not admin_authenticated(),
-        next_url=next_url,
-    )
+    return render_template("admin.html")
 
 
 @app.route("/admin/inventory-overview")
@@ -720,13 +700,6 @@ def vendor_summary():
 
 
 
-@app.route("/admin/logout")
-def admin_logout():
-    clear_admin_session()
-    flash("Admin area locked.", "success")
-    return redirect(url_for("dashboard"))
-
-
 @app.route("/admin/whatsapp-test", methods=["POST"])
 def admin_whatsapp_test():
     if not admin_authenticated():
@@ -808,20 +781,19 @@ def clean_all_data():
     confirm = request.form.get("confirm", "").strip()
     password = request.form.get("password", "")
 
-    if not admin_authenticated():
-        flash("Please unlock Admin first.", "error")
-        return redirect(url_for("admin"))
-
     if confirm != "DELETE ALL DATA":
         flash("Confirmation text did not match.", "error")
         return redirect(url_for("admin"))
 
-    entered_hash = hashlib.sha256(password.encode()).hexdigest()
-    if not hmac.compare_digest(entered_hash, ADMIN_PASSWORD_HASH):
-        flash("Incorrect admin password.", "error")
+    db = get_db()
+    current_user = get_current_user()
+    user_row = db.execute(
+        "SELECT password_hash FROM users WHERE id = ?", (current_user["id"],)
+    ).fetchone()
+    if not user_row or not verify_password(user_row["password_hash"], password):
+        flash("Incorrect password.", "error")
         return redirect(url_for("admin"))
 
-    db = get_db()
     expense_images = db.execute(
         "SELECT bill_image_path FROM expenses WHERE bill_image_path IS NOT NULL AND bill_image_path != ''"
     ).fetchall()

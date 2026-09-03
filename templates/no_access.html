@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Access Denied — Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="pl-login-wrapper">
+    <div class="pl-login-card">
+        <div class="pl-login-icon">🚫</div>
+        <h2>Access Denied</h2>
+        <p>You don't have permission to access that section. Contact your administrator if you need access.</p>
+        {% if current_user %}
+        <a href="{{ landing_url }}" class="btn btn-primary btn-block">Go Back</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
