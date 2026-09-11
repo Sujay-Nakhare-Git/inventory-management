@@ -155,6 +155,36 @@
 </div>
 
 <div class="card">
+    <h3 class="card-title">Vendor-wise Product Sales ({{ selected_date | istdate }})</h3>
+    {% if vendor_product_sales %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Vendor</th>
+                    <th>Product</th>
+                    <th>Qty Sold</th>
+                    <th>Revenue</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sale in vendor_product_sales %}
+                <tr>
+                    <td><strong>{{ sale.vendor_name }}</strong></td>
+                    <td>{{ sale.product_name }}</td>
+                    <td>{{ sale.qty }}</td>
+                    <td>₹{{ "%.2f"|format(sale.revenue) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty-state">No vendor products sold on this date.</p>
+    {% endif %}
+</div>
+
+<div class="card">
     <h3 class="card-title">🧾 Recent Bills (Today)</h3>
     {% if recent_bills %}
     <div class="table-wrapper">
