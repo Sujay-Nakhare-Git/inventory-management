@@ -46,6 +46,26 @@ def dashboard():
     )
 
 
+@app.route("/api/dashboard-notes", methods=["GET"])
+def get_dashboard_notes():
+    db = get_db()
+    row = db.execute("SELECT content FROM dashboard_notes WHERE id = 1").fetchone()
+    return jsonify({"content": row["content"] if row else ""})
+
+
+@app.route("/api/dashboard-notes", methods=["POST"])
+def save_dashboard_notes():
+    data = request.get_json(silent=True) or {}
+    content = data.get("content", "")
+    db = get_db()
+    db.execute(
+        "UPDATE dashboard_notes SET content = ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = 1",
+        (content,),
+    )
+    db.commit()
+    return jsonify({"ok": True})
+
+
 @app.route("/sku-size-checker")
 def sku_size_checker():
     db = get_db()

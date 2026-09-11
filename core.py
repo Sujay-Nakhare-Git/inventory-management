@@ -385,6 +385,14 @@ def init_db():
             PRIMARY KEY (user_id, permission_key),
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS dashboard_notes (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            content TEXT NOT NULL DEFAULT '',
+            updated_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes'))
+        );
+
+        INSERT OR IGNORE INTO dashboard_notes (id, content) VALUES (1, '');
     """)
 
     # Seed default categories if empty

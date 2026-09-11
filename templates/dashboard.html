@@ -67,8 +67,43 @@
 </div>
 {% endif %}
 
-<div class="card dashboard-logo-card">
-    <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Gulmohar by Ankita" class="dashboard-logo-image">
+<div class="card dashboard-notes-card" style="margin-top:1.5rem;">
+    <div class="card-title" style="display:flex;align-items:center;gap:0.5rem;">
+        📝 Notes
+        <span id="notes-status" style="font-size:0.75rem;font-weight:400;color:var(--text-muted,#888);margin-left:auto;"></span>
+    </div>
+    <textarea id="dashboard-notes"
+        placeholder="Jot down anything here…"
+        style="width:100%;min-height:160px;resize:vertical;border:1px solid var(--border,#e0e0e0);border-radius:6px;padding:0.75rem;font-family:inherit;font-size:0.95rem;background:var(--bg-secondary,#fafafa);color:var(--text,#1a1a1a);outline:none;box-sizing:border-box;line-height:1.6;"></textarea>
 </div>
+
+<script>
+(function () {
+    const ta = document.getElementById('dashboard-notes');
+    const status = document.getElementById('notes-status');
+    let timer = null;
+
+    fetch('/api/dashboard-notes')
+        .then(r => r.json())
+        .then(d => { ta.value = d.content || ''; });
+
+    function save() {
+        status.textContent = 'Saving…';
+        fetch('/api/dashboard-notes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: ta.value })
+        })
+        .then(() => { status.textContent = 'Saved'; setTimeout(() => { status.textContent = ''; }, 2000); })
+        .catch(() => { status.textContent = 'Error saving'; });
+    }
+
+    ta.addEventListener('input', function () {
+        clearTimeout(timer);
+        status.textContent = '';
+        timer = setTimeout(save, 400);
+    });
+})();
+</script>
 
 {% endblock %}
