@@ -135,6 +135,19 @@ def daily_summary():
         (date_filter,),
     ).fetchall()
 
+    vendor_sales_totals = db.execute(
+        "SELECT COALESCE(NULLIF(TRIM(v.name), ''), 'No Vendor') AS vendor_name, "
+        "COALESCE(SUM(bi.total_price), 0) AS total_sale_amount "
+        "FROM bill_items bi "
+        "JOIN bills b ON bi.bill_id = b.id "
+        "JOIN products p ON bi.product_id = p.id "
+        "LEFT JOIN vendors v ON p.vendor_id = v.id "
+        "WHERE b.created_at LIKE ? "
+        "GROUP BY v.id, vendor_name "
+        "ORDER BY total_sale_amount DESC, vendor_name COLLATE NOCASE",
+        (date_filter,),
+    ).fetchall()
+
     recent_bills = db.execute(
         "SELECT * FROM bills WHERE created_at LIKE ? ORDER BY created_at DESC LIMIT 10",
         (date_filter,),
@@ -164,6 +177,7 @@ def daily_summary():
         payment_split=payment_split,
         top_products=top_products,
         vendor_product_sales=vendor_product_sales,
+        vendor_sales_totals=vendor_sales_totals,
         recent_bills=recent_bills,
         recent_expenses=recent_expenses,
     )
