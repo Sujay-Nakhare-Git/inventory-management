@@ -9,9 +9,14 @@
 
 <div class="card" style="max-width: 720px;">
     <p style="color:#6b7280; font-size:0.9rem; margin-bottom:1rem;">
-        You can update customer details and how this bill was paid. Item list, totals,
-        discounts, taxes and store credit usage cannot be edited here — delete &amp; recreate
+        You can update customer details, discount and how this bill was paid.
+        {% if bill.bill_type == 'rental' or bill.subtotal <= 0 %}
+        Item list, totals, taxes and store credit usage cannot be edited here — delete &amp; recreate
         the bill if those need changes.
+        {% else %}
+        Item list, taxes and store credit usage cannot be edited here — delete &amp; recreate
+        the bill if those need changes.
+        {% endif %}
     </p>
 
     <form method="POST" action="{{ url_for('edit_bill', bill_id=bill.id) }}">
@@ -28,9 +33,20 @@
             </div>
         </div>
 
+        {% if bill.bill_type != 'rental' and bill.subtotal > 0 %}
         <div class="form-group" style="margin-top:0.5rem;">
-            <label><strong>Bill Total:</strong> ₹{{ "%.2f"|format(bill.total) }}</label>
+            <label>Discount Amount (₹) — Subtotal: ₹{{ "%.2f"|format(bill.subtotal) }}</label>
+            <input type="number" name="discount_amount" id="discountAmount" class="input"
+                   min="0" max="{{ bill.subtotal }}" step="0.01"
+                   value="{{ '%.2f'|format(bill.discount_amount or 0) }}"
+                   oninput="recalcEditTotal()">
         </div>
+        {% endif %}
+
+        <div class="form-group" style="margin-top:0.5rem;">
+            <label><strong>Bill Total:</strong> <span id="billTotalDisplay">₹{{ "%.2f"|format(bill.total) }}</span></label>
+        </div>
+
 
         {% if bill.total > 0 %}
         {% set is_split = payment_breakdown|length > 1 %}
@@ -95,7 +111,27 @@
 </div>
 
 <script>
-const billTotal = {{ bill.total|float }};
+let billTotal = {{ bill.total|float }};
+const billSubtotal = {{ bill.subtotal|float }};
+const billTaxPercent = {{ bill.tax_percent|float }};
+const billStoreCreditUsed = {{ bill.store_credit_used|float }};
+
+function recalcEditTotal() {
+    const discountInput = document.getElementById('discountAmount');
+    if (!discountInput) return;
+    let discount = parseFloat(discountInput.value) || 0;
+    discount = Math.max(0, Math.min(discount, billSubtotal));
+    const afterDiscount = billSubtotal - discount;
+    const taxAmount = afterDiscount * billTaxPercent / 100;
+    billTotal = Math.max(afterDiscount + taxAmount - billStoreCreditUsed, 0);
+    billTotal = Math.round(billTotal * 100) / 100;
+    document.getElementById('billTotalDisplay').textContent = `₹${billTotal.toFixed(2)}`;
+    const splitHint = document.getElementById('splitHint');
+    if (splitHint) {
+        splitHint.textContent = `Must total ₹${billTotal.toFixed(2)}.`;
+        updateSplitHint();
+    }
+}
 
 function toggleEditPayMode() {
     const mode = document.querySelector('input[name="payment_mode"]:checked').value;

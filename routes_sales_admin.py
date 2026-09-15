@@ -270,8 +270,7 @@ def sales_summary(sale_id):
         JOIN bills b ON bi.bill_id = b.id
         JOIN products p ON bi.product_id = p.id
         WHERE bi.product_id IN ({placeholders})
-        AND b.created_at >= ?
-        AND b.created_at <= ?
+        AND date(b.created_at) BETWEEN ? AND ?
         AND b.bill_type = 'sale'
         ORDER BY b.created_at DESC
         """,

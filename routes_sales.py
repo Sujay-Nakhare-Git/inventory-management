@@ -108,7 +108,27 @@ def edit_bill(bill_id):
     customer_name = request.form.get("customer_name", "").strip()
     customer_phone = request.form.get("customer_phone", "").strip()
     mode = request.form.get("payment_mode", "single")
-    total = round(float(bill["total"] or 0), 2)
+
+    subtotal = round(float(bill["subtotal"] or 0), 2)
+    tax_percent = round(float(bill["tax_percent"] or 0), 2)
+    store_credit_used = round(float(bill["store_credit_used"] or 0), 2)
+    can_edit_discount = bill["bill_type"] != "rental" and subtotal > 0
+
+    if can_edit_discount:
+        try:
+            discount_amount = round(float(request.form.get("discount_amount", 0) or 0), 2)
+        except (TypeError, ValueError):
+            discount_amount = round(float(bill["discount_amount"] or 0), 2)
+        discount_amount = max(0, min(discount_amount, subtotal))
+        discount_percent = round((discount_amount / subtotal) * 100, 2) if subtotal else 0
+        after_discount = subtotal - discount_amount
+        tax_amount = round(after_discount * tax_percent / 100, 2)
+        total = max(round(after_discount + tax_amount - store_credit_used, 2), 0)
+    else:
+        discount_amount = round(float(bill["discount_amount"] or 0), 2)
+        discount_percent = round(float(bill["discount_percent"] or 0), 2)
+        tax_amount = round(float(bill["tax_amount"] or 0), 2)
+        total = round(float(bill["total"] or 0), 2)
 
     payment_breakdown = []
     if total > 0:
@@ -148,15 +168,18 @@ def edit_bill(bill_id):
 
     db.execute(
         "UPDATE bills SET customer_name = ?, customer_phone = ?, "
+        "discount_percent = ?, discount_amount = ?, tax_amount = ?, total = ?, "
         "payment_method = ?, payment_breakdown_json = ? WHERE id = ?",
-        (customer_name, customer_phone, payment_method, payment_breakdown_json, bill_id),
+        (customer_name, customer_phone, discount_percent, discount_amount, tax_amount,
+         total, payment_method, payment_breakdown_json, bill_id),
     )
     upsert_customer(db, customer_name, customer_phone)
     db.commit()
 
     log_update(
         "Bill Edited",
-        f"Bill {bill['bill_number'] or '#' + str(bill_id)} — payment updated to {payment_method}",
+        f"Bill {bill['bill_number'] or '#' + str(bill_id)} — payment updated to {payment_method}"
+        + (f", discount set to ₹{discount_amount:.2f}" if can_edit_discount else ""),
         "billing",
     )
     flash("Bill details updated.", "success")
