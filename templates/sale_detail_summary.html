@@ -63,7 +63,8 @@
                     <th>Qty</th>
                     <th>Unit Price</th>
                     <th>Cost</th>
-                    <th>Sale Amount</th>
+                    <th>Bill Discount</th>
+                    <th>Sale Amount (After Discount)</th>
                     <th>Profit</th>
                     <th>Date</th>
                 </tr>
@@ -81,11 +82,11 @@
                     <td>{{ item.quantity }}</td>
                     <td>₹{{ "%.2f"|format(item.unit_price) }}</td>
                     <td>₹{{ "%.2f"|format(item.cost_price * item.quantity) }}</td>
-                    <td><strong>₹{{ "%.2f"|format(item.total_price) }}</strong></td>
+                    <td>₹{{ "%.2f"|format(item.line_discount) }}</td>
+                    <td><strong>₹{{ "%.2f"|format(item.net_amount) }}</strong></td>
                     <td>
-                        {% set profit = item.total_price - (item.cost_price * item.quantity) %}
-                        <strong style="{% if profit >= 0 %}color:#27ae60;{% else %}color:#e74c3c;{% endif %}">
-                            ₹{{ "%.2f"|format(profit) }}
+                        <strong style="{% if item.profit >= 0 %}color:#27ae60;{% else %}color:#e74c3c;{% endif %}">
+                            ₹{{ "%.2f"|format(item.profit) }}
                         </strong>
                     </td>
                     <td>{{ item.created_at|istdatetime }}</td>

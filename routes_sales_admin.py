@@ -258,13 +258,13 @@ def sales_summary(sale_id):
         )
 
     placeholders = ",".join("?" * len(sale_product_ids))
-    bill_items = db.execute(
+    bill_items_raw = db.execute(
         f"""
         SELECT 
             bi.id, bi.bill_id, bi.product_id, bi.product_name, bi.quantity,
             bi.unit_price, bi.total_price,
             b.customer_name, b.customer_phone, b.created_at,
-            b.discount_amount, b.discount_percent,
+            b.subtotal as bill_subtotal, b.discount_amount, b.discount_percent,
             p.cost_price
         FROM bill_items bi
         JOIN bills b ON bi.bill_id = b.id
@@ -277,8 +277,24 @@ def sales_summary(sale_id):
         (*sale_product_ids, sale["start_date"], sale["end_date"]),
     ).fetchall()
 
+    # Bill-level discount is spread proportionally across each item's share of
+    # the bill subtotal so the summary reflects what the customer actually paid.
+    bill_items = []
+    for item in bill_items_raw:
+        line_total = float(item["total_price"] or 0)
+        bill_subtotal = float(item["bill_subtotal"] or 0)
+        discount_ratio = (float(item["discount_amount"] or 0) / bill_subtotal) if bill_subtotal > 0 else 0
+        line_discount = round(line_total * discount_ratio, 2)
+        net_amount = round(line_total - line_discount, 2)
+        cost = round(float(item["cost_price"] or 0) * int(item["quantity"] or 0), 2)
+        row = dict(item)
+        row["line_discount"] = line_discount
+        row["net_amount"] = net_amount
+        row["profit"] = round(net_amount - cost, 2)
+        bill_items.append(row)
+
     # Calculate metrics
-    total_sales = sum(float(item["total_price"] or 0) for item in bill_items)
+    total_sales = sum(item["net_amount"] for item in bill_items)
     total_quantity = sum(int(item["quantity"] or 0) for item in bill_items)
     total_cost = sum(
         float(item["cost_price"] or 0) * int(item["quantity"] or 0)
