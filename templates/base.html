@@ -37,7 +37,7 @@
             </a></li>
             {% endif %}
             {% if can(*admin_permission_keys) %}
-            <li><a href="{{ url_for('admin') }}" class="{% if request.endpoint in ['admin', 'categories', 'expenses', 'profit_loss', 'daily_summary', 'bills_list', 'bill_detail', 'edit_bill', 'bill_thermal_print', 'delete_bill', 'refunds_list', 'new_refund', 'process_refund', 'admin_inventory_overview', 'admin_sales_summary', 'admin_investments', 'admin_tools', 'low_stock_alerts', 'vendors', 'vendor_summary', 'customers', 'customer_detail', 'manage_users'] %}active{% endif %}">
+            <li><a href="{{ url_for('admin') }}" class="{% if request.endpoint in ['admin', 'categories', 'expenses', 'profit_loss', 'daily_summary', 'bills_list', 'bill_detail', 'edit_bill', 'bill_thermal_print', 'delete_bill', 'refunds_list', 'new_refund', 'process_refund', 'admin_dead_stock', 'admin_inventory_overview', 'admin_sales_summary', 'admin_investments', 'admin_tools', 'low_stock_alerts', 'vendors', 'vendor_summary', 'customers', 'customer_detail', 'manage_users'] %}active{% endif %}">
                 <span class="nav-icon">🔒</span> Admin
             </a></li>
             {% endif %}

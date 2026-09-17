@@ -112,6 +112,15 @@ def sku_size_checker():
 # ── Inventory ────────────────────────────────────────────────────────────
 @app.route("/inventory")
 def inventory():
+    return _render_inventory()
+
+
+@app.route("/admin/dead-stock")
+def admin_dead_stock():
+    return _render_inventory(dead_stock_view=True)
+
+
+def _render_inventory(dead_stock_view=False):
     db = get_db()
     search = request.args.get("search", "").strip()
     category_id = request.args.get("category", "")
@@ -124,7 +133,10 @@ def inventory():
     else:
         in_stock_only = "1"
     query = (
-        "SELECT p.*, c.name as category_name, v.name as vendor_name FROM products p "
+        "SELECT p.*, c.name as category_name, v.name as vendor_name, "
+        "CASE WHEN p.created_at IS NOT NULL AND TRIM(p.created_at) != '' "
+        "THEN MAX(CAST(julianday('now','+5 hours','+30 minutes') - julianday(p.created_at) AS INTEGER), 0) "
+        "ELSE NULL END as product_life_days FROM products p "
         "LEFT JOIN categories c ON p.category_id = c.id "
         "LEFT JOIN vendors v ON p.vendor_id = v.id WHERE 1=1"
     )
@@ -149,7 +161,10 @@ def inventory():
             params.append(vendor_filter)
     if in_stock_only:
         query += " AND p.quantity > 0"
-    query += " ORDER BY p.updated_at DESC"
+    if dead_stock_view:
+        query += " ORDER BY product_life_days DESC, p.created_at ASC"
+    else:
+        query += " ORDER BY p.updated_at DESC"
     products = db.execute(query, params).fetchall()
     categories = db.execute("SELECT * FROM categories ORDER BY name").fetchall()
     all_sizes = db.execute(
@@ -163,6 +178,7 @@ def inventory():
         all_sizes=all_sizes, vendors=vendors,
         selected_size=size_filter, selected_vendor=vendor_filter,
         in_stock_only=in_stock_only,
+        dead_stock_view=dead_stock_view,
     )
 
 

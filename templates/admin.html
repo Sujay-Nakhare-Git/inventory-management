@@ -118,6 +118,16 @@
     </div>
     {% endif %}
 
+    {% if can('dead_stock') %}
+    <div class="card stat-card stat-gold" style="text-align:left;">
+        <div class="card-title">📦 Backlog / Dead Stock</div>
+        <p class="page-desc">Review available stock by oldest product life first.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('admin_dead_stock') }}" class="btn btn-primary">Open Dead Stock</a>
+        </div>
+    </div>
+    {% endif %}
+
     {% if can('inventory_overview') %}
     <div class="card stat-card stat-green" style="text-align:left;">
         <div class="card-title">📦 Inventory Overview</div>
