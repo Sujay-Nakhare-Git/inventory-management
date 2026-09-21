@@ -235,6 +235,8 @@ def init_db():
             product_name TEXT NOT NULL,
             quantity INTEGER NOT NULL DEFAULT 1,
             unit_price REAL NOT NULL,
+            discount_percent REAL NOT NULL DEFAULT 0,
+            discount_amount REAL NOT NULL DEFAULT 0,
             total_price REAL NOT NULL,
             FOREIGN KEY (bill_id) REFERENCES bills(id),
             FOREIGN KEY (product_id) REFERENCES products(id)
@@ -449,6 +451,14 @@ def init_db():
         db.execute("ALTER TABLE bills ADD COLUMN deposit_returned_at TEXT")
     if "rental_days" not in bills_columns:
         db.execute("ALTER TABLE bills ADD COLUMN rental_days INTEGER NOT NULL DEFAULT 1")
+
+    bill_item_columns = {
+        row["name"] for row in db.execute("PRAGMA table_info(bill_items)").fetchall()
+    }
+    if "discount_percent" not in bill_item_columns:
+        db.execute("ALTER TABLE bill_items ADD COLUMN discount_percent REAL NOT NULL DEFAULT 0")
+    if "discount_amount" not in bill_item_columns:
+        db.execute("ALTER TABLE bill_items ADD COLUMN discount_amount REAL NOT NULL DEFAULT 0")
 
     db.execute(
         "INSERT OR IGNORE INTO counters (name, value) VALUES ('bill_number', 0)"

@@ -642,10 +642,35 @@ textarea.input { resize: vertical; }
     text-align: center;
 }
 
+.bill-item .item-discounts {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.bill-item .item-discounts label {
+    color: var(--gray-600);
+    font-size: 0.72rem;
+    text-align: center;
+}
+
+.bill-item .item-discount {
+    display: block;
+    width: 68px;
+    margin-top: 0.15rem;
+    padding: 0.3rem;
+    text-align: right;
+}
+
 .bill-item .item-total { font-weight: 600; min-width: 80px; text-align: right; }
 .bill-item .remove-btn {
     background: none; border: none; color: var(--danger);
     cursor: pointer; font-size: 1.1rem; padding: 0.25rem;
+}
+
+@media (max-width: 700px) {
+    .bill-item { flex-wrap: wrap; }
+    .bill-item .item-name { flex-basis: calc(100% - 40px); }
+    .bill-item .item-discounts { margin-left: auto; }
 }
 
 /* ── Bill Summary ────────────────────────────────────────────────────── */

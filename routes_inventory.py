@@ -786,24 +786,47 @@ def create_bill():
         ).fetchone()
         if not product:
             return jsonify({"error": f"Product ID {item['product_id']} not found"}), 400
-        qty = int(item["quantity"])
+        try:
+            qty = int(item["quantity"])
+        except (KeyError, TypeError, ValueError):
+            return jsonify({"error": "Each item must have a valid quantity."}), 400
+        if qty <= 0:
+            return jsonify({"error": "Item quantity must be at least 1."}), 400
         if qty > product["quantity"]:
             return jsonify({
                 "error": f"Insufficient stock for '{product['name']}'. Available: {product['quantity']}"
             }), 400
-        line_total = product["selling_price"] * qty
-        
-        # Check for active sale discount on this product
+        line_subtotal = round(product["selling_price"] * qty, 2)
+
         sale_discount_percent = get_active_sale_discount(db, product["id"])
-        if sale_discount_percent > 0:
-            line_total = round(line_total * (1 - sale_discount_percent / 100), 2)
-        
+        try:
+            item_discount_amount = round(float(item.get("discount_amount", 0) or 0), 2)
+            item_discount_percent = round(float(item.get("discount_percent", 0) or 0), 2)
+        except (TypeError, ValueError):
+            return jsonify({"error": f"Invalid discount for '{product['name']}'."}), 400
+
+        if item_discount_amount > 0:
+            item_discount_amount = min(item_discount_amount, line_subtotal)
+            item_discount_percent = round(item_discount_amount / line_subtotal * 100, 2)
+        elif item_discount_percent > 0:
+            item_discount_percent = min(item_discount_percent, 100)
+            item_discount_amount = round(line_subtotal * item_discount_percent / 100, 2)
+        elif sale_discount_percent > 0:
+            item_discount_percent = min(round(float(sale_discount_percent), 2), 100)
+            item_discount_amount = round(line_subtotal * item_discount_percent / 100, 2)
+        else:
+            item_discount_percent = 0
+            item_discount_amount = 0
+
+        line_total = round(line_subtotal - item_discount_amount, 2)
         subtotal += line_total
         validated_items.append({
             "product_id": product["id"],
             "product_name": product["sku"] or product["name"],
             "quantity": qty,
             "unit_price": product["selling_price"],
+            "discount_percent": item_discount_percent,
+            "discount_amount": item_discount_amount,
             "total_price": line_total,
         })
 
@@ -905,9 +928,11 @@ def create_bill():
     for it in validated_items:
         db.execute(
             "INSERT INTO bill_items (bill_id, product_id, product_name, "
-            "quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)",
+            "quantity, unit_price, discount_percent, discount_amount, total_price) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (bill_id, it["product_id"], it["product_name"],
-             it["quantity"], it["unit_price"], it["total_price"]),
+             it["quantity"], it["unit_price"], it["discount_percent"],
+             it["discount_amount"], it["total_price"]),
         )
         db.execute(
             "UPDATE products SET quantity = quantity - ?, "

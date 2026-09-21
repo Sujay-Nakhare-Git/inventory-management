@@ -169,7 +169,12 @@
             <tbody>
                 {% for item in items %}
                 <tr>
-                    <td>{{ item.item_label }}</td>
+                    <td>
+                        {{ item.item_label }}
+                        {% if item.discount_amount > 0 %}
+                        <div class="small">Disc {{ "%.2f"|format(item.discount_percent) }}% / Rs.{{ "%.2f"|format(item.discount_amount) }}</div>
+                        {% endif %}
+                    </td>
                     <td class="right">{{ item.item_size or '-' }}</td>
                     <td class="right">{{ item.quantity }}</td>
                     <td class="right">{{ "%.2f"|format(item.total_price) }}</td>

@@ -227,7 +227,7 @@ function addItem(id, name, price, maxStock) {
             return;
         }
         existing.quantity++;
-        existing.total_price = existing.quantity * existing.unit_price;
+        recalculateItem(existing);
     } else {
         cartItems.push({
             product_id: id,
@@ -235,6 +235,9 @@ function addItem(id, name, price, maxStock) {
             unit_price: price,
             quantity: 1,
             total_price: price,
+            discount_percent: 0,
+            discount_amount: 0,
+            discount_mode: 'percent',
             max_stock: maxStock
         });
     }
@@ -257,7 +260,35 @@ function updateQuantity(index, qty) {
         qty = cartItems[index].max_stock;
     }
     cartItems[index].quantity = qty;
-    cartItems[index].total_price = qty * cartItems[index].unit_price;
+    recalculateItem(cartItems[index]);
+    renderCart();
+}
+
+function recalculateItem(item) {
+    const lineSubtotal = round2(item.quantity * item.unit_price);
+    if (item.discount_mode === 'amount') {
+        item.discount_amount = round2(Math.min(Math.max(0, item.discount_amount || 0), lineSubtotal));
+        item.discount_percent = lineSubtotal > 0
+            ? round2(item.discount_amount / lineSubtotal * 100)
+            : 0;
+    } else {
+        item.discount_percent = Math.min(Math.max(0, item.discount_percent || 0), 100);
+        item.discount_amount = round2(lineSubtotal * item.discount_percent / 100);
+    }
+    item.total_price = round2(lineSubtotal - item.discount_amount);
+}
+
+function updateItemDiscountPercent(index, value) {
+    cartItems[index].discount_mode = 'percent';
+    cartItems[index].discount_percent = parseFloat(value) || 0;
+    recalculateItem(cartItems[index]);
+    renderCart();
+}
+
+function updateItemDiscountAmount(index, value) {
+    cartItems[index].discount_mode = 'amount';
+    cartItems[index].discount_amount = parseFloat(value) || 0;
+    recalculateItem(cartItems[index]);
     renderCart();
 }
 
@@ -276,11 +307,19 @@ function renderCart() {
     cartItems.forEach((item, idx) => {
         html += `
         <div class="bill-item">
-            <span class="item-name">${item.name}</span>
+             <span class="item-name">${escapeHtml(item.name)}</span>
             <input type="number" class="input item-qty" value="${item.quantity}"
                    min="1" max="${item.max_stock}"
                    onchange="updateQuantity(${idx}, this.value)">
             <span>× ₹${item.unit_price.toFixed(2)}</span>
+             <div class="item-discounts">
+              <label>Disc %<input type="number" class="input item-discount" value="${item.discount_percent}"
+                  min="0" max="100" step="0.01"
+                  onchange="updateItemDiscountPercent(${idx}, this.value)"></label>
+              <label>Disc ₹<input type="number" class="input item-discount" value="${item.discount_amount}"
+                  min="0" max="${round2(item.quantity * item.unit_price)}" step="0.01"
+                  onchange="updateItemDiscountAmount(${idx}, this.value)"></label>
+             </div>
             <span class="item-total">₹${item.total_price.toFixed(2)}</span>
             <button class="remove-btn" onclick="removeItem(${idx})">✕</button>
         </div>`;
@@ -449,7 +488,9 @@ async function submitBill() {
         store_credit_amount: storeCreditAmt,
         items: cartItems.map(i => ({
             product_id: i.product_id,
-            quantity: i.quantity
+            quantity: i.quantity,
+            discount_percent: i.discount_percent,
+            discount_amount: i.discount_amount
         }))
     };
 
