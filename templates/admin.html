@@ -68,6 +68,46 @@
     </div>
     {% endif %}
 
+    {% if can('inventory') %}
+    <div class="card stat-card stat-blue" style="text-align:left;">
+        <div class="card-title">👗 Inventory</div>
+        <p class="page-desc">Manage and view all products in stock.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('inventory') }}" class="btn btn-primary">Open Inventory</a>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if can('dead_stock') %}
+    <div class="card stat-card stat-gold" style="text-align:left;">
+        <div class="card-title">📦 Backlog / Dead Stock</div>
+        <p class="page-desc">Review available stock by oldest product life first.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('admin_dead_stock') }}" class="btn btn-primary">Open Dead Stock</a>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if can('inventory_overview') %}
+    <div class="card stat-card stat-green" style="text-align:left;">
+        <div class="card-title">📦 Inventory Overview</div>
+        <p class="page-desc">Stock totals and counts broken down by category and size.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('admin_inventory_overview') }}" class="btn btn-primary">Open Inventory Overview</a>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if can('sales_summary') %}
+    <div class="card stat-card stat-coral" style="text-align:left;">
+        <div class="card-title">🧾 Sales Summary</div>
+        <p class="page-desc">Top-selling category and size with category × size breakdown.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('admin_sales_summary') }}" class="btn btn-primary">Open Sales Summary</a>
+        </div>
+    </div>
+    {% endif %}
+    
     {% if can('categories') %}
     <div class="card stat-card stat-blue" style="text-align:left;">
         <div class="card-title">🗂️ Categories</div>
@@ -108,45 +148,6 @@
     </div>
     {% endif %}
 
-    {% if can('inventory') %}
-    <div class="card stat-card stat-blue" style="text-align:left;">
-        <div class="card-title">👗 Inventory</div>
-        <p class="page-desc">Manage and view all products in stock.</p>
-        <div style="margin-top:1rem;">
-            <a href="{{ url_for('inventory') }}" class="btn btn-primary">Open Inventory</a>
-        </div>
-    </div>
-    {% endif %}
-
-    {% if can('dead_stock') %}
-    <div class="card stat-card stat-gold" style="text-align:left;">
-        <div class="card-title">📦 Backlog / Dead Stock</div>
-        <p class="page-desc">Review available stock by oldest product life first.</p>
-        <div style="margin-top:1rem;">
-            <a href="{{ url_for('admin_dead_stock') }}" class="btn btn-primary">Open Dead Stock</a>
-        </div>
-    </div>
-    {% endif %}
-
-    {% if can('inventory_overview') %}
-    <div class="card stat-card stat-green" style="text-align:left;">
-        <div class="card-title">📦 Inventory Overview</div>
-        <p class="page-desc">Stock totals and counts broken down by category and size.</p>
-        <div style="margin-top:1rem;">
-            <a href="{{ url_for('admin_inventory_overview') }}" class="btn btn-primary">Open Inventory Overview</a>
-        </div>
-    </div>
-    {% endif %}
-
-    {% if can('sales_summary') %}
-    <div class="card stat-card stat-coral" style="text-align:left;">
-        <div class="card-title">🧾 Sales Summary</div>
-        <p class="page-desc">Top-selling category and size with category × size breakdown.</p>
-        <div style="margin-top:1rem;">
-            <a href="{{ url_for('admin_sales_summary') }}" class="btn btn-primary">Open Sales Summary</a>
-        </div>
-    </div>
-    {% endif %}
 
     {% if can('sales_exhibition') %}
     <div class="card stat-card" style="text-align:left;border:2px solid #e74c3c;">
