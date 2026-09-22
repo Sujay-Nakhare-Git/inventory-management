@@ -364,6 +364,7 @@ def add_store_credit():
     db = get_db()
     customer_name = request.form.get("customer_name", "").strip()
     customer_phone = request.form.get("customer_phone", "").strip()
+    notes = request.form.get("notes", "").strip()
     balance = float(request.form.get("balance", 0))
 
     if not customer_name or not customer_phone or balance <= 0:
@@ -389,17 +390,64 @@ def add_store_credit():
     db.execute(
         "INSERT INTO credit_transactions (credit_id, amount, transaction_type, notes, created_at) "
         "VALUES (?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
-        (credit_id, balance, "credit", "Initial credit added"),
+        (credit_id, balance, "credit", notes or "Initial credit added"),
     )
     upsert_customer(db, customer_name, customer_phone)
     db.commit()
 
     log_update(
         "Store Credit Added",
-        f"{customer_name} ({customer_phone}) — ₹{balance}",
+        f"{customer_name} ({customer_phone}) — ₹{balance}" + (f" ({notes})" if notes else ""),
         "store_credit",
     )
     flash(f"Store credit for {customer_name} (₹{balance}) added!", "success")
+    return redirect(url_for("store_credits"))
+
+
+@app.route("/store-credits/<int:credit_id>/use-balance", methods=["POST"])
+def use_store_credit_balance(credit_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to use store credits.", "error")
+        return redirect(url_for("store_credits"))
+
+    db = get_db()
+    credit = db.execute(
+        "SELECT * FROM store_credits WHERE id = ?", (credit_id,)
+    ).fetchone()
+    if not credit:
+        flash("Store credit not found.", "error")
+        return redirect(url_for("store_credits"))
+
+    full_amount_flag = request.form.get("full_amount") == "1"
+    notes = request.form.get("notes", "").strip()
+
+    try:
+        amount = round(float(credit["balance"] or 0), 2) if full_amount_flag else round(float(request.form.get("amount", 0) or 0), 2)
+    except (TypeError, ValueError):
+        flash("Please provide a valid amount.", "error")
+        return redirect(url_for("store_credits"))
+
+    if amount <= 0 or amount > float(credit["balance"] or 0):
+        flash("Please enter a valid amount up to the available balance.", "error")
+        return redirect(url_for("store_credits"))
+
+    db.execute(
+        "UPDATE store_credits SET balance = balance - ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+        (amount, credit_id),
+    )
+    db.execute(
+        "INSERT INTO credit_transactions (credit_id, amount, transaction_type, notes, created_at) "
+        "VALUES (?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
+        (credit_id, amount, "debit", notes or "Amount marked as used"),
+    )
+    db.commit()
+
+    log_update(
+        "Store Credit Used",
+        f"{credit['customer_name']} — ₹{amount}" + (f" ({notes})" if notes else ""),
+        "store_credit",
+    )
+    flash(f"₹{amount} marked as used for {credit['customer_name']}!", "success")
     return redirect(url_for("store_credits"))
 
 

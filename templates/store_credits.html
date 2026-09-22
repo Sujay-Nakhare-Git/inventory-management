@@ -24,6 +24,10 @@
                 <label>Credit Amount (₹) *</label>
                 <input type="number" name="balance" class="input" placeholder="0.00" step="0.01" min="0" required>
             </div>
+            <div class="form-group">
+                <label>Remarks (Optional)</label>
+                <input type="text" name="notes" class="input" placeholder="e.g., Opening balance, Recharge, Gift credit">
+            </div>
             <div style="align-self: flex-end;">
                 <button type="submit" class="btn btn-primary">➕ Add Store Credit</button>
             </div>
@@ -81,6 +85,7 @@
                     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
                         <a href="{{ url_for('credit_transactions', credit_id=credit.id) }}" class="btn btn-small btn-outline" title="View transactions">📊</a>
                         <button type="button" class="btn btn-small btn-primary" onclick="openAddBalanceModal({{ credit.id }}, '{{ credit.customer_name }}')">➕ Add</button>
+                        <button type="button" class="btn btn-small" style="background:#f39c12;color:#fff;" onclick="openUseBalanceModal({{ credit.id }}, '{{ credit.customer_name }}', {{ credit.balance }})">💸 Use</button>
                         <form method="POST" action="{{ url_for('delete_store_credit', credit_id=credit.id) }}" style="display:inline;" onsubmit="return confirm('Delete store credit for {{ credit.customer_name }}? This cannot be undone.');">
                             <button type="submit" class="btn btn-small" style="background:#e74c3c;color:#fff;">🗑️ Delete</button>
                         </form>
@@ -122,6 +127,37 @@
     </div>
 </div>
 
+<!-- Use Balance Modal -->
+<div id="useBalanceModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;padding:2rem;max-width:430px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+        <h3 style="margin-bottom:1rem;">💸 Use Store Credit</h3>
+        <form id="useBalanceForm" method="POST" style="display:none;">
+            <div class="form-group">
+                <label>Customer Name</label>
+                <input type="text" id="useCustomerName" class="input" readonly style="background:#f8f9fa;cursor:default;">
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="useFullAmountCheckbox" onchange="toggleUseFullAmount()">
+                    Use full available balance
+                </label>
+            </div>
+            <div class="form-group">
+                <label>Amount to Use (₹) *</label>
+                <input type="number" id="useAmountInput" name="amount" class="input" placeholder="0.00" step="0.01" min="0" required>
+            </div>
+            <div class="form-group">
+                <label>Remarks (optional)</label>
+                <input type="text" name="notes" class="input" placeholder="e.g., Wedding purchase, discount adjustment">
+            </div>
+            <div style="display:flex;gap:0.5rem;margin-top:1rem;">
+                <button type="button" class="btn btn-outline" style="flex:1;" onclick="document.getElementById('useBalanceModal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="flex:1;">Mark as Used</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <style>
     .form-grid {
         display: grid;
@@ -154,8 +190,53 @@ function openAddBalanceModal(creditId, customerName) {
     document.querySelector('#addBalanceForm input[name="amount"]').focus();
 }
 
+function openUseBalanceModal(creditId, customerName, balance) {
+    document.getElementById('useCustomerName').value = customerName;
+    document.getElementById('useBalanceForm').action = `/store-credits/${creditId}/use-balance`;
+    document.getElementById('useAmountInput').max = balance;
+    document.getElementById('useAmountInput').value = '';
+    document.getElementById('useAmountInput').disabled = false;
+    document.getElementById('useFullAmountCheckbox').checked = false;
+    document.getElementById('useBalanceForm').style.display = 'block';
+    document.getElementById('useBalanceModal').style.display = 'flex';
+    document.getElementById('useAmountInput').focus();
+}
+
+function toggleUseFullAmount() {
+    const checkbox = document.getElementById('useFullAmountCheckbox');
+    const amountInput = document.getElementById('useAmountInput');
+    if (checkbox.checked) {
+        amountInput.value = amountInput.max || '0';
+        amountInput.disabled = true;
+        amountInput.setAttribute('readonly', 'readonly');
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'full_amount';
+        hidden.value = '1';
+        const existing = document.getElementById('useBalanceForm').querySelector('input[name="full_amount"]');
+        if (existing) {
+            existing.remove();
+        }
+        document.getElementById('useBalanceForm').appendChild(hidden);
+    } else {
+        amountInput.disabled = false;
+        amountInput.removeAttribute('readonly');
+        amountInput.value = '';
+        const existing = document.getElementById('useBalanceForm').querySelector('input[name="full_amount"]');
+        if (existing) {
+            existing.remove();
+        }
+    }
+}
+
 // Close modal when clicking outside
 document.getElementById('addBalanceModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        this.style.display = 'none';
+    }
+});
+
+document.getElementById('useBalanceModal').addEventListener('click', function(e) {
     if (e.target === this) {
         this.style.display = 'none';
     }
