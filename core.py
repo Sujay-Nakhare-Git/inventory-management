@@ -1066,6 +1066,20 @@ def user_can(user, *keys):
     return any(key in user["permissions"] for key in keys)
 
 
+def user_can_access_endpoint(user, endpoint):
+    if not user or not endpoint:
+        return False
+    if endpoint in PUBLIC_ENDPOINTS or endpoint in LOGIN_ONLY_ENDPOINTS:
+        return True
+
+    required = ENDPOINT_PERMISSIONS.get(endpoint, SUPERADMIN_ONLY)
+    if required is SUPERADMIN_ONLY:
+        return user["is_superadmin"]
+
+    keys = required if isinstance(required, tuple) else (required,)
+    return user_can(user, *keys)
+
+
 def default_landing_url(user):
     """Best page to send a user to right after login."""
     if user_can(user, "dashboard"):
@@ -1097,17 +1111,7 @@ def _enforce_access_control():
         next_path = request.path if request.method == "GET" else ""
         return redirect(url_for("login", next=next_path))
 
-    if endpoint in LOGIN_ONLY_ENDPOINTS:
-        return None
-
-    required = ENDPOINT_PERMISSIONS.get(endpoint, SUPERADMIN_ONLY)
-    if required is SUPERADMIN_ONLY:
-        allowed = user["is_superadmin"]
-    else:
-        keys = required if isinstance(required, tuple) else (required,)
-        allowed = user_can(user, *keys)
-
-    if not allowed:
+    if not user_can_access_endpoint(user, endpoint):
         if request.path.startswith("/api/") or request.is_json:
             return jsonify({"error": "You do not have permission to access this."}), 403
         flash("You don't have permission to access that section.", "error")

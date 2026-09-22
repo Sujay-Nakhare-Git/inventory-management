@@ -43,19 +43,26 @@ def login():
             session.clear()
             session["user_id"] = authenticated_user_id
             session["last_activity_ts"] = current_ts()
+            g.pop("user", None)
             db.execute(
                 "UPDATE users SET last_login_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
                 (authenticated_user_id,),
             )
             db.commit()
             flash("Login successful.", "success")
+            authenticated_user = get_current_user()
             if (
                 next_url.startswith("/")
                 and not next_url.startswith("//")
                 and not next_url.startswith("/login")
             ):
-                return redirect(next_url)
-            return redirect(default_landing_url(get_current_user()))
+                try:
+                    endpoint, _ = app.url_map.bind("").match(next_url, method="GET")
+                except Exception:
+                    endpoint = None
+                if user_can_access_endpoint(authenticated_user, endpoint):
+                    return redirect(next_url)
+            return redirect(default_landing_url(authenticated_user))
 
         flash("Invalid username or password.", "error")
 
