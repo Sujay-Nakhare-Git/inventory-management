@@ -906,6 +906,8 @@ SUPERADMIN_ONLY = object()
 # SUPERADMIN_ONLY (fail closed) unless listed in LOGIN_ONLY_ENDPOINTS.
 ENDPOINT_PERMISSIONS = {
     "dashboard": "dashboard",
+    "get_dashboard_notes": "dashboard",
+    "save_dashboard_notes": "dashboard",
     "sku_size_checker": "sku_size_checker",
     "billing": "billing",
     "api_products": "billing",
@@ -986,7 +988,18 @@ ENDPOINT_PERMISSIONS = {
 }
 
 # Endpoints that only require a logged-in session (no specific permission).
-LOGIN_ONLY_ENDPOINTS = {"admin", "logout", "no_access", "change_password", "updates", "add_update"}
+# Shared dashboard notes are global to the app, so any logged-in user can access
+# the same note content instead of seeing a user-specific version.
+LOGIN_ONLY_ENDPOINTS = {
+    "admin",
+    "logout",
+    "no_access",
+    "change_password",
+    "updates",
+    "add_update",
+    "get_dashboard_notes",
+    "save_dashboard_notes",
+}
 
 # Endpoints reachable without logging in at all.
 PUBLIC_ENDPOINTS = {"login", "static"}
