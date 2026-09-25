@@ -219,6 +219,19 @@ For backend WhatsApp Cloud API sending:
 - `WHATSAPP_PHONE_NUMBER_ID`
 - `WHATSAPP_GRAPH_VERSION` (optional, default: `v22.0`)
 
+For incoming WhatsApp messages and delivery status webhooks:
+
+- `WHATSAPP_WEBHOOK_VERIFY_TOKEN` — a private random value you choose
+- `WHATSAPP_APP_SECRET` — the App Secret from Meta App Dashboard → App settings → Basic
+
+Configure the WhatsApp webhook in Meta App Dashboard with:
+
+- Callback URL: `https://YOUR_PUBLIC_DOMAIN/webhooks/whatsapp`
+- Verify token: the exact value of `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
+- Webhook field subscription: `messages` (includes incoming messages and sent-message statuses)
+
+The callback must use public HTTPS; Meta cannot reach a local `127.0.0.1` URL. Valid webhook events are signature-verified and stored in the `whatsapp_webhook_events` SQLite table. The same settings may instead be added as `webhook_verify_token` and `app_secret` in `instance/whatsapp_config.json`; environment variables are preferred in production.
+
 Example value:
 
 - `a-long-random-secret-string`

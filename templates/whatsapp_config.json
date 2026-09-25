@@ -1,5 +1,7 @@
 {
   "token": "YOUR_LONG_ACCESS_TOKEN",
   "phone_number_id": "YOUR_PHONE_NUMBER_ID",
-  "graph_version": "v22.0"
+  "graph_version": "v22.0",
+  "webhook_verify_token": "YOUR_RANDOM_WEBHOOK_VERIFY_TOKEN",
+  "app_secret": "YOUR_META_APP_SECRET"
 }

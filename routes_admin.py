@@ -700,13 +700,14 @@ def vendor_summary():
 
 
 
-@app.route("/admin/whatsapp-test", methods=["POST"])
-def admin_whatsapp_test():
+@app.route("/admin/whatsapp-send", methods=["POST"])
+def admin_whatsapp_send():
     if not admin_authenticated():
         return jsonify({"sent": False, "reason": "forbidden", "error": "Admin access required."}), 403
 
     payload = request.get_json(silent=True) or {}
     customer_phone = str(payload.get("phone", "")).strip()
+    message = str(payload.get("message", "")).strip()
     if not customer_phone:
         return jsonify({"sent": False, "reason": "missing_phone", "error": "Enter a phone number."}), 400
 
@@ -714,11 +715,12 @@ def admin_whatsapp_test():
     if not to_phone:
         return jsonify({"sent": False, "reason": "invalid_phone", "error": "Use a valid 10-digit Indian mobile number."}), 400
 
-    test_message = (
-        "Namaste! This is a WhatsApp test message from Gulmohar by Ankita billing system. "
-        "If you received this, WhatsApp integration is working."
-    )
-    result = send_whatsapp_text_message(to_phone, test_message)
+    if not message:
+        return jsonify({"sent": False, "reason": "missing_message", "error": "Enter a message."}), 400
+    if len(message) > 4096:
+        return jsonify({"sent": False, "reason": "message_too_long", "error": "Message must be 4,096 characters or fewer."}), 400
+
+    result = send_whatsapp_text_message(to_phone, message)
     status_code = 200 if result.get("sent") else 400
     return jsonify(result), status_code
 

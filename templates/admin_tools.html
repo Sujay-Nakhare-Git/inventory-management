@@ -9,13 +9,21 @@
 
 <div class="stats-grid">
     <div class="card stat-card" style="text-align:left;border:2px solid #2c3e50;">
-        <div class="card-title">📲 WhatsApp Test</div>
-        <p class="page-desc">Send one fixed test message and show exact API error instantly.</p>
-        <div style="margin-top:0.75rem;display:flex;gap:0.5rem;align-items:center;">
-            <input type="text" id="waTestPhone" class="input" placeholder="10-digit phone" style="flex:1;" maxlength="15">
-            <button type="button" id="waTestBtn" class="btn btn-primary" onclick="runWhatsappTest()">Test</button>
+        <div class="card-title">📲 Send WhatsApp Message</div>
+        <p class="page-desc">Send a message directly to a customer through WhatsApp.</p>
+        <div class="form-group" style="margin-top:0.75rem;">
+            <label for="waPhone">Phone Number</label>
+            <input type="tel" id="waPhone" class="input" placeholder="10-digit mobile number" maxlength="15" autocomplete="tel">
         </div>
-        <p id="waTestResult" style="margin-top:0.6rem;color:#555;min-height:1.2em;"></p>
+        <div class="form-group">
+            <label for="waMessage">Message</label>
+            <textarea id="waMessage" class="input" rows="5" maxlength="4096" placeholder="Type your message here..." style="resize:vertical;"></textarea>
+            <div id="waCharacterCount" style="font-size:0.75rem;color:var(--text-muted,#777);text-align:right;">0 / 4096</div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;">
+            <button type="button" id="waSendBtn" class="btn btn-primary" onclick="sendWhatsappMessage()">Send Message</button>
+        </div>
+        <p id="waSendResult" role="status" aria-live="polite" style="margin-top:0.6rem;color:#555;min-height:1.2em;"></p>
     </div>
 
     <div class="card stat-card" style="text-align:left; border:2px solid #e74c3c;">
@@ -52,38 +60,54 @@
 
 {% block scripts %}
 <script>
-async function runWhatsappTest() {
-    const phoneInput = document.getElementById('waTestPhone');
-    const resultEl = document.getElementById('waTestResult');
-    const btn = document.getElementById('waTestBtn');
-    if (!phoneInput || !resultEl || !btn) {
+const waMessageInput = document.getElementById('waMessage');
+const waCharacterCount = document.getElementById('waCharacterCount');
+
+waMessageInput.addEventListener('input', function () {
+    waCharacterCount.textContent = `${waMessageInput.value.length} / 4096`;
+});
+
+async function sendWhatsappMessage() {
+    const phoneInput = document.getElementById('waPhone');
+    const messageInput = document.getElementById('waMessage');
+    const resultEl = document.getElementById('waSendResult');
+    const btn = document.getElementById('waSendBtn');
+    if (!phoneInput || !messageInput || !resultEl || !btn) {
         return;
     }
 
     const phone = (phoneInput.value || '').trim();
+    const message = (messageInput.value || '').trim();
     if (!phone) {
         resultEl.style.color = '#c0392b';
         resultEl.textContent = 'Enter a phone number first.';
         return;
     }
+    if (!message) {
+        resultEl.style.color = '#c0392b';
+        resultEl.textContent = 'Enter a message first.';
+        return;
+    }
 
     btn.disabled = true;
     const oldText = btn.textContent;
-    btn.textContent = 'Testing...';
+    btn.textContent = 'Sending...';
     resultEl.style.color = '#555';
-    resultEl.textContent = 'Sending test message...';
+    resultEl.textContent = 'Sending message...';
 
     try {
-        const response = await fetch('/admin/whatsapp-test', {
+        const response = await fetch('{{ url_for("admin_whatsapp_send") }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone })
+            body: JSON.stringify({ phone, message })
         });
         const data = await response.json().catch(() => ({}));
 
         if (data.sent) {
             resultEl.style.color = '#1e8449';
-            resultEl.textContent = 'Success: test message sent.' + (data.sid ? ` SID: ${data.sid}` : '');
+            resultEl.textContent = 'Message sent successfully.';
+            messageInput.value = '';
+            waCharacterCount.textContent = '0 / 4096';
             return;
         }
 

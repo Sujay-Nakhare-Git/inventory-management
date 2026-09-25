@@ -23,6 +23,7 @@ import routes_sales  # noqa: E402,F401
 import routes_admin  # noqa: E402,F401
 import routes_sales_admin  # noqa: E402,F401
 import routes_reports  # noqa: E402,F401
+import routes_webhooks  # noqa: E402,F401
 
 
 if __name__ == "__main__":

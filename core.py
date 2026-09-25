@@ -161,6 +161,24 @@ def load_whatsapp_cloud_config():
     file_graph_version = str(data.get("graph_version", "v22.0")).strip() or "v22.0"
     return file_token, file_phone_number_id, file_graph_version
 
+
+def load_whatsapp_webhook_config():
+    verify_token = os.getenv("WHATSAPP_WEBHOOK_VERIFY_TOKEN", "").strip()
+    app_secret = os.getenv("WHATSAPP_APP_SECRET", "").strip()
+    if verify_token and app_secret:
+        return verify_token, app_secret
+
+    try:
+        with open(WHATSAPP_CONFIG_PATH, "r", encoding="utf-8") as fh:
+            data = json.load(fh) or {}
+    except (OSError, json.JSONDecodeError):
+        data = {}
+
+    return (
+        verify_token or str(data.get("webhook_verify_token", "")).strip(),
+        app_secret or str(data.get("app_secret", "")).strip(),
+    )
+
 os.makedirs(EXPENSE_BILL_UPLOAD_DIR, exist_ok=True)
 os.makedirs(PRODUCT_IMAGE_UPLOAD_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(WHATSAPP_CONFIG_PATH), exist_ok=True)
@@ -392,6 +410,20 @@ def init_db():
             id INTEGER PRIMARY KEY CHECK (id = 1),
             content TEXT NOT NULL DEFAULT '',
             updated_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes'))
+        );
+
+        CREATE TABLE IF NOT EXISTS whatsapp_webhook_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_key TEXT NOT NULL UNIQUE,
+            event_type TEXT NOT NULL,
+            message_id TEXT,
+            customer_phone TEXT,
+            message_type TEXT,
+            message_text TEXT,
+            status TEXT,
+            event_timestamp TEXT,
+            payload_json TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now','+5 hours','+30 minutes'))
         );
 
         INSERT OR IGNORE INTO dashboard_notes (id, content) VALUES (1, '');
@@ -979,7 +1011,7 @@ ENDPOINT_PERMISSIONS = {
     "edit_low_stock_alert": "low_stock_alerts",
     "delete_low_stock_alert": "low_stock_alerts",
     "admin_tools": "admin_tools",
-    "admin_whatsapp_test": "admin_tools",
+    "admin_whatsapp_send": "admin_tools",
     "clean_all_data": "admin_tools",
     "manage_users": SUPERADMIN_ONLY,
     "add_user": SUPERADMIN_ONLY,
@@ -1002,7 +1034,7 @@ LOGIN_ONLY_ENDPOINTS = {
 }
 
 # Endpoints reachable without logging in at all.
-PUBLIC_ENDPOINTS = {"login", "static"}
+PUBLIC_ENDPOINTS = {"login", "static", "whatsapp_webhook"}
 
 
 def current_ts():
