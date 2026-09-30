@@ -164,57 +164,8 @@
 {% endblock %}
 
 {% block scripts %}
-<div class="modal image-preview-modal" id="inventoryImagePreviewModal" aria-hidden="true">
-    <div class="modal-content image-preview-content">
-        <button type="button" class="image-preview-close" id="inventoryImagePreviewClose" aria-label="Close preview">&times;</button>
-        <h3 id="inventoryImagePreviewTitle">Product Image</h3>
-        <img id="inventoryImagePreviewTarget" src="" alt="">
-    </div>
-</div>
-<script>
-(() => {
-    const modal = document.getElementById('inventoryImagePreviewModal');
-    const modalImage = document.getElementById('inventoryImagePreviewTarget');
-    const modalTitle = document.getElementById('inventoryImagePreviewTitle');
-    const closeButton = document.getElementById('inventoryImagePreviewClose');
-    const triggers = document.querySelectorAll('.image-preview-trigger');
-
-    if (!modal || !modalImage || !modalTitle || !closeButton || !triggers.length) {
-        return;
-    }
-
-    function openModal(trigger) {
-        modalImage.src = trigger.dataset.imageSrc;
-        modalImage.alt = trigger.dataset.imageAlt || 'Preview image';
-        modalTitle.textContent = trigger.dataset.imageTitle || 'Image Preview';
-        modal.classList.add('is-open');
-        modal.setAttribute('aria-hidden', 'false');
-    }
-
-    function closeModal() {
-        modal.classList.remove('is-open');
-        modal.setAttribute('aria-hidden', 'true');
-        modalImage.src = '';
-        modalImage.alt = '';
-    }
-
-    triggers.forEach((trigger) => {
-        trigger.addEventListener('click', () => openModal(trigger));
-    });
-
-    closeButton.addEventListener('click', closeModal);
-    modal.addEventListener('click', (event) => {
-        if (event.target === modal) {
-            closeModal();
-        }
-    });
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && modal.classList.contains('is-open')) {
-            closeModal();
-        }
-    });
-})();
-</script>
+{% set modal_id = 'inventoryImagePreview' %}
+{% include '_partials/image_preview_modal.html' %}
 <script>
 (() => {
     const table = document.querySelector('.table-wrapper table');
@@ -318,11 +269,6 @@
                     }
                     let html = '<div style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:center;">';
                     html += '<span style="font-size:0.85rem;font-weight:600;color:#1d4ed8;margin-right:0.25rem;">Other sizes:</span>';
-                    function escapeHtml(s) {
-                        return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
-                            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-                        }[c]));
-                    }
                     data.variants.forEach(v => {
                         const low = v.quantity <= v.low_stock_threshold;
                         const badgeColor = v.quantity <= 0 ? '#fee2e2' : low ? '#fef3c7' : '#dcfce7';
@@ -347,12 +293,6 @@
 <script>
 (() => {
     // "Bills" toggle: show bill numbers where this product (SKU) was sold
-    function escapeHtml(s) {
-        return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-        }[c]));
-    }
-
     document.addEventListener('click', (e) => {
         const btn = e.target.closest('.bills-toggle');
         if (!btn) return;

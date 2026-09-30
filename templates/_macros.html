@@ -1,0 +1,71 @@
+{# Reusable template macros to eliminate duplication across 15+ templates #}
+
+{# Delete button with confirmation - enforces CSRF token inclusion #}
+{% macro delete_btn(action, message='Are you sure?', label='Delete') %}
+<form method="POST" action="{{ action }}" style="display:inline"
+      onsubmit="return confirm('{{ message }}')">
+    {{ csrf_token() }}
+    <button type="submit" class="btn btn-sm btn-danger">{{ label }}</button>
+</form>
+{% endmacro %}
+
+{# Payment split table - shows payment method breakdown (Method / Bills / Total) #}
+{% macro payment_split_table(payment_split, empty_msg='No payments recorded.') %}
+{% if payment_split %}
+<div class="table-wrapper">
+  <table>
+    <thead><tr><th>Method</th><th>Bills</th><th>Total</th></tr></thead>
+    <tbody>
+      {% for row in payment_split %}
+      <tr>
+        <td>{{ row.payment_method }}</td>
+        <td>{{ row.bill_count }}</td>
+        <td>₹{{ "%.2f"|format(row.total) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="empty-state">{{ empty_msg }}</p>
+{% endif %}
+{% endmacro %}
+
+{# Payment method select dropdown - single source of truth for payment options #}
+{% macro payment_method_select(id, name='payment_method', selected='UPI', extra_class='') %}
+<select id="{{ id }}" name="{{ name }}" class="input {{ extra_class }}">
+  {% for m in ['UPI', 'Cash', 'Card', 'Bank Transfer'] %}
+  <option value="{{ m }}" {{ 'selected' if selected == m else '' }}>{{ m }}</option>
+  {% endfor %}
+</select>
+{% endmacro %}
+
+{# Bills table - reusable across profit_loss, daily_summary, bills list, customer detail #}
+{% macro bills_table(bills, show_customer=true, show_action=false, empty_msg='No bills found.') %}
+<div class="table-wrapper">
+  <table>
+    <thead><tr>
+      <th>Bill #</th>
+      {% if show_customer %}<th>Customer</th>{% endif %}
+      <th>Total</th><th>Payment</th><th>Date</th>
+      {% if show_action %}<th>Action</th>{% endif %}
+    </tr></thead>
+    <tbody>
+      {% for b in bills %}
+      <tr>
+        <td><strong>{{ display_bill_ref(b) }}</strong></td>
+        {% if show_customer %}<td>{{ b.customer_name or 'Walk-in' }}</td>{% endif %}
+        <td>₹{{ "%.2f"|format(b.total) }}</td>
+        <td><span class="badge badge-info">{{ b.payment_method }}</span></td>
+        <td>{{ b.created_at | istdatetime }}</td>
+        {% if show_action %}
+        <td><a href="{{ url_for('bill_detail', bill_id=b.id) }}" class="btn btn-sm">View</a></td>
+        {% endif %}
+      </tr>
+      {% else %}
+      <tr><td colspan="{{ 5 + show_customer|int + show_action|int }}" class="empty-state">{{ empty_msg }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}
