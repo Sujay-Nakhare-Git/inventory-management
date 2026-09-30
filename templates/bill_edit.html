@@ -20,6 +20,7 @@
     </p>
 
     <form method="POST" action="{{ url_for('edit_bill', bill_id=bill.id) }}">
+        {{ csrf_token() }}
         <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
             <div class="form-group">
                 <label>Customer Name</label>

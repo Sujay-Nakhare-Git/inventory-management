@@ -282,47 +282,55 @@ def delete_bill(bill_id):
         flash("Bill not found.", "error")
         return redirect(url_for("bills_list"))
 
-    # Restore stock for all items in this bill
-    items = db.execute("SELECT * FROM bill_items WHERE bill_id = ?", (bill_id,)).fetchall()
-    for item in items:
-        db.execute(
-            "UPDATE products SET quantity = quantity + ?, "
-            "updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
-            (item["quantity"], item["product_id"]),
+    try:
+        db.execute("BEGIN")
+
+        # Restore stock for all items in this bill
+        items = db.execute("SELECT * FROM bill_items WHERE bill_id = ?", (bill_id,)).fetchall()
+        for item in items:
+            db.execute(
+                "UPDATE products SET quantity = quantity + ?, "
+                "updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+                (item["quantity"], item["product_id"]),
+            )
+
+        # Restore store credit if it was used
+        if bill["store_credit_used"] and bill["store_credit_used"] > 0:
+            transaction = db.execute(
+                "SELECT credit_id FROM credit_transactions WHERE bill_id = ? AND transaction_type = 'debit'",
+                (bill_id,)
+            ).fetchone()
+            if transaction:
+                credit_id = transaction["credit_id"]
+                db.execute(
+                    "UPDATE store_credits SET balance = balance + ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+                    (bill["store_credit_used"], credit_id),
+                )
+                db.execute(
+                    "INSERT INTO credit_transactions (credit_id, bill_id, amount, transaction_type, notes, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
+                    (credit_id, bill_id, bill["store_credit_used"], "credit", f"Restored from deleted Bill #{bill_id}"),
+                )
+
+        db.execute("DELETE FROM bill_items WHERE bill_id = ?", (bill_id,))
+        db.execute("DELETE FROM refund_items WHERE refund_id IN (SELECT id FROM refunds WHERE bill_id = ?)", (bill_id,))
+        db.execute("DELETE FROM refunds WHERE bill_id = ?", (bill_id,))
+        db.execute("DELETE FROM credit_transactions WHERE bill_id = ?", (bill_id,))
+        db.execute("DELETE FROM bills WHERE id = ?", (bill_id,))
+        db.commit()
+
+        log_update(
+            "Bill Deleted",
+            f"Bill #{bill_id} — ₹{bill['total']} deleted. Stock restored." +
+            (f" Store Credit restored: ₹{bill['store_credit_used']}" if bill["store_credit_used"] > 0 else ""),
+            "billing",
         )
+        flash(f"Bill #{bill_id} deleted and stock restored.", "success")
+    except Exception as e:
+        db.rollback()
+        app.logger.error(f"Error deleting bill {bill_id}: {e}")
+        flash(f"Failed to delete bill: {str(e)}", "error")
 
-    # Restore store credit if it was used
-    if bill["store_credit_used"] and bill["store_credit_used"] > 0:
-        transaction = db.execute(
-            "SELECT credit_id FROM credit_transactions WHERE bill_id = ? AND transaction_type = 'debit'",
-            (bill_id,)
-        ).fetchone()
-        if transaction:
-            credit_id = transaction["credit_id"]
-            db.execute(
-                "UPDATE store_credits SET balance = balance + ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
-                (bill["store_credit_used"], credit_id),
-            )
-            db.execute(
-                "INSERT INTO credit_transactions (credit_id, bill_id, amount, transaction_type, notes, created_at) "
-                "VALUES (?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
-                (credit_id, bill_id, bill["store_credit_used"], "credit", f"Restored from deleted Bill #{bill_id}"),
-            )
-
-    db.execute("DELETE FROM bill_items WHERE bill_id = ?", (bill_id,))
-    db.execute("DELETE FROM refund_items WHERE refund_id IN (SELECT id FROM refunds WHERE bill_id = ?)", (bill_id,))
-    db.execute("DELETE FROM refunds WHERE bill_id = ?", (bill_id,))
-    db.execute("DELETE FROM credit_transactions WHERE bill_id = ?", (bill_id,))
-    db.execute("DELETE FROM bills WHERE id = ?", (bill_id,))
-    db.commit()
-
-    log_update(
-        "Bill Deleted",
-        f"Bill #{bill_id} — ₹{bill['total']} deleted. Stock restored." +
-        (f" Store Credit restored: ₹{bill['store_credit_used']}" if bill["store_credit_used"] > 0 else ""),
-        "billing",
-    )
-    flash(f"Bill #{bill_id} deleted and stock restored.", "success")
     return redirect(url_for("bills_list"))
 
 
@@ -731,6 +739,9 @@ def process_refund():
         flash("Bill not found.", "error")
         return redirect(url_for("bills_list"))
 
+    try:
+        db.execute("BEGIN")
+
     bill_items = db.execute(
         "SELECT * FROM bill_items WHERE bill_id = ?", (bill_id,)
     ).fetchall()
@@ -917,39 +928,45 @@ def process_refund():
              it["exchange_product_name"]),
         )
 
-    db.commit()
+        db.commit()
 
-    desc_parts = []
-    for it in processed_items:
-        if it["action"] == "refund":
-            desc_parts.append(f"Refunded {it['quantity']}× {it['product_name']}")
-        elif it["action"] == "store_credit":
-            desc_parts.append(f"Store Credit {it['quantity']}× {it['product_name']}")
-        else:
-            desc_parts.append(f"Exchanged {it['quantity']}× {it['product_name']} → {it['exchange_product_name']}")
+        desc_parts = []
+        for it in processed_items:
+            if it["action"] == "refund":
+                desc_parts.append(f"Refunded {it['quantity']}× {it['product_name']}")
+            elif it["action"] == "store_credit":
+                desc_parts.append(f"Store Credit {it['quantity']}× {it['product_name']}")
+            else:
+                desc_parts.append(f"Exchanged {it['quantity']}× {it['product_name']} → {it['exchange_product_name']}")
 
-    type_label = {"refund": "Refund", "exchange": "Exchange", "store_credit": "Store Credit"}.get(refund_type, "Refund/Exchange")
+        type_label = {"refund": "Refund", "exchange": "Exchange", "store_credit": "Store Credit"}.get(refund_type, "Refund/Exchange")
 
-    log_update(
-        f"{type_label} Processed",
-        f"Bill #{bill_id} — {'; '.join(desc_parts)}" +
-        (f" — Cash Refund: ₹{round(refund_amount, 2)}" if refund_amount > 0 else "") +
-        (f" — Store Credit: ₹{round(store_credit_refund, 2)}" if store_credit_refund > 0 else "") +
-        (f" — Exchange Bill: {exchange_bill_number}" if exchange_bill_number else ""),
-        "billing",
-    )
+        log_update(
+            f"{type_label} Processed",
+            f"Bill #{bill_id} — {'; '.join(desc_parts)}" +
+            (f" — Cash Refund: ₹{round(refund_amount, 2)}" if refund_amount > 0 else "") +
+            (f" — Store Credit: ₹{round(store_credit_refund, 2)}" if store_credit_refund > 0 else "") +
+            (f" — Exchange Bill: {exchange_bill_number}" if exchange_bill_number else ""),
+            "billing",
+        )
 
-    flash_msg = f"{type_label} processed!"
-    if refund_amount > 0:
-        flash_msg += f" Cash refund: ₹{round(refund_amount, 2)}"
-    if store_credit_refund > 0:
-        flash_msg += f" Store credit: ₹{round(store_credit_refund, 2)}"
-    if exchange_bill_number:
-        flash_msg += f" Exchange bill: {exchange_bill_number}"
-    flash(flash_msg, "success")
-    if exchange_bill_id and refund_type == "exchange":
-        return redirect(url_for("bill_detail", bill_id=exchange_bill_id))
-    return redirect(url_for("bill_detail", bill_id=bill_id))
+        flash_msg = f"{type_label} processed!"
+        if refund_amount > 0:
+            flash_msg += f" Cash refund: ₹{round(refund_amount, 2)}"
+        if store_credit_refund > 0:
+            flash_msg += f" Store credit: ₹{round(store_credit_refund, 2)}"
+        if exchange_bill_number:
+            flash_msg += f" Exchange bill: {exchange_bill_number}"
+        flash(flash_msg, "success")
+        if exchange_bill_id and refund_type == "exchange":
+            return redirect(url_for("bill_detail", bill_id=exchange_bill_id))
+        return redirect(url_for("bill_detail", bill_id=bill_id))
+
+    except Exception as e:
+        db.rollback()
+        app.logger.error(f"Error processing refund for bill {bill_id}: {e}")
+        flash(f"Failed to process refund: {str(e)}", "error")
+        return redirect(url_for("new_refund", bill_id=bill_id))
 
 
 # ── Updates ──────────────────────────────────────────────────────────────

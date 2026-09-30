@@ -12,6 +12,7 @@
         <p>Enter your username and password to continue.</p>
         {% endif %}
         <form method="POST" action="{{ url_for('login') }}">
+        {{ csrf_token() }}
             <input type="hidden" name="next" value="{{ next_url }}">
             <div class="form-group">
                 <input type="text" name="username" class="input" placeholder="Username" required autofocus autocapitalize="none">

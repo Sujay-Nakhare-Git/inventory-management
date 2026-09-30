@@ -15,6 +15,7 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_wtf.csrf import CSRFProtect
 
 try:
     from PIL import Image, UnidentifiedImageError
@@ -24,6 +25,7 @@ except ImportError:
 
 app = Flask(__name__)
 app.secret_key = os.urandom(32)
+csrf = CSRFProtect(app)
 IST = ZoneInfo("Asia/Kolkata")
 
 

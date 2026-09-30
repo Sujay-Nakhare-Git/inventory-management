@@ -52,6 +52,7 @@
                         <a href="{{ url_for('sales_summary', sale_id=sale.id) }}" class="btn btn-sm btn-primary">Summary</a>
                         <form method="POST" action="{{ url_for('sales_delete', sale_id=sale.id) }}" style="display:inline;"
                             onsubmit="return confirm('Delete sale &quot;{{ sale.name }}&quot;? This will only remove the sale, not the products.')">
+        {{ csrf_token() }}
                             <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                         </form>
                     </td>

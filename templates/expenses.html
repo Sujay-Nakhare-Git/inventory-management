@@ -13,6 +13,7 @@
 <div class="card form-card">
     <h3 class="card-title">Add New Expense</h3>
     <form method="POST" action="{{ url_for('add_expense') }}" enctype="multipart/form-data">
+        {{ csrf_token() }}
         <div class="form-grid">
             <div class="form-group">
                 <label for="title">Title *</label>
@@ -207,6 +208,7 @@
                     <td>
                         <a href="{{ url_for('edit_expense', expense_id=e.id) }}" class="btn btn-sm btn-outline">Edit</a>
                         <form method="POST" action="{{ url_for('delete_expense', expense_id=e.id) }}" style="display:inline" onsubmit="return confirm('Delete this expense?')">
+        {{ csrf_token() }}
                             <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                         </form>
                     </td>

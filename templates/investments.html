@@ -10,6 +10,7 @@
 <div class="card form-card" style="margin-bottom:1rem;">
     <h4 style="margin-bottom:0.75rem;">Add Investment</h4>
     <form method="POST" action="{{ url_for('add_investment') }}">
+        {{ csrf_token() }}
         <div class="form-grid">
             <div class="form-group">
                 <label for="inv_description">Description *</label>
@@ -53,6 +54,7 @@
                     <td><strong>₹{{ "{:,.2f}".format(inv.amount) }}</strong></td>
                     <td>
                         <form method="POST" action="{{ url_for('delete_investment', investment_id=inv.id) }}" style="display:inline" onsubmit="return confirm('Delete this investment?')">
+        {{ csrf_token() }}
                             <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                         </form>
                     </td>

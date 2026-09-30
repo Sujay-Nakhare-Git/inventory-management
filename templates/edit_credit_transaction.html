@@ -65,6 +65,7 @@
     <h3 style="margin-top:0;color:#2c3e50;">Update Transaction</h3>
     
     <form method="POST">
+        {{ csrf_token() }}
         <div style="margin-bottom:1.5rem;">
             <label for="amount" style="display:block;margin-bottom:0.5rem;font-weight:bold;color:#2c3e50;">
                 Amount (₹)

@@ -17,6 +17,7 @@
 </div>
 
 <form method="POST" action="{{ url_for('process_refund') }}">
+        {{ csrf_token() }}
     <input type="hidden" name="bill_id" value="{{ bill.id }}">
 
     <div class="card">

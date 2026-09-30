@@ -9,6 +9,7 @@
 <div class="card form-card">
     <h3 class="card-title">Add Manual Update</h3>
     <form method="POST" action="{{ url_for('add_update') }}">
+        {{ csrf_token() }}
         <div class="form-grid">
             <div class="form-group">
                 <label for="title">Title *</label>

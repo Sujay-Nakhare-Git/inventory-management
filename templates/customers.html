@@ -54,6 +54,7 @@
                 <tr id="customer-edit-{{ c.id }}" style="display:none;background:#f9fafb;">
                     <td colspan="7">
                         <form method="POST" action="{{ url_for('edit_customer', customer_id=c.id) }}">
+        {{ csrf_token() }}
                             <div class="form-grid">
                                 <div class="form-group">
                                     <label>Name *</label>

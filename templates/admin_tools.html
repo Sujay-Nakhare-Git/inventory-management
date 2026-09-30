@@ -41,6 +41,7 @@
         <h3 style="color:#e74c3c;margin-bottom:0.5rem;">⚠️ Delete All Data</h3>
         <p style="color:#555;margin-bottom:1rem;">This will permanently delete <strong>all bills, expenses, refunds, and history</strong>. Products and categories will be kept.</p>
         <form method="POST" action="{{ url_for('clean_all_data') }}">
+        {{ csrf_token() }}
             <div class="form-group">
                 <label>Type <strong>DELETE ALL DATA</strong> to confirm:</label>
                 <input type="text" name="confirm" class="input" placeholder="DELETE ALL DATA" required autocomplete="off">
