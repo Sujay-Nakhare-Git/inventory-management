@@ -708,217 +708,217 @@ def process_refund():
     try:
         db.execute("BEGIN")
 
-    bill_items = db.execute(
-        "SELECT * FROM bill_items WHERE bill_id = ?", (bill_id,)
-    ).fetchall()
+        bill_items = db.execute(
+            "SELECT * FROM bill_items WHERE bill_id = ?", (bill_id,)
+        ).fetchall()
 
-    # Check if this is a FULL RETURN (all items being returned with full quantities)
-    is_full_return = True
-    for bi in bill_items:
-        action = request.form.get(f"action_{bi['id']}", "keep")
-        qty = int(request.form.get(f"qty_{bi['id']}", 0))
-        if action == "keep" or qty != bi["quantity"]:
-            is_full_return = False
-            break
+        # Check if this is a FULL RETURN (all items being returned with full quantities)
+        is_full_return = True
+        for bi in bill_items:
+            action = request.form.get(f"action_{bi['id']}", "keep")
+            qty = int(request.form.get(f"qty_{bi['id']}", 0))
+            if action == "keep" or qty != bi["quantity"]:
+                is_full_return = False
+                break
 
-    # Calculate discount per rupee for full returns
-    discount_per_unit = 0.0
-    if is_full_return and bill["subtotal"] > 0:
-        discount_per_unit = bill["discount_amount"] / bill["subtotal"]
+        # Calculate discount per rupee for full returns
+        discount_per_unit = 0.0
+        if is_full_return and bill["subtotal"] > 0:
+            discount_per_unit = bill["discount_amount"] / bill["subtotal"]
 
-    refund_amount = 0
-    store_credit_refund = 0
-    exchange_bill_id = None
-    exchange_bill_number = None
-    processed_items = []
+        refund_amount = 0
+        store_credit_refund = 0
+        exchange_bill_id = None
+        exchange_bill_number = None
+        processed_items = []
 
-    for bi in bill_items:
-        action = request.form.get(f"action_{bi['id']}", "keep")
-        if action == "keep":
-            continue
-
-        qty = int(request.form.get(f"qty_{bi['id']}", 0))
-        if qty <= 0 or qty > bi["quantity"]:
-            continue
-
-        # For full returns, apply discount; for partial returns, use full unit price
-        if is_full_return:
-            effective_unit_price = bi["unit_price"] * (1 - discount_per_unit)
-            item_refund = round(effective_unit_price * qty, 2)
-        else:
-            item_refund = bi["unit_price"] * qty
-        exchange_product_id = None
-        exchange_product_name = None
-        exchange_unit_price = None
-        exchange_line_total = 0
-        replacement_discount_amount = 0
-
-        if action == "refund":
-            # Return stock
-            db.execute(
-                "UPDATE products SET quantity = quantity + ?, "
-                "updated_at = now_ist_db() WHERE id = ?",
-                (qty, bi["product_id"]),
-            )
-            refund_amount += item_refund
-
-        elif action == "store_credit":
-            # Return stock
-            db.execute(
-                "UPDATE products SET quantity = quantity + ?, "
-                "updated_at = now_ist_db() WHERE id = ?",
-                (qty, bi["product_id"]),
-            )
-            store_credit_refund += item_refund
-
-        elif action == "exchange":
-            exchange_product_id = request.form.get(f"exchange_{bi['id']}")
-            if not exchange_product_id:
-                continue
-            exchange_product_id = int(exchange_product_id)
-            exchange_product = db.execute(
-                "SELECT * FROM products WHERE id = ?", (exchange_product_id,)
-            ).fetchone()
-            if not exchange_product or exchange_product["quantity"] < qty:
-                flash(f"Insufficient stock for exchange product.", "error")
+        for bi in bill_items:
+            action = request.form.get(f"action_{bi['id']}", "keep")
+            if action == "keep":
                 continue
 
-            # Return original product to stock
-            db.execute(
-                "UPDATE products SET quantity = quantity + ?, "
-                "updated_at = now_ist_db() WHERE id = ?",
-                (qty, bi["product_id"]),
-            )
-            # Deduct exchange product from stock
-            db.execute(
-                "UPDATE products SET quantity = quantity - ?, "
-                "updated_at = now_ist_db() WHERE id = ?",
-                (qty, exchange_product_id),
-            )
-            exchange_product_name = exchange_product["name"]
-            exchange_unit_price = exchange_product["selling_price"]
-            exchange_line_total = round(exchange_unit_price * qty, 2)
+            qty = int(request.form.get(f"qty_{bi['id']}", 0))
+            if qty <= 0 or qty > bi["quantity"]:
+                continue
 
-            # Cheaper exchanges become store credit; the replacement bill is created below.
-            # For full returns, use effective (discounted) price; for partial returns, use full unit price
+            # For full returns, apply discount; for partial returns, use full unit price
             if is_full_return:
                 effective_unit_price = bi["unit_price"] * (1 - discount_per_unit)
-                price_diff = effective_unit_price - exchange_unit_price
+                item_refund = round(effective_unit_price * qty, 2)
             else:
-                price_diff = bi["unit_price"] - exchange_unit_price
-            if price_diff > 0:
-                store_credit_refund += round(price_diff * qty, 2)
-            elif exchange_line_total > item_refund:
-                replacement_discount_amount = round(item_refund, 2)
+                item_refund = bi["unit_price"] * qty
+            exchange_product_id = None
+            exchange_product_name = None
+            exchange_unit_price = None
+            exchange_line_total = 0
+            replacement_discount_amount = 0
 
-        processed_items.append({
-            "product_id": bi["product_id"],
-            "product_name": bi["product_name"],
-            "quantity": qty,
-            "unit_price": bi["unit_price"],
-            "effective_unit_price": round(bi["unit_price"] * (1 - discount_per_unit), 2) if is_full_return else bi["unit_price"],
-            "action": action,
-            "exchange_product_id": exchange_product_id,
-            "exchange_product_name": exchange_product_name,
-            "exchange_unit_price": exchange_unit_price,
-            "exchange_line_total": exchange_line_total,
-            "replacement_discount_amount": replacement_discount_amount,
-        })
+            if action == "refund":
+                # Return stock
+                db.execute(
+                    "UPDATE products SET quantity = quantity + ?, "
+                    "updated_at = now_ist_db() WHERE id = ?",
+                    (qty, bi["product_id"]),
+                )
+                refund_amount += item_refund
 
-    if not processed_items:
-        flash("No items selected for refund/exchange.", "error")
-        return redirect(url_for("new_refund", bill_id=bill_id))
+            elif action == "store_credit":
+                # Return stock
+                db.execute(
+                    "UPDATE products SET quantity = quantity + ?, "
+                    "updated_at = now_ist_db() WHERE id = ?",
+                    (qty, bi["product_id"]),
+                )
+                store_credit_refund += item_refund
 
-    # Handle store credit refund
-    if store_credit_refund > 0:
-        sc_phone = (bill["customer_phone"] or request.form.get("store_credit_phone", "")).strip()
-        sc_name = request.form.get("store_credit_name", "").strip() or bill["customer_name"] or "Walk-in"
-        if not sc_phone or len(sc_phone) != 10:
-            flash("Please provide a valid 10-digit phone number for store credit.", "error")
+            elif action == "exchange":
+                exchange_product_id = request.form.get(f"exchange_{bi['id']}")
+                if not exchange_product_id:
+                    continue
+                exchange_product_id = int(exchange_product_id)
+                exchange_product = db.execute(
+                    "SELECT * FROM products WHERE id = ?", (exchange_product_id,)
+                ).fetchone()
+                if not exchange_product or exchange_product["quantity"] < qty:
+                    flash(f"Insufficient stock for exchange product.", "error")
+                    continue
+
+                # Return original product to stock
+                db.execute(
+                    "UPDATE products SET quantity = quantity + ?, "
+                    "updated_at = now_ist_db() WHERE id = ?",
+                    (qty, bi["product_id"]),
+                )
+                # Deduct exchange product from stock
+                db.execute(
+                    "UPDATE products SET quantity = quantity - ?, "
+                    "updated_at = now_ist_db() WHERE id = ?",
+                    (qty, exchange_product_id),
+                )
+                exchange_product_name = exchange_product["name"]
+                exchange_unit_price = exchange_product["selling_price"]
+                exchange_line_total = round(exchange_unit_price * qty, 2)
+
+                # Cheaper exchanges become store credit; the replacement bill is created below.
+                # For full returns, use effective (discounted) price; for partial returns, use full unit price
+                if is_full_return:
+                    effective_unit_price = bi["unit_price"] * (1 - discount_per_unit)
+                    price_diff = effective_unit_price - exchange_unit_price
+                else:
+                    price_diff = bi["unit_price"] - exchange_unit_price
+                if price_diff > 0:
+                    store_credit_refund += round(price_diff * qty, 2)
+                elif exchange_line_total > item_refund:
+                    replacement_discount_amount = round(item_refund, 2)
+
+            processed_items.append({
+                "product_id": bi["product_id"],
+                "product_name": bi["product_name"],
+                "quantity": qty,
+                "unit_price": bi["unit_price"],
+                "effective_unit_price": round(bi["unit_price"] * (1 - discount_per_unit), 2) if is_full_return else bi["unit_price"],
+                "action": action,
+                "exchange_product_id": exchange_product_id,
+                "exchange_product_name": exchange_product_name,
+                "exchange_unit_price": exchange_unit_price,
+                "exchange_line_total": exchange_line_total,
+                "replacement_discount_amount": replacement_discount_amount,
+            })
+
+        if not processed_items:
+            flash("No items selected for refund/exchange.", "error")
             return redirect(url_for("new_refund", bill_id=bill_id))
 
-        # Find or create store credit account
-        credit = db.execute(
-            "SELECT * FROM store_credits WHERE customer_phone = ?", (sc_phone,)
-        ).fetchone()
-        if credit:
-            credit_id = credit["id"]
-        else:
-            cursor2 = db.execute(
-                "INSERT INTO store_credits (customer_name, customer_phone, balance, created_at, updated_at) "
-                "VALUES (?, ?, ?, now_ist_db(), now_ist_db())",
-                (sc_name, sc_phone, round(store_credit_refund, 2)),
-            )
-            credit_id = cursor2.lastrowid
-
-        apply_store_credit(db, credit_id, bill_id, round(store_credit_refund, 2), "credit",
-                          f"Refund from Bill #{bill_id}")
-        upsert_customer(db, sc_name, sc_phone)
-
-    exchange_items = [item for item in processed_items if item["action"] == "exchange"]
-    if exchange_items:
-        exchange_bill_id, exchange_bill_number, _ = _insert_exchange_bill(db, bill, exchange_items)
-
-    actions = set(i["action"] for i in processed_items)
-    if actions == {"exchange"}:
-        refund_type = "exchange"
-    elif actions == {"refund"}:
-        refund_type = "refund"
-    elif actions == {"store_credit"}:
-        refund_type = "store_credit"
-    else:
-        refund_type = "mixed"
-
-    cursor = db.execute(
-        "INSERT INTO refunds (bill_id, customer_name, type, reason, refund_amount, created_at) "
-        "VALUES (?, ?, ?, ?, ?, now_ist_db())",
-        (bill_id, bill["customer_name"], refund_type, reason, round(refund_amount + store_credit_refund, 2)),
-    )
-    refund_id = cursor.lastrowid
-
-    for it in processed_items:
-        db.execute(
-            "INSERT INTO refund_items (refund_id, product_id, product_name, "
-            "quantity, unit_price, action, exchange_product_id, exchange_product_name) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (refund_id, it["product_id"], it["product_name"], it["quantity"],
-             it["unit_price"], it["action"], it["exchange_product_id"],
-             it["exchange_product_name"]),
-        )
-
-        db.commit()
-
-        desc_parts = []
-        for it in processed_items:
-            if it["action"] == "refund":
-                desc_parts.append(f"Refunded {it['quantity']}× {it['product_name']}")
-            elif it["action"] == "store_credit":
-                desc_parts.append(f"Store Credit {it['quantity']}× {it['product_name']}")
-            else:
-                desc_parts.append(f"Exchanged {it['quantity']}× {it['product_name']} → {it['exchange_product_name']}")
-
-        type_label = {"refund": "Refund", "exchange": "Exchange", "store_credit": "Store Credit"}.get(refund_type, "Refund/Exchange")
-
-        log_update(
-            f"{type_label} Processed",
-            f"Bill #{bill_id} — {'; '.join(desc_parts)}" +
-            (f" — Cash Refund: ₹{round(refund_amount, 2)}" if refund_amount > 0 else "") +
-            (f" — Store Credit: ₹{round(store_credit_refund, 2)}" if store_credit_refund > 0 else "") +
-            (f" — Exchange Bill: {exchange_bill_number}" if exchange_bill_number else ""),
-            "billing",
-        )
-
-        flash_msg = f"{type_label} processed!"
-        if refund_amount > 0:
-            flash_msg += f" Cash refund: ₹{round(refund_amount, 2)}"
+        # Handle store credit refund
         if store_credit_refund > 0:
-            flash_msg += f" Store credit: ₹{round(store_credit_refund, 2)}"
-        if exchange_bill_number:
-            flash_msg += f" Exchange bill: {exchange_bill_number}"
-        flash(flash_msg, "success")
-        if exchange_bill_id and refund_type == "exchange":
-            return redirect(url_for("bill_detail", bill_id=exchange_bill_id))
-        return redirect(url_for("bill_detail", bill_id=bill_id))
+            sc_phone = (bill["customer_phone"] or request.form.get("store_credit_phone", "")).strip()
+            sc_name = request.form.get("store_credit_name", "").strip() or bill["customer_name"] or "Walk-in"
+            if not sc_phone or len(sc_phone) != 10:
+                flash("Please provide a valid 10-digit phone number for store credit.", "error")
+                return redirect(url_for("new_refund", bill_id=bill_id))
+
+            # Find or create store credit account
+            credit = db.execute(
+                "SELECT * FROM store_credits WHERE customer_phone = ?", (sc_phone,)
+            ).fetchone()
+            if credit:
+                credit_id = credit["id"]
+            else:
+                cursor2 = db.execute(
+                    "INSERT INTO store_credits (customer_name, customer_phone, balance, created_at, updated_at) "
+                    "VALUES (?, ?, ?, now_ist_db(), now_ist_db())",
+                    (sc_name, sc_phone, round(store_credit_refund, 2)),
+                )
+                credit_id = cursor2.lastrowid
+
+            apply_store_credit(db, credit_id, bill_id, round(store_credit_refund, 2), "credit",
+                              f"Refund from Bill #{bill_id}")
+            upsert_customer(db, sc_name, sc_phone)
+
+        exchange_items = [item for item in processed_items if item["action"] == "exchange"]
+        if exchange_items:
+            exchange_bill_id, exchange_bill_number, _ = _insert_exchange_bill(db, bill, exchange_items)
+
+        actions = set(i["action"] for i in processed_items)
+        if actions == {"exchange"}:
+            refund_type = "exchange"
+        elif actions == {"refund"}:
+            refund_type = "refund"
+        elif actions == {"store_credit"}:
+            refund_type = "store_credit"
+        else:
+            refund_type = "mixed"
+
+        cursor = db.execute(
+            "INSERT INTO refunds (bill_id, customer_name, type, reason, refund_amount, created_at) "
+            "VALUES (?, ?, ?, ?, ?, now_ist_db())",
+            (bill_id, bill["customer_name"], refund_type, reason, round(refund_amount + store_credit_refund, 2)),
+        )
+        refund_id = cursor.lastrowid
+
+        for it in processed_items:
+            db.execute(
+                "INSERT INTO refund_items (refund_id, product_id, product_name, "
+                "quantity, unit_price, action, exchange_product_id, exchange_product_name) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (refund_id, it["product_id"], it["product_name"], it["quantity"],
+                 it["unit_price"], it["action"], it["exchange_product_id"],
+                 it["exchange_product_name"]),
+            )
+
+            db.commit()
+
+            desc_parts = []
+            for it in processed_items:
+                if it["action"] == "refund":
+                    desc_parts.append(f"Refunded {it['quantity']}× {it['product_name']}")
+                elif it["action"] == "store_credit":
+                    desc_parts.append(f"Store Credit {it['quantity']}× {it['product_name']}")
+                else:
+                    desc_parts.append(f"Exchanged {it['quantity']}× {it['product_name']} → {it['exchange_product_name']}")
+
+            type_label = {"refund": "Refund", "exchange": "Exchange", "store_credit": "Store Credit"}.get(refund_type, "Refund/Exchange")
+
+            log_update(
+                f"{type_label} Processed",
+                f"Bill #{bill_id} — {'; '.join(desc_parts)}" +
+                (f" — Cash Refund: ₹{round(refund_amount, 2)}" if refund_amount > 0 else "") +
+                (f" — Store Credit: ₹{round(store_credit_refund, 2)}" if store_credit_refund > 0 else "") +
+                (f" — Exchange Bill: {exchange_bill_number}" if exchange_bill_number else ""),
+                "billing",
+            )
+
+            flash_msg = f"{type_label} processed!"
+            if refund_amount > 0:
+                flash_msg += f" Cash refund: ₹{round(refund_amount, 2)}"
+            if store_credit_refund > 0:
+                flash_msg += f" Store credit: ₹{round(store_credit_refund, 2)}"
+            if exchange_bill_number:
+                flash_msg += f" Exchange bill: {exchange_bill_number}"
+            flash(flash_msg, "success")
+            if exchange_bill_id and refund_type == "exchange":
+                return redirect(url_for("bill_detail", bill_id=exchange_bill_id))
+            return redirect(url_for("bill_detail", bill_id=bill_id))
 
     except Exception as e:
         db.rollback()

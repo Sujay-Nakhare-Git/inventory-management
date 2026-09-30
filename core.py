@@ -12,6 +12,7 @@ from auth import _enforce_access_control, inject_auth_helpers
 from config import *
 from models import *
 from services import *
+from services import _insert_exchange_bill  # Private function, needs explicit import
 from auth import *
 
 app = Flask(__name__)
