@@ -196,37 +196,34 @@ def low_stock_alerts():
         return redirect(url_for("admin", next=url_for("low_stock_alerts")))
 
     db = get_db()
-    alerts = db.execute(
-        "SELECT a.id, a.category_id, a.size, a.threshold, c.name AS category_name "
-        "FROM low_stock_alerts a "
-        "LEFT JOIN categories c ON c.id = a.category_id "
-        "ORDER BY c.name, a.size"
+    # Fetch alert definitions with current stock levels in a single query
+    alert_rows_data = db.execute(
+        """
+        SELECT
+            a.id, a.category_id, a.size, a.threshold, c.name AS category_name,
+            COALESCE(SUM(p.quantity), 0) as current
+        FROM low_stock_alerts a
+        LEFT JOIN categories c ON c.id = a.category_id
+        LEFT JOIN products p ON p.category_id = a.category_id
+            AND (
+                (a.size != '' AND TRIM(p.size) = TRIM(a.size))
+                OR (a.size = '' AND (p.size IS NULL OR TRIM(p.size) = ''))
+            )
+        GROUP BY a.id, a.category_id, a.size, a.threshold, c.name
+        ORDER BY c.name, a.size
+        """
     ).fetchall()
 
-    # Attach current stock so the table can show how close each rule is.
     alert_rows = []
-    for alert in alerts:
-        size = alert["size"] or ""
-        if size:
-            current = db.execute(
-                "SELECT COALESCE(SUM(quantity), 0) FROM products "
-                "WHERE category_id = ? AND size = ?",
-                (alert["category_id"], size),
-            ).fetchone()[0]
-        else:
-            current = db.execute(
-                "SELECT COALESCE(SUM(quantity), 0) FROM products "
-                "WHERE category_id = ? AND (size IS NULL OR TRIM(size) = '')",
-                (alert["category_id"],),
-            ).fetchone()[0]
+    for row in alert_rows_data:
         alert_rows.append({
-            "id": alert["id"],
-            "category_id": alert["category_id"],
-            "category_name": alert["category_name"] or "Uncategorized",
-            "size": size,
-            "threshold": alert["threshold"],
-            "current": current,
-            "triggered": current <= alert["threshold"],
+            "id": row["id"],
+            "category_id": row["category_id"],
+            "category_name": row["category_name"] or "Uncategorized",
+            "size": row["size"] or "",
+            "threshold": row["threshold"],
+            "current": row["current"],
+            "triggered": row["current"] <= row["threshold"],
         })
 
     categories = db.execute("SELECT id, name FROM categories ORDER BY name").fetchall()

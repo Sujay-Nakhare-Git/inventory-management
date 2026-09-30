@@ -942,15 +942,8 @@ def create_bill():
 
     # Record store credit transaction if used
     if store_credit_id and store_credit_amount > 0:
-        db.execute(
-            "INSERT INTO credit_transactions (credit_id, bill_id, amount, transaction_type, notes, created_at) "
-            "VALUES (?, ?, ?, ?, ?, now_ist_db())",
-            (store_credit_id, bill_id, store_credit_amount, "debit", f"Used in Bill {bill_number}"),
-        )
-        db.execute(
-            "UPDATE store_credits SET balance = balance - ?, updated_at = now_ist_db() WHERE id = ?",
-            (store_credit_amount, store_credit_id),
-        )
+        apply_store_credit(db, store_credit_id, bill_id, -store_credit_amount, "debit",
+                          f"Used in Bill {bill_number}")
 
     db.commit()
     log_update(

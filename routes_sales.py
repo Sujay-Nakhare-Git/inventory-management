@@ -432,15 +432,7 @@ def use_store_credit_balance(credit_id):
         flash("Please enter a valid amount up to the available balance.", "error")
         return redirect(url_for("store_credits"))
 
-    db.execute(
-        "UPDATE store_credits SET balance = balance - ?, updated_at = now_ist_db() WHERE id = ?",
-        (amount, credit_id),
-    )
-    db.execute(
-        "INSERT INTO credit_transactions (credit_id, amount, transaction_type, notes, created_at) "
-        "VALUES (?, ?, ?, ?, now_ist_db())",
-        (credit_id, amount, "debit", notes or "Amount marked as used"),
-    )
+    apply_store_credit(db, credit_id, None, -amount, "debit", notes or "Amount marked as used")
     db.commit()
 
     log_update(
@@ -490,15 +482,7 @@ def add_credit_balance(credit_id):
         flash("Please provide a valid amount.", "error")
         return redirect(url_for("store_credits"))
 
-    db.execute(
-        "UPDATE store_credits SET balance = balance + ?, updated_at = now_ist_db() WHERE id = ?",
-        (round(amount, 2), credit_id),
-    )
-    db.execute(
-        "INSERT INTO credit_transactions (credit_id, amount, transaction_type, notes, created_at) "
-        "VALUES (?, ?, ?, ?, now_ist_db())",
-        (credit_id, amount, "credit", notes or "Balance added"),
-    )
+    apply_store_credit(db, credit_id, None, round(amount, 2), "credit", notes or "Balance added")
     db.commit()
 
     log_update(
@@ -584,17 +568,11 @@ def delete_credit_transaction(transaction_id):
         flash("Store credit not found.", "error")
         return redirect(url_for("store_credits"))
 
-    # Adjust store credit balance
-    if transaction["transaction_type"] == "credit":
-        db.execute(
-            "UPDATE store_credits SET balance = balance - ?, updated_at = now_ist_db() WHERE id = ?",
-            (transaction["amount"], transaction["credit_id"]),
-        )
-    else:  # debit
-        db.execute(
-            "UPDATE store_credits SET balance = balance + ?, updated_at = now_ist_db() WHERE id = ?",
-            (transaction["amount"], transaction["credit_id"]),
-        )
+    # Adjust store credit balance (reverse the original transaction)
+    reverse_amount = -transaction["amount"] if transaction["transaction_type"] == "credit" else transaction["amount"]
+    reverse_type = "debit" if transaction["transaction_type"] == "credit" else "credit"
+    apply_store_credit(db, transaction["credit_id"], None, reverse_amount, reverse_type,
+                       f"Reversed transaction #{transaction_id}")
 
     db.execute("DELETE FROM credit_transactions WHERE id = ?", (transaction_id,))
     db.commit()
@@ -654,16 +632,11 @@ def edit_credit_transaction(transaction_id):
     )
 
     # Adjust store credit balance based on the difference
-    if transaction["transaction_type"] == "credit":
-        db.execute(
-            "UPDATE store_credits SET balance = balance + ?, updated_at = now_ist_db() WHERE id = ?",
-            (round(amount_diff, 2), transaction["credit_id"]),
-        )
-    else:  # debit
-        db.execute(
-            "UPDATE store_credits SET balance = balance - ?, updated_at = now_ist_db() WHERE id = ?",
-            (round(amount_diff, 2), transaction["credit_id"]),
-        )
+    diff_amount = round(amount_diff, 2) if transaction["transaction_type"] == "credit" else -round(amount_diff, 2)
+    if amount_diff != 0:
+        apply_store_credit(db, transaction["credit_id"], None, diff_amount,
+                          "credit" if diff_amount > 0 else "debit",
+                          f"Adjusted transaction #{transaction_id}: ₹{old_amount} → ₹{amount}")
 
     db.commit()
 
@@ -870,10 +843,6 @@ def process_refund():
         ).fetchone()
         if credit:
             credit_id = credit["id"]
-            db.execute(
-                "UPDATE store_credits SET balance = balance + ?, updated_at = now_ist_db() WHERE id = ?",
-                (round(store_credit_refund, 2), credit_id),
-            )
         else:
             cursor2 = db.execute(
                 "INSERT INTO store_credits (customer_name, customer_phone, balance, created_at, updated_at) "
@@ -882,12 +851,8 @@ def process_refund():
             )
             credit_id = cursor2.lastrowid
 
-        db.execute(
-            "INSERT INTO credit_transactions (credit_id, bill_id, amount, transaction_type, notes, created_at) "
-            "VALUES (?, ?, ?, ?, ?, now_ist_db())",
-            (credit_id, bill_id, round(store_credit_refund, 2), "credit",
-             f"Refund from Bill #{bill_id}"),
-        )
+        apply_store_credit(db, credit_id, bill_id, round(store_credit_refund, 2), "credit",
+                          f"Refund from Bill #{bill_id}")
         upsert_customer(db, sc_name, sc_phone)
 
     exchange_items = [item for item in processed_items if item["action"] == "exchange"]
