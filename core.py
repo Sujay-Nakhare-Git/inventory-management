@@ -33,6 +33,15 @@ def now_ist():
     return datetime.now(IST)
 
 
+def now_ist_db():
+    """Return ISO format datetime string in IST timezone for database DEFAULT clauses.
+
+    Used as: INSERT INTO table (..., created_at) VALUES (..., ?), (now_ist_db(),)
+    Replaces hardcoded: datetime('now','+5 hours','+30 minutes')
+    """
+    return now_ist().isoformat()
+
+
 def profit_percent_on_cost(profit, cost):
     try:
         cost_value = float(cost or 0)
@@ -797,12 +806,85 @@ def inject_bill_helpers():
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
+def parse_amount(value, default=0.0, max_val=None):
+    """Parse and validate a currency amount from form input.
+
+    Args:
+        value: form input (string, int, float, or None)
+        default: fallback if invalid (default: 0.0)
+        max_val: optional maximum allowed value
+
+    Returns:
+        float rounded to 2 decimals, or default on error
+
+    Replaces: float(request.form.get(...))  scattered across routes
+    """
+    try:
+        amount = round(float(value or default), 2)
+        if amount < 0:
+            return default
+        if max_val is not None and amount > max_val:
+            return default
+        return amount
+    except (TypeError, ValueError):
+        return default
+
+
+def parse_int(value, default=0, min_val=None, max_val=None):
+    """Parse and validate an integer from form input.
+
+    Args:
+        value: form input (string, int, or None)
+        default: fallback if invalid (default: 0)
+        min_val: optional minimum allowed value
+        max_val: optional maximum allowed value
+
+    Returns:
+        int, or default on error or out of bounds
+
+    Replaces: int(request.form.get(...)) or int(request.form["..."]) scattered across routes
+    """
+    try:
+        num = int(value or default)
+        if min_val is not None and num < min_val:
+            return default
+        if max_val is not None and num > max_val:
+            return default
+        return num
+    except (TypeError, ValueError):
+        return default
+
+
+def apply_store_credit(db, credit_id, bill_id, amount, txn_type, notes=""):
+    """Add or deduct store credit and record transaction.
+
+    Args:
+        db: database connection
+        credit_id: store_credits.id
+        bill_id: bills.id (or None for non-bill transactions)
+        amount: amount in ₹ (positive for credit, negative for debit)
+        txn_type: 'credit' or 'debit'
+        notes: optional transaction notes/remarks
+
+    Replaces all copy-pasted store credit mutations across routes.
+    """
+    db.execute(
+        "UPDATE store_credits SET balance = balance + ?, updated_at = ? WHERE id = ?",
+        (amount, now_ist_db(), credit_id),
+    )
+    db.execute(
+        "INSERT INTO credit_transactions (credit_id, bill_id, amount, transaction_type, notes, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (credit_id, bill_id, amount, txn_type, notes, now_ist_db()),
+    )
+
+
 def log_update(title, description, update_type="general"):
     db = get_db()
     db.execute(
         "INSERT INTO updates (title, description, type, created_at) "
-        "VALUES (?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
-        (title, description, update_type),
+        "VALUES (?, ?, ?, ?)",
+        (title, description, update_type, now_ist_db()),
     )
     db.commit()
 
@@ -1188,6 +1270,35 @@ def admin_authenticated():
     whether someone is logged in at all.
     """
     return get_current_user() is not None
+
+
+def require_admin(next_endpoint="admin"):
+    """Decorator to guard admin-only routes.
+
+    Usage:
+        @app.route("/admin/dangerous", methods=["POST"])
+        @require_admin(next_endpoint="admin_tools")
+        def dangerous_operation():
+            ...
+
+    Replaces repeated:
+        if not admin_authenticated():
+            flash("Please unlock Admin...")
+            return redirect(url_for("admin", next=url_for("endpoint_name")))
+
+    Args:
+        next_endpoint: endpoint name to redirect back to (default: "admin")
+    """
+    from functools import wraps
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not admin_authenticated():
+                flash("Please unlock Admin to access this section.", "error")
+                return redirect(url_for(next_endpoint, next=request.path))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
 
 def get_triggered_low_stock_alerts(db):

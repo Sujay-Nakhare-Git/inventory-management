@@ -270,7 +270,7 @@ def add_expense():
 
         db.execute(
             "INSERT INTO expenses (title, vendor, description, category, amount, payment_mode, bill_image_path, include_in_pl, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, now_ist_db())",
             (title, vendor or None, description, category, amount, payment_mode, bill_image_path, include_in_pl),
         )
         db.commit()

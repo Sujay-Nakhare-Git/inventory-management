@@ -290,7 +290,7 @@ def add_low_stock_alert():
 
     db.execute(
         "INSERT INTO low_stock_alerts (category_id, size, threshold, created_at, updated_at) "
-        "VALUES (?, ?, ?, datetime('now','+5 hours','+30 minutes'), datetime('now','+5 hours','+30 minutes'))",
+        "VALUES (?, ?, ?, now_ist_db(), now_ist_db())",
         (category_id, size, threshold),
     )
     db.commit()
@@ -350,7 +350,7 @@ def edit_low_stock_alert(alert_id):
 
     db.execute(
         "UPDATE low_stock_alerts SET category_id = ?, size = ?, threshold = ?, "
-        "updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+        "updated_at = now_ist_db() WHERE id = ?",
         (category_id, size, threshold, alert_id),
     )
     db.commit()
@@ -419,7 +419,7 @@ def add_vendor():
 
     db.execute(
         "INSERT INTO vendors (name, contact_person, phone, email, address, notes, created_at, updated_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'), datetime('now','+5 hours','+30 minutes'))",
+        "VALUES (?, ?, ?, ?, ?, ?, now_ist_db(), now_ist_db())",
         (name, contact_person or None, phone or None, email or None, address or None, notes or None),
     )
     db.commit()
@@ -453,7 +453,7 @@ def edit_vendor(vendor_id):
 
     db.execute(
         "UPDATE vendors SET name = ?, contact_person = ?, phone = ?, email = ?, "
-        "address = ?, notes = ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+        "address = ?, notes = ?, updated_at = now_ist_db() WHERE id = ?",
         (name, contact_person or None, phone or None, email or None, address or None, notes or None, vendor_id),
     )
     db.commit()
@@ -572,7 +572,7 @@ def edit_customer(customer_id):
         (name, phone, customer["phone"]),
     )
     db.execute(
-        "UPDATE customers SET name = ?, phone = ?, updated_at = datetime('now','+5 hours','+30 minutes') "
+        "UPDATE customers SET name = ?, phone = ?, updated_at = now_ist_db() "
         "WHERE id = ?",
         (name, phone, customer_id),
     )
@@ -750,7 +750,7 @@ def add_investment():
 
     db.execute(
         "INSERT INTO investments (description, amount, investment_date, created_at) "
-        "VALUES (?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
+        "VALUES (?, ?, ?, now_ist_db())",
         (description, amount, investment_date),
     )
     db.commit()

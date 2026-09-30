@@ -59,7 +59,7 @@ def save_dashboard_notes():
     content = data.get("content", "")
     db = get_db()
     db.execute(
-        "UPDATE dashboard_notes SET content = ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = 1",
+        "UPDATE dashboard_notes SET content = ?, updated_at = now_ist_db() WHERE id = 1",
         (content,),
     )
     db.commit()
@@ -236,7 +236,7 @@ def add_product():
                 "cost_price, selling_price, quantity, low_stock_threshold, image_filename, "
                 "vendor_id, created_at, updated_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
-                "datetime('now','+5 hours','+30 minutes'), datetime('now','+5 hours','+30 minutes'))",
+                "now_ist_db(), now_ist_db())",
                 (entry_name, category_id, sku, size, color, cost_price,
                  selling_price, quantity, low_stock_threshold, image_filename, vendor_id),
             )
@@ -333,7 +333,7 @@ def edit_product(product_id):
         db.execute(
             "UPDATE products SET name=?, category_id=?, sku=?, size=?, color=?, "
             "cost_price=?, selling_price=?, quantity=?, low_stock_threshold=?, image_filename=?, "
-            "vendor_id=?, updated_at=datetime('now','+5 hours','+30 minutes') WHERE id=?",
+            "vendor_id=?, updated_at=now_ist_db() WHERE id=?",
             (name, category_id, sku, size, color, cost_price,
              selling_price, quantity, low_stock_threshold, image_filename, vendor_id, product_id),
         )
@@ -405,7 +405,7 @@ def bulk_assign_vendor():
 
     placeholders = ",".join("?" for _ in ids)
     db.execute(
-        f"UPDATE products SET vendor_id = ?, updated_at = datetime('now','+5 hours','+30 minutes') "
+        f"UPDATE products SET vendor_id = ?, updated_at = now_ist_db() "
         f"WHERE id IN ({placeholders})",
         [vendor_value, *ids],
     )
@@ -739,7 +739,7 @@ def create_bill():
             "INSERT INTO bills (bill_number, bill_type, customer_name, customer_phone, "
             "subtotal, rental_days, total, rent_amount, deposit_amount, payment_method, "
             "payment_breakdown_json, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now_ist_db())",
             (bill_number, "rental", customer_name, customer_phone, rental_charges, rental_days, total,
              rent_amount, deposit_amount, rental_payment_method, rental_payment_breakdown),
         )
@@ -917,7 +917,7 @@ def create_bill():
         "INSERT INTO bills (bill_number, customer_name, customer_phone, subtotal, "
         "discount_percent, discount_amount, tax_percent, tax_amount, "
         "total, payment_method, payment_breakdown_json, store_credit_used, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now_ist_db())",
         (bill_number, customer_name, customer_phone, subtotal, discount_percent,
          discount_amount, tax_percent, tax_amount, total, normalized_payment_method,
          payment_breakdown_json, store_credit_amount),
@@ -936,7 +936,7 @@ def create_bill():
         )
         db.execute(
             "UPDATE products SET quantity = quantity - ?, "
-            "updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+            "updated_at = now_ist_db() WHERE id = ?",
             (it["quantity"], it["product_id"]),
         )
 
@@ -944,11 +944,11 @@ def create_bill():
     if store_credit_id and store_credit_amount > 0:
         db.execute(
             "INSERT INTO credit_transactions (credit_id, bill_id, amount, transaction_type, notes, created_at) "
-            "VALUES (?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
+            "VALUES (?, ?, ?, ?, ?, now_ist_db())",
             (store_credit_id, bill_id, store_credit_amount, "debit", f"Used in Bill {bill_number}"),
         )
         db.execute(
-            "UPDATE store_credits SET balance = balance - ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+            "UPDATE store_credits SET balance = balance - ?, updated_at = now_ist_db() WHERE id = ?",
             (store_credit_amount, store_credit_id),
         )
 

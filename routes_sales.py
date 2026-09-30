@@ -212,12 +212,12 @@ def return_rental_deposit(bill_id):
 
     db.execute(
         "UPDATE bills SET deposit_returned = ?, "
-        "deposit_returned_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+        "deposit_returned_at = now_ist_db() WHERE id = ?",
         (deposit_amount, bill_id),
     )
     db.execute(
         "INSERT INTO refunds (bill_id, customer_name, type, reason, refund_amount, created_at) "
-        "VALUES (?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
+        "VALUES (?, ?, ?, ?, ?, now_ist_db())",
         (bill_id, bill["customer_name"], "deposit_return", "Rental deposit returned", deposit_amount),
     )
     db.commit()
@@ -290,7 +290,7 @@ def delete_bill(bill_id):
         for item in items:
             db.execute(
                 "UPDATE products SET quantity = quantity + ?, "
-                "updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+                "updated_at = now_ist_db() WHERE id = ?",
                 (item["quantity"], item["product_id"]),
             )
 
@@ -302,15 +302,8 @@ def delete_bill(bill_id):
             ).fetchone()
             if transaction:
                 credit_id = transaction["credit_id"]
-                db.execute(
-                    "UPDATE store_credits SET balance = balance + ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
-                    (bill["store_credit_used"], credit_id),
-                )
-                db.execute(
-                    "INSERT INTO credit_transactions (credit_id, bill_id, amount, transaction_type, notes, created_at) "
-                    "VALUES (?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
-                    (credit_id, bill_id, bill["store_credit_used"], "credit", f"Restored from deleted Bill #{bill_id}"),
-                )
+                apply_store_credit(db, credit_id, bill_id, bill["store_credit_used"], "credit",
+                                   f"Restored from deleted Bill #{bill_id}")
 
         db.execute("DELETE FROM bill_items WHERE bill_id = ?", (bill_id,))
         db.execute("DELETE FROM refund_items WHERE refund_id IN (SELECT id FROM refunds WHERE bill_id = ?)", (bill_id,))
@@ -389,7 +382,7 @@ def add_store_credit():
 
     cursor = db.execute(
         "INSERT INTO store_credits (customer_name, customer_phone, balance, created_at, updated_at) "
-        "VALUES (?, ?, ?, datetime('now','+5 hours','+30 minutes'), datetime('now','+5 hours','+30 minutes'))",
+        "VALUES (?, ?, ?, now_ist_db(), now_ist_db())",
         (customer_name, customer_phone, round(balance, 2)),
     )
     credit_id = cursor.lastrowid
@@ -397,7 +390,7 @@ def add_store_credit():
     # Record initial transaction
     db.execute(
         "INSERT INTO credit_transactions (credit_id, amount, transaction_type, notes, created_at) "
-        "VALUES (?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
+        "VALUES (?, ?, ?, ?, now_ist_db())",
         (credit_id, balance, "credit", notes or "Initial credit added"),
     )
     upsert_customer(db, customer_name, customer_phone)
@@ -440,12 +433,12 @@ def use_store_credit_balance(credit_id):
         return redirect(url_for("store_credits"))
 
     db.execute(
-        "UPDATE store_credits SET balance = balance - ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+        "UPDATE store_credits SET balance = balance - ?, updated_at = now_ist_db() WHERE id = ?",
         (amount, credit_id),
     )
     db.execute(
         "INSERT INTO credit_transactions (credit_id, amount, transaction_type, notes, created_at) "
-        "VALUES (?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
+        "VALUES (?, ?, ?, ?, now_ist_db())",
         (credit_id, amount, "debit", notes or "Amount marked as used"),
     )
     db.commit()
@@ -498,12 +491,12 @@ def add_credit_balance(credit_id):
         return redirect(url_for("store_credits"))
 
     db.execute(
-        "UPDATE store_credits SET balance = balance + ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+        "UPDATE store_credits SET balance = balance + ?, updated_at = now_ist_db() WHERE id = ?",
         (round(amount, 2), credit_id),
     )
     db.execute(
         "INSERT INTO credit_transactions (credit_id, amount, transaction_type, notes, created_at) "
-        "VALUES (?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
+        "VALUES (?, ?, ?, ?, now_ist_db())",
         (credit_id, amount, "credit", notes or "Balance added"),
     )
     db.commit()
@@ -594,12 +587,12 @@ def delete_credit_transaction(transaction_id):
     # Adjust store credit balance
     if transaction["transaction_type"] == "credit":
         db.execute(
-            "UPDATE store_credits SET balance = balance - ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+            "UPDATE store_credits SET balance = balance - ?, updated_at = now_ist_db() WHERE id = ?",
             (transaction["amount"], transaction["credit_id"]),
         )
     else:  # debit
         db.execute(
-            "UPDATE store_credits SET balance = balance + ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+            "UPDATE store_credits SET balance = balance + ?, updated_at = now_ist_db() WHERE id = ?",
             (transaction["amount"], transaction["credit_id"]),
         )
 
@@ -663,12 +656,12 @@ def edit_credit_transaction(transaction_id):
     # Adjust store credit balance based on the difference
     if transaction["transaction_type"] == "credit":
         db.execute(
-            "UPDATE store_credits SET balance = balance + ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+            "UPDATE store_credits SET balance = balance + ?, updated_at = now_ist_db() WHERE id = ?",
             (round(amount_diff, 2), transaction["credit_id"]),
         )
     else:  # debit
         db.execute(
-            "UPDATE store_credits SET balance = balance - ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+            "UPDATE store_credits SET balance = balance - ?, updated_at = now_ist_db() WHERE id = ?",
             (round(amount_diff, 2), transaction["credit_id"]),
         )
 
@@ -791,7 +784,7 @@ def process_refund():
             # Return stock
             db.execute(
                 "UPDATE products SET quantity = quantity + ?, "
-                "updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+                "updated_at = now_ist_db() WHERE id = ?",
                 (qty, bi["product_id"]),
             )
             refund_amount += item_refund
@@ -800,7 +793,7 @@ def process_refund():
             # Return stock
             db.execute(
                 "UPDATE products SET quantity = quantity + ?, "
-                "updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+                "updated_at = now_ist_db() WHERE id = ?",
                 (qty, bi["product_id"]),
             )
             store_credit_refund += item_refund
@@ -820,13 +813,13 @@ def process_refund():
             # Return original product to stock
             db.execute(
                 "UPDATE products SET quantity = quantity + ?, "
-                "updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+                "updated_at = now_ist_db() WHERE id = ?",
                 (qty, bi["product_id"]),
             )
             # Deduct exchange product from stock
             db.execute(
                 "UPDATE products SET quantity = quantity - ?, "
-                "updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+                "updated_at = now_ist_db() WHERE id = ?",
                 (qty, exchange_product_id),
             )
             exchange_product_name = exchange_product["name"]
@@ -878,20 +871,20 @@ def process_refund():
         if credit:
             credit_id = credit["id"]
             db.execute(
-                "UPDATE store_credits SET balance = balance + ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+                "UPDATE store_credits SET balance = balance + ?, updated_at = now_ist_db() WHERE id = ?",
                 (round(store_credit_refund, 2), credit_id),
             )
         else:
             cursor2 = db.execute(
                 "INSERT INTO store_credits (customer_name, customer_phone, balance, created_at, updated_at) "
-                "VALUES (?, ?, ?, datetime('now','+5 hours','+30 minutes'), datetime('now','+5 hours','+30 minutes'))",
+                "VALUES (?, ?, ?, now_ist_db(), now_ist_db())",
                 (sc_name, sc_phone, round(store_credit_refund, 2)),
             )
             credit_id = cursor2.lastrowid
 
         db.execute(
             "INSERT INTO credit_transactions (credit_id, bill_id, amount, transaction_type, notes, created_at) "
-            "VALUES (?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
+            "VALUES (?, ?, ?, ?, ?, now_ist_db())",
             (credit_id, bill_id, round(store_credit_refund, 2), "credit",
              f"Refund from Bill #{bill_id}"),
         )
@@ -913,7 +906,7 @@ def process_refund():
 
     cursor = db.execute(
         "INSERT INTO refunds (bill_id, customer_name, type, reason, refund_amount, created_at) "
-        "VALUES (?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
+        "VALUES (?, ?, ?, ?, ?, now_ist_db())",
         (bill_id, bill["customer_name"], refund_type, reason, round(refund_amount + store_credit_refund, 2)),
     )
     refund_id = cursor.lastrowid
