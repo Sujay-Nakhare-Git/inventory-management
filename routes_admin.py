@@ -100,57 +100,64 @@ def admin_sales_summary():
         return redirect(url_for("admin", next=url_for("admin_sales_summary")))
 
     db = get_db()
-    top_selling_category = db.execute(
-        "SELECT COALESCE(c.name, 'Uncategorized') as name, "
-        "COALESCE(SUM(bi.quantity), 0) as sold_qty, "
-        "COALESCE(SUM(bi.total_price), 0) as sold_amount "
-        "FROM bill_items bi "
-        "LEFT JOIN products p ON p.id = bi.product_id "
-        "LEFT JOIN categories c ON c.id = p.category_id "
-        "GROUP BY c.name "
-        "ORDER BY sold_qty DESC, sold_amount DESC "
-        "LIMIT 1"
+    # Get top selling category with cost
+    top_cat = db.execute(
+        """
+        SELECT COALESCE(c.name, 'Uncategorized') as name,
+               COALESCE(SUM(bi.quantity), 0) as sold_qty,
+               COALESCE(SUM(bi.total_price), 0) as sold_amount,
+               COALESCE(SUM(bi.quantity * p.cost_price), 0) as sold_cost
+        FROM bill_items bi
+        LEFT JOIN products p ON p.id = bi.product_id
+        LEFT JOIN categories c ON c.id = p.category_id
+        GROUP BY COALESCE(c.name, 'Uncategorized')
+        ORDER BY sold_qty DESC, sold_amount DESC
+        LIMIT 1
+        """
     ).fetchone()
+    top_selling_category = {
+        "name": top_cat["name"],
+        "sold_qty": top_cat["sold_qty"],
+        "sold_amount": top_cat["sold_amount"]
+    } if top_cat else {"name": "Uncategorized", "sold_qty": 0, "sold_amount": 0}
+    top_selling_category_cost = top_cat["sold_cost"] if top_cat else 0
 
-    top_selling_category_cost = db.execute(
-        "SELECT COALESCE(SUM(bi.quantity * p.cost_price), 0) as sold_cost "
-        "FROM bill_items bi "
-        "LEFT JOIN products p ON p.id = bi.product_id "
-        "LEFT JOIN categories c ON c.id = p.category_id "
-        "WHERE COALESCE(c.name, 'Uncategorized') = ?",
-        (top_selling_category["name"] if top_selling_category else "Uncategorized",),
-    ).fetchone()[0]
-
-    top_selling_size = db.execute(
-        "SELECT COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') as name, "
-        "COALESCE(SUM(bi.quantity), 0) as sold_qty, "
-        "COALESCE(SUM(bi.total_price), 0) as sold_amount "
-        "FROM bill_items bi "
-        "LEFT JOIN products p ON p.id = bi.product_id "
-        "GROUP BY COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') "
-        "ORDER BY sold_qty DESC, sold_amount DESC "
-        "LIMIT 1"
+    # Get top selling size with cost
+    top_size = db.execute(
+        """
+        SELECT COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') as name,
+               COALESCE(SUM(bi.quantity), 0) as sold_qty,
+               COALESCE(SUM(bi.total_price), 0) as sold_amount,
+               COALESCE(SUM(bi.quantity * p.cost_price), 0) as sold_cost
+        FROM bill_items bi
+        LEFT JOIN products p ON p.id = bi.product_id
+        GROUP BY COALESCE(NULLIF(TRIM(p.size), ''), 'No Size')
+        ORDER BY sold_qty DESC, sold_amount DESC
+        LIMIT 1
+        """
     ).fetchone()
+    top_selling_size = {
+        "name": top_size["name"],
+        "sold_qty": top_size["sold_qty"],
+        "sold_amount": top_size["sold_amount"]
+    } if top_size else {"name": "No Size", "sold_qty": 0, "sold_amount": 0}
+    top_selling_size_cost = top_size["sold_cost"] if top_size else 0
 
-    top_selling_size_cost = db.execute(
-        "SELECT COALESCE(SUM(bi.quantity * p.cost_price), 0) as sold_cost "
-        "FROM bill_items bi "
-        "LEFT JOIN products p ON p.id = bi.product_id "
-        "WHERE COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') = ?",
-        (top_selling_size["name"] if top_selling_size else "No Size",),
-    ).fetchone()[0]
-
+    # Get breakdown by category and size
     sales_breakdown = db.execute(
-        "SELECT COALESCE(c.name, 'Uncategorized') as category, "
-        "COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') as size, "
-        "COALESCE(SUM(bi.quantity), 0) as sold_qty, "
-        "COALESCE(SUM(bi.total_price), 0) as sold_amount, "
-        "COUNT(DISTINCT bi.bill_id) as bills_count "
-        "FROM bill_items bi "
-        "LEFT JOIN products p ON p.id = bi.product_id "
-        "LEFT JOIN categories c ON c.id = p.category_id "
-        "GROUP BY COALESCE(c.name, 'Uncategorized'), COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') "
-        "ORDER BY sold_qty DESC, sold_amount DESC, category, size"
+        """
+        SELECT COALESCE(c.name, 'Uncategorized') as category,
+               COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') as size,
+               COALESCE(SUM(bi.quantity), 0) as sold_qty,
+               COALESCE(SUM(bi.total_price), 0) as sold_amount,
+               COALESCE(SUM(bi.quantity * p.cost_price), 0) as sold_cost,
+               COUNT(DISTINCT bi.bill_id) as bills_count
+        FROM bill_items bi
+        LEFT JOIN products p ON p.id = bi.product_id
+        LEFT JOIN categories c ON c.id = p.category_id
+        GROUP BY COALESCE(c.name, 'Uncategorized'), COALESCE(NULLIF(TRIM(p.size), ''), 'No Size')
+        ORDER BY sold_qty DESC, sold_amount DESC, category, size
+        """
     ).fetchall()
 
     return render_template(

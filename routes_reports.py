@@ -651,7 +651,23 @@ def export_sales():
         params.append(f"{date}%")
     query += " ORDER BY b.created_at DESC"
 
-    bills = db.execute(query, params).fetchall()
+    # Consolidate bills + items into single query with GROUP_CONCAT
+    bills_with_items = db.execute(
+        """
+        SELECT
+            b.id, b.bill_number, b.customer_name, b.customer_phone, b.subtotal,
+            b.discount_percent, b.discount_amount, b.tax_percent, b.tax_amount,
+            b.total, b.payment_method, b.created_at,
+            GROUP_CONCAT(bi.product_name || ' x' || bi.quantity || ' @₹' || bi.unit_price, '; ') as items_str
+        FROM bills b
+        LEFT JOIN bill_items bi ON bi.bill_id = b.id
+        WHERE 1=1
+        """ + (" AND b.created_at LIKE ?" if date else "") + """
+        GROUP BY b.id
+        ORDER BY b.created_at DESC
+        """,
+        params
+    ).fetchall()
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -659,20 +675,12 @@ def export_sales():
                      "Discount (₹)", "Discount Rate %", "Tax %", "Tax (₹)",
                      "Total (₹)", "Payment Method", "Date", "Items"])
 
-    for b in bills:
-        items = db.execute(
-            "SELECT product_name, quantity, unit_price, total_price "
-            "FROM bill_items WHERE bill_id = ?", (b["id"],)
-        ).fetchall()
-        items_str = "; ".join(
-            f"{it['product_name']} x{it['quantity']} @₹{it['unit_price']}"
-            for it in items
-        )
+    for b in bills_with_items:
         writer.writerow([
             b["bill_number"] or f"#{b['id']}", b["customer_name"] or "Walk-in", b["customer_phone"] or "",
             b["subtotal"], b["discount_amount"], b["discount_percent"],
             b["tax_percent"], b["tax_amount"], b["total"],
-            b["payment_method"], b["created_at"], items_str,
+            b["payment_method"], b["created_at"], b["items_str"] or "",
         ])
 
     filename = f"sales_{date or 'all'}.csv"
