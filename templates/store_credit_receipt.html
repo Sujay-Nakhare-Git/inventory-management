@@ -33,6 +33,13 @@
         .debit { color: #a32121; }
         .notes { overflow-wrap: anywhere; }
         .empty { text-align: center; padding: 2mm 0; }
+        .logo {
+            display: block;
+            margin: 0 auto 1mm auto;
+            max-width: 60mm;
+            width: 100%;
+            height: auto;
+        }
         @media print {
             html, body { width: 76mm !important; margin: 0 !important; padding: 0 !important; }
             .receipt { width: 73mm !important; }
@@ -41,7 +48,7 @@
 </head>
 <body>
     <main class="receipt">
-        <div class="center"><strong>Gulmohar by Ankita</strong></div>
+        <img src="{{ url_for('static', filename='logo-receipt.png') }}" alt="Gulmohar by Ankita" class="logo">
         <div class="center">STORE CREDIT RECEIPT</div>
         <div class="line"></div>
         <div><strong>{{ credit.customer_name }}</strong></div>
