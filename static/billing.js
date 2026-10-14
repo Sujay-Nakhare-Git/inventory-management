@@ -22,6 +22,10 @@ function updateRentalTotal() {
     document.getElementById('rentalTotalAmount').textContent = `₹${(rentalCharges + depositAmount).toFixed(2)}`;
 }
 
+function round2(value) {
+    return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+}
+
 function getSelectedPaymentMode() {
     const selected = document.querySelector('input[name="paymentMode"]:checked');
     return selected ? selected.value : 'single';
@@ -46,6 +50,12 @@ document.getElementById('productSearch').addEventListener('input', function() {
 // ---------- Customer autocomplete ----------
 let customerSearchTimer = null;
 let customerSearchSeq = 0;
+
+function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
 
 async function fetchCustomerSuggestions(query) {
     const seq = ++customerSearchSeq;
