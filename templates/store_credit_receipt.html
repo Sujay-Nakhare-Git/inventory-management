@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Store Credit Receipt - {{ credit.customer_name }}</title>
+    <style>
+        @page { size: 76mm auto; margin: 0; }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 76mm;
+            background: #fff;
+            color: #000;
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.3;
+        }
+        .receipt {
+            box-sizing: border-box;
+            width: 73mm;
+            padding: 2mm 1mm;
+        }
+        .center { text-align: center; }
+        .muted { font-size: 10px; }
+        .line { border-top: 1px solid #000; margin: 2mm 0; }
+        .row { display: flex; justify-content: space-between; gap: 2mm; }
+        .row span:last-child { text-align: right; }
+        .balance { font-size: 16px; font-weight: 700; }
+        .transaction { padding: 1mm 0; border-bottom: 1px dotted #777; }
+        .change { font-weight: 700; }
+        .credit { color: #176b35; }
+        .debit { color: #a32121; }
+        .notes { overflow-wrap: anywhere; }
+        .empty { text-align: center; padding: 2mm 0; }
+        @media print {
+            html, body { width: 76mm !important; margin: 0 !important; padding: 0 !important; }
+            .receipt { width: 73mm !important; }
+        }
+    </style>
+</head>
+<body>
+    <main class="receipt">
+        <div class="center"><strong>Gulmohar by Ankita</strong></div>
+        <div class="center">STORE CREDIT RECEIPT</div>
+        <div class="line"></div>
+        <div><strong>{{ credit.customer_name }}</strong></div>
+        <div>Phone: {{ credit.customer_phone }}</div>
+        <div class="row"><span>Current balance</span><span class="balance">Rs. {{ "%.2f"|format(credit.balance) }}</span></div>
+        <div class="line"></div>
+        <strong>Credit history</strong>
+        {% for txn in transactions %}
+        <div class="transaction">
+            <div class="row">
+                <span>{{ txn.created_at | istdatetime }}</span>
+                <span class="change {% if txn.transaction_type == 'debit' %}debit{% else %}credit{% endif %}">{% if txn.transaction_type == 'debit' %}-{% else %}+{% endif %}Rs. {{ "%.2f"|format(txn.amount) }}</span>
+            </div>
+            <div>{{ "Used" if txn.transaction_type == 'debit' else "Added" }}{% if txn.bill_id %} · Bill #{{ txn.bill_id }}{% endif %}</div>
+            {% if txn.notes %}<div class="muted notes">{{ txn.notes }}</div>{% endif %}
+        </div>
+        {% else %}
+        <div class="empty">No credit history recorded.</div>
+        {% endfor %}
+        <div class="line"></div>
+        <div class="center">Thank you</div>
+    </main>
+    <script>
+        window.addEventListener('load', function () {
+            setTimeout(function () { window.print(); }, 250);
+        });
+    </script>
+</body>
+</html>

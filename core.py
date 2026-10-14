@@ -968,6 +968,7 @@ ENDPOINT_PERMISSIONS = {
     "add_store_credit": "store_credits",
     "add_credit_balance": "store_credits",
     "credit_transactions": "store_credits",
+    "store_credit_receipt": "store_credits",
     "delete_store_credit": "store_credits",
     "delete_credit_transaction": "store_credits",
     "edit_credit_transaction": "store_credits",

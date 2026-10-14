@@ -535,6 +535,31 @@ def credit_transactions(credit_id):
     )
 
 
+@app.route("/store-credits/<int:credit_id>/receipt")
+def store_credit_receipt(credit_id):
+    if not admin_authenticated():
+        flash("Please unlock Admin to print store credit receipts.", "error")
+        return redirect(url_for("admin", next=url_for("store_credit_receipt", credit_id=credit_id)))
+
+    db = get_db()
+    credit = db.execute(
+        "SELECT * FROM store_credits WHERE id = ?", (credit_id,)
+    ).fetchone()
+    if not credit:
+        flash("Store credit not found.", "error")
+        return redirect(url_for("store_credits"))
+
+    transactions = db.execute(
+        "SELECT * FROM credit_transactions WHERE credit_id = ? ORDER BY created_at DESC, id DESC",
+        (credit_id,),
+    ).fetchall()
+    return render_template(
+        "store_credit_receipt.html",
+        credit=credit,
+        transactions=transactions,
+    )
+
+
 @app.route("/store-credits/<int:credit_id>/delete", methods=["POST"])
 def delete_store_credit(credit_id):
     if not admin_authenticated():
