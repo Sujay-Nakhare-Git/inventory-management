@@ -12,6 +12,7 @@
         <a href="{{ url_for('edit_bill', bill_id=bill.id) }}" class="btn btn-outline">✏️ Edit Details</a>
         <a href="{{ url_for('bill_thermal_print', bill_id=bill.id) }}" class="btn btn-primary" target="_blank" rel="noopener">Print</a>
         <form method="POST" action="{{ url_for('delete_bill', bill_id=bill.id) }}" style="display:inline" onsubmit="return confirm('Delete this bill? Stock will be restored.')">
+        {{ csrf_token() }}
             <button type="submit" class="btn btn-danger">Delete Bill</button>
         </form>
         <a href="{{ url_for('bills_list') }}" class="btn btn-outline">← Back</a>
@@ -116,6 +117,7 @@
             <span class="badge badge-success">Deposit Returned: ₹{{ "%.2f"|format(bill.deposit_returned) }}</span>
             {% else %}
             <form method="POST" action="{{ url_for('return_rental_deposit', bill_id=bill.id) }}" target="_blank" style="display:inline;" onsubmit="return confirm('Return this rental deposit to the customer?')">
+        {{ csrf_token() }}
                 <button type="submit" class="btn btn-outline">↩ Return Deposit (₹{{ "%.2f"|format(bill.deposit_amount) }})</button>
             </form>
             {% endif %}

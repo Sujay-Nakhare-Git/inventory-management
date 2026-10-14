@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Quality Assessment — Gulmohar Boutique</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --critical: #dc2626;
+            --high: #f97316;
+            --medium: #eab308;
+            --low: #10b981;
+            --bg-light: #f9fafb;
+            --bg-dark: #111827;
+            --text-light: #1f2937;
+            --text-dark: #f3f4f6;
+            --border: #e5e7eb;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                color-scheme: dark;
+            }
+            body {
+                background-color: var(--bg-dark);
+                color: var(--text-dark);
+            }
+            .section { border-color: #374151; }
+            .finding { background-color: #1f2937; border-left-color: currentColor; }
+            .code-block { background-color: #111827; border-color: #374151; color: #d1d5db; }
+            a { color: #60a5fa; }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+            background-color: var(--bg-light);
+            color: var(--text-light);
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 0.5rem;
+        }
+
+        .header-meta {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        h3 {
+            font-size: 1.1rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .section {
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            background-color: white;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .section { background-color: #1f2937; }
+        }
+
+        .finding {
+            border-left: 4px solid;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.25rem;
+            background-color: #f9fafb;
+        }
+
+        .finding.critical { border-left-color: var(--critical); }
+        .finding.high { border-left-color: var(--high); }
+        .finding.medium { border-left-color: var(--medium); }
+        .finding.low { border-left-color: var(--low); }
+
+        .finding-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .finding-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-right: 0.5rem;
+        }
+
+        .badge-critical { background-color: var(--critical); color: white; }
+        .badge-high { background-color: var(--high); color: white; }
+        .badge-medium { background-color: var(--medium); color: #111827; }
+        .badge-low { background-color: var(--low); color: white; }
+
+        .finding-detail {
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .finding-detail strong {
+            color: var(--primary);
+        }
+
+        .code-block {
+            background-color: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            padding: 1rem;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            margin: 0.5rem 0;
+            line-height: 1.4;
+        }
+
+        .location {
+            font-size: 0.85rem;
+            color: #6b7280;
+            font-family: monospace;
+            margin-top: 0.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        th, td {
+            border: 1px solid var(--border);
+            padding: 0.75rem;
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: var(--bg-light);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+            background-color: white;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .stat-card { background-color: #1f2937; }
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #6b7280;
+            text-transform: uppercase;
+        }
+
+        .toc {
+            background-color: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+        }
+
+        .toc ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .toc li {
+            margin-bottom: 0.5rem;
+        }
+
+        .toc a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        .roadmap {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .roadmap-item {
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            background-color: white;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .roadmap-item { background-color: #1f2937; }
+        }
+
+        .roadmap-item h4 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+
+        .effort {
+            font-weight: 600;
+            color: var(--high);
+        }
+
+        .impact {
+            font-weight: 600;
+            color: var(--medium);
+        }
+
+        footer {
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.85rem;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Code Quality & Modularity Assessment</h1>
+<div class="header-meta">
+    <strong>Project:</strong> Gulmohar Boutique<br>
+    <strong>Date:</strong> September 29, 2026<br>
+    <strong>Scope:</strong> Backend (7 route modules, 5,480 LOC) + Frontend (42 templates, 6,383 LOC; billing.js 631 LOC)
+</div>
+
+<div class="toc section">
+    <h3>Contents</h3>
+    <ul>
+        <li><a href="#overview">Overview & Stats</a></li>
+        <li><a href="#critical">Critical Issues</a></li>
+        <li><a href="#backend">Backend Issues</a></li>
+        <li><a href="#frontend">Frontend Issues</a></li>
+        <li><a href="#roadmap">Implementation Roadmap</a></li>
+    </ul>
+</div>
+
+<section id="overview">
+<h2>Overview & Statistics</h2>
+
+<div class="stats">
+    <div class="stat-card">
+        <div class="stat-value">51</div>
+        <div class="stat-label">Timestamp Duplications</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">8</div>
+        <div class="stat-label">Store-Credit Copy-Pastes</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">40+</div>
+        <div class="stat-label">Admin Guard Repeats</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">137</div>
+        <div class="stat-label">Money Format Instances</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">850+</div>
+        <div class="stat-label">Inline Script LOC</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">0</div>
+        <div class="stat-label">Tests</div>
+    </div>
+</div>
+
+<p><strong>Summary:</strong> The codebase has strong feature separation across modules and good architectural boundaries (routes split by concern). However, it suffers from pervasive duplication of business logic, timestamps, and template scaffolding. Security gaps (CSRF, XSS) and error handling weaknesses (no transaction rollback, partial writes on failure) are the most urgent fixes. No test infrastructure exists.</p>
+
+<p><strong>Overall Assessment:</strong> <span class="badge-high" style="font-size: 0.85rem;">High Risk</span> — Suitable for single-user/small team. Not production-ready for scaling without addressing data-integrity issues and security gaps.</p>
+</section>
+
+<section id="critical">
+<h2>Critical Issues (Fix Immediately)</h2>
+
+<div class="finding critical">
+    <div class="finding-title"><span class="finding-badge badge-critical">Critical</span> CSRF Tokens Missing From All Forms</div>
+    <div class="finding-detail"><strong>Risk:</strong> Every state-changing operation (create bill, refund, delete product, edit expense) is vulnerable to Cross-Site Request Forgery.</div>
+    <div class="finding-detail"><strong>Scope:</strong> ~30 POST forms across all templates</div>
+    <div class="finding-detail"><strong>Impact:</strong> A malicious website can trick a logged-in user into creating unauthorized bills or deleting data.</div>
+    <div class="finding-detail"><strong>Fix:</strong> Enable Flask-WTF, add CSRF middleware to core.py, insert <code>{% csrf_token() %}</code> in all POST forms.</div>
+    <div class="location">Affects: All templates with form method="POST"</div>
+</div>
+
+<div class="finding critical">
+    <div class="finding-title"><span class="finding-badge badge-critical">Critical</span> Stored XSS in onclick Handlers</div>
+    <div class="finding-detail"><strong>Risk:</strong> User-controlled data (customer names, product SKUs) rendered into JavaScript event handlers without escaping.</div>
+    <div class="finding-detail"><strong>Examples:</strong></div>
+    <div class="code-block">store_credits.html:87-89
+onclick="setCredit('{{ credit.customer_name }}', {{ credit.id }})"
+
+inventory.html (API response)
+variantsList.innerHTML = variants.map(v =>
+    `<div>${v.name} / ${v.sku}</div>` // NOT ESCAPED
+).join('');</div>
+    <div class="finding-detail"><strong>Attack:</strong> If a customer name contains `'</button><script>alert('XSS')</script>`, it executes in the browser.</div>
+    <div class="finding-detail"><strong>Fix:</strong> Use <code>|tojson</code> filter in templates. In JS, use <code>escapeHtml()</code> before innerHTML.</div>
+    <div class="location">Affects: store_credits.html, categories.html, inventory.html</div>
+</div>
+
+<div class="finding critical">
+    <div class="finding-title"><span class="finding-badge badge-critical">Critical</span> No Transaction Rollback on Multi-Table Writes</div>
+    <div class="finding-detail"><strong>Risk:</strong> Complex operations write to 4–6 tables without explicit BEGIN/ROLLBACK. If one statement fails mid-flow, partial state corruption occurs.</div>
+    <div class="finding-detail"><strong>Examples:</strong></div>
+    <div class="code-block">delete_bill: writes to refunds, refund_items, bills, bill_items, products
+process_refund: writes to 5-6 tables with interdependent logic
+clean_all_data: deletes 6 tables AND files
+
+No rollback on any of these.</div>
+    <div class="finding-detail"><strong>Impact:</strong> A customer can have a refund recorded but stock not restored, creating inconsistency.</div>
+    <div class="finding-detail"><strong>Fix:</strong> Wrap multi-table operations in try/except with explicit <code>db.rollback()</code> on error.</div>
+    <div class="location">Affects: routes_sales.py, routes_inventory.py, routes_admin.py</div>
+</div>
+
+</section>
+
+<section id="backend">
+<h2>Backend Issues (Routes & Business Logic)</h2>
+
+<h3>Duplication & Code Reuse</h3>
+
+<div class="finding high">
+    <div class="finding-title"><span class="finding-badge badge-high">High</span> Timestamp Hardcoding (51 Occurrences)</div>
+    <div class="finding-detail"><strong>Issue:</strong> Every INSERT/UPDATE statement uses <code>datetime('now','+5 hours','+30 minutes')</code> directly instead of calling existing <code>now_ist()</code> helper.</div>
+    <div class="finding-detail"><strong>Impact:</strong> Any timezone/DST logic change requires edits across 6+ files.</div>
+    <div class="finding-detail"><strong>Fix:</strong> Replace all hardcoded datetime strings with <code>now_ist().isoformat()</code>.</div>
+    <div class="location">routes_sales.py, routes_inventory.py, routes_admin.py (23, 9, 8 occurrences respectively)</div>
+</div>
+
+<div class="finding high">
+    <div class="finding-title"><span class="finding-badge badge-high">High</span> Store-Credit Mutation Duplicated 8x</div>
+    <div class="finding-detail"><strong>Issue:</strong> Update credit balance + INSERT transaction record is copy-pasted verbatim across 8 locations.</div>
+    <div class="finding-detail"><strong>Impact:</strong> Any change to credit rules must be made in 8+ places. One forgotten location = inconsistent behavior.</div>
+    <div class="finding-detail"><strong>Fix:</strong> Extract a single function: <code>apply_store_credit(db, credit_id, bill_id, amount, txn_type, remarks)</code>.</div>
+    <div class="location">routes_sales.py (6x), routes_inventory.py (2x)</div>
+</div>
+
+<div class="finding high">
+    <div class="finding-title"><span class="finding-badge badge-high">High</span> Admin-Auth Guard Duplicated 40+ Times</div>
+    <div class="finding-detail"><strong>Issue:</strong> Every admin-only route repeats the same guard check instead of using a decorator.</div>
+    <div class="finding-detail"><strong>Impact:</strong> New admin routes risk forgetting the guard. Centralizing the check is impossible without a decorator.</div>
+    <div class="finding-detail"><strong>Fix:</strong> Create a <code>@require_admin()</code> decorator in core.py.</div>
+    <div class="location">All route files</div>
+</div>
+
+<h3>Business Logic & Architecture</h3>
+
+<div class="finding high">
+    <div class="finding-title"><span class="finding-badge badge-high">High</span> Four Giant Route Handlers (>200 Lines Each)</div>
+    <div class="finding-detail"><strong>Issue:</strong> create_bill (285 LOC), process_refund (234), profit_loss (225), daily_summary (180) each do 4+ unrelated things.</div>
+    <div class="finding-detail"><strong>Impact:</strong> Cannot test math separately from DB writes. Cannot reuse logic. Hard to debug.</div>
+    <div class="finding-detail"><strong>Fix:</strong> Extract business logic into service modules (billing_service.py, refund_service.py).</div>
+    <div class="location">routes_inventory.py, routes_sales.py, routes_reports.py</div>
+</div>
+
+<div class="finding high">
+    <div class="finding-title"><span class="finding-badge badge-high">High</span> No Input Validation Helper</div>
+    <div class="finding-detail"><strong>Issue:</strong> Float/int conversion scattered across 10+ routes without try/except. Bare key access causes 500 errors.</div>
+    <div class="finding-detail"><strong>Impact:</strong> Missing form key or non-numeric input → 500 error (unhelpful).</div>
+    <div class="finding-detail"><strong>Fix:</strong> Create validation helpers: <code>parse_amount(val, default=0)</code>, <code>parse_int(val, default=0)</code>.</div>
+    <div class="location">routes_sales.py, routes_inventory.py, routes_reports.py</div>
+</div>
+
+<h3>Database Performance</h3>
+
+<div class="finding high">
+    <div class="finding-title"><span class="finding-badge badge-high">High</span> N+1 Query Patterns (3 Locations)</div>
+    <div class="finding-detail"><strong>Issue:</strong> Queries execute in loops instead of a single JOINed query.</div>
+    <div class="finding-detail"><strong>Impact:</strong> O(n) round trips to DB. Full-year exports or large bulk operations timeout.</div>
+    <div class="location">routes_admin.py (low_stock_alerts, admin_sales_summary), routes_reports.py (export_sales)</div>
+</div>
+
+<h3>File Upload Security</h3>
+
+<div class="finding high">
+    <div class="finding-title"><span class="finding-badge badge-high">High</span> File Upload Vulnerabilities</div>
+    <div class="finding-detail"><strong>Risk 1:</strong> No MAX_CONTENT_LENGTH → unbounded uploads → disk exhaustion.</div>
+    <div class="finding-detail"><strong>Risk 2:</strong> Images saved before DB INSERT → orphaned files on error.</div>
+    <div class="finding-detail"><strong>Risk 3:</strong> Old image deleted before new validation → dangling paths.</div>
+    <div class="finding-detail"><strong>Risk 4:</strong> Only extension checked, not MIME type.</div>
+    <div class="finding-detail"><strong>Fix:</strong> Set MAX_CONTENT_LENGTH. Validate file in memory first, then save. Cleanup on error.</div>
+    <div class="location">core.py, routes_reports.py, routes_inventory.py</div>
+</div>
+
+</section>
+
+<section id="frontend">
+<h2>Frontend Issues (Templates & JavaScript)</h2>
+
+<h3>Template Duplication & Organization</h3>
+
+<div class="finding high">
+    <div class="finding-title"><span class="finding-badge badge-high">High</span> Receipt Logic Triplicated</div>
+    <div class="finding-detail"><strong>Issue:</strong> Nearly identical invoice rendering in bill_detail.html, bill_thermal.html, rental_deposit_return_receipt.html.</div>
+    <div class="finding-detail"><strong>Impact:</strong> Changes to invoice layout require edits in three places. Easy to diverge.</div>
+    <div class="finding-detail"><strong>Fix:</strong> Extract shared partials: _invoice_items_table.html, _invoice_totals.html.</div>
+</div>
+
+<div class="finding medium">
+    <div class="finding-title"><span class="finding-badge badge-medium">Medium</span> Page-Header Scaffold Duplicated ~40 Times</div>
+    <div class="finding-detail"><strong>Issue:</strong> Every template inlines its own page-header instead of using <code>{% include %}</code>.</div>
+    <div class="finding-detail"><strong>Impact:</strong> Change to header styling requires 40+ edits.</div>
+</div>
+
+<h3>JavaScript Modularity</h3>
+
+<div class="finding high">
+    <div class="finding-title"><span class="finding-badge badge-high">High</span> billing.js Unstructured (631 LOC, No Module Wrapper)</div>
+    <div class="finding-detail"><strong>Issue:</strong> Global scope pollution (cartItems, currentStoreCredit, etc.). All 30+ functions on window scope.</div>
+    <div class="finding-detail"><strong>Impact:</strong> No encapsulation. Name collisions. No testability.</div>
+    <div class="finding-detail"><strong>Fix:</strong> Wrap in ES6 module or class. Use BillingCart class to encapsulate state.</div>
+</div>
+
+<div class="finding high">
+    <div class="finding-title"><span class="finding-badge badge-high">High</span> 850+ Lines of Inline &lt;script&gt;</div>
+    <div class="finding-detail"><strong>Issue:</strong> Heavy inline scripts in templates (inventory.html ~319, product_form.html ~121).</div>
+    <div class="finding-detail"><strong>Impact:</strong> No linting, no minification, no caching. Poor performance.</div>
+</div>
+
+<h3>Formatting & Accessibility</h3>
+
+<div class="finding medium">
+    <div class="finding-title"><span class="finding-badge badge-medium">Medium</span> Money Formatting Ad-Hoc (137 Instances)</div>
+    <div class="finding-detail"><strong>Issue:</strong> No custom Jinja currency filter. Template strings sprinkled everywhere with inconsistent symbols (₹, Rs., Rs).</div>
+    <div class="finding-detail"><strong>Impact:</strong> Inconsistency. Changing format requires 137 edits.</div>
+    <div class="finding-detail"><strong>Fix:</strong> Create a Jinja filter: <code>{{ amount | currency }}</code>.</div>
+</div>
+
+<div class="finding medium">
+    <div class="finding-title"><span class="finding-badge badge-medium">Medium</span> Accessibility Gaps</div>
+    <div class="finding-detail"><strong>Issue:</strong> Icon-only buttons without aria-label. Many labels without for= attributes.</div>
+    <div class="finding-detail"><strong>Impact:</strong> Screen reader users cannot access forms or understand buttons.</div>
+</div>
+
+</section>
+
+<section id="roadmap">
+<h2>Implementation Roadmap</h2>
+
+<h3>Phase 1: Quick Wins (2–3 hours) — DO FIRST</h3>
+<div class="roadmap">
+    <div class="roadmap-item">
+        <h4>CSRF Tokens</h4>
+        <p><span class="effort">Effort:</span> 1h</p>
+        <p><span class="impact">Impact:</span> Critical</p>
+    </div>
+    <div class="roadmap-item">
+        <h4>Fix XSS in onclick</h4>
+        <p><span class="effort">Effort:</span> 1h</p>
+        <p><span class="impact">Impact:</span> Critical</p>
+    </div>
+    <div class="roadmap-item">
+        <h4>Extract Duplication</h4>
+        <p><span class="effort">Effort:</span> 2h</p>
+        <p><span class="impact">Impact:</span> High</p>
+    </div>
+</div>
+
+<h3>Phase 2: Data Integrity (6–8 hours) — BEFORE PRODUCTION</h3>
+<div class="roadmap">
+    <div class="roadmap-item">
+        <h4>Transaction Safety</h4>
+        <p><span class="effort">Effort:</span> 3h</p>
+        <p><span class="impact">Impact:</span> Critical</p>
+    </div>
+    <div class="roadmap-item">
+        <h4>Input Validation</h4>
+        <p><span class="effort">Effort:</span> 2h</p>
+        <p><span class="impact">Impact:</span> High</p>
+    </div>
+    <div class="roadmap-item">
+        <h4>File Upload Fixes</h4>
+        <p><span class="effort">Effort:</span> 2h</p>
+        <p><span class="impact">Impact:</span> High</p>
+    </div>
+    <div class="roadmap-item">
+        <h4>Extract Services</h4>
+        <p><span class="effort">Effort:</span> 4h</p>
+        <p><span class="impact">Impact:</span> High</p>
+    </div>
+</div>
+
+<h3>Phase 3: Code Quality (10–15 hours) — FUTURE MAINTENANCE</h3>
+<div class="roadmap">
+    <div class="roadmap-item">
+        <h4>Split core.py</h4>
+        <p><span class="effort">Effort:</span> 6h</p>
+        <p><span class="impact">Impact:</span> Medium</p>
+    </div>
+    <div class="roadmap-item">
+        <h4>Fix N+1 Queries</h4>
+        <p><span class="effort">Effort:</span> 3h</p>
+        <p><span class="impact">Impact:</span> Medium</p>
+    </div>
+    <div class="roadmap-item">
+        <h4>Modularize JS</h4>
+        <p><span class="effort">Effort:</span> 3h</p>
+        <p><span class="impact">Impact:</span> Medium</p>
+    </div>
+    <div class="roadmap-item">
+        <h4>Extract Partials</h4>
+        <p><span class="effort">Effort:</span> 3h</p>
+        <p><span class="impact">Impact:</span> Medium</p>
+    </div>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Phase</th>
+            <th>Priority</th>
+            <th>Effort</th>
+            <th>When</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Phase 1: Quick Wins</td>
+            <td>🔴 CRITICAL</td>
+            <td>2–3h</td>
+            <td>This week</td>
+        </tr>
+        <tr>
+            <td>Phase 2: Data Integrity</td>
+            <td>🔴 CRITICAL</td>
+            <td>6–8h</td>
+            <td>Next week</td>
+        </tr>
+        <tr>
+            <td>Phase 3: Code Quality</td>
+            <td>🟠 HIGH</td>
+            <td>10–15h</td>
+            <td>Sprint 2–3</td>
+        </tr>
+    </tbody>
+</table>
+
+</section>
+
+<footer>
+    <p>All findings mapped to specific file:line locations. Start with Phase 1 — CSRF and XSS fixes are security-critical and take under 2 hours combined.</p>
+</footer>
+
+</body>
+</html>

@@ -33,7 +33,7 @@ def login():
             if hmac.compare_digest(entered_hash, LEGACY_ADMIN_PASSWORD_HASH):
                 cursor = db.execute(
                     "INSERT INTO users (username, password_hash, is_superadmin, is_active, created_at) "
-                    "VALUES ('admin', ?, 1, 1, datetime('now','+5 hours','+30 minutes'))",
+                    "VALUES ('admin', ?, 1, 1, now_ist_db())",
                     (hash_password(password),),
                 )
                 db.commit()
@@ -45,7 +45,7 @@ def login():
             session["last_activity_ts"] = current_ts()
             g.pop("user", None)
             db.execute(
-                "UPDATE users SET last_login_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+                "UPDATE users SET last_login_at = now_ist_db() WHERE id = ?",
                 (authenticated_user_id,),
             )
             db.commit()
@@ -151,7 +151,7 @@ def add_user():
 
     cursor = db.execute(
         "INSERT INTO users (username, password_hash, is_superadmin, is_active, created_at) "
-        "VALUES (?, ?, 0, 1, datetime('now','+5 hours','+30 minutes'))",
+        "VALUES (?, ?, 0, 1, now_ist_db())",
         (username, hash_password(password)),
     )
     user_id = cursor.lastrowid

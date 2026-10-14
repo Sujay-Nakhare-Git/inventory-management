@@ -143,7 +143,7 @@ def sales_add():
                 UPDATE sales 
                 SET name = ?, description = ?, discount_percent = ?, 
                     start_date = ?, end_date = ?,
-                    updated_at = datetime('now','+5 hours','+30 minutes')
+                    updated_at = now_ist_db()
                 WHERE id = ?
                 """,
                 (name, description, discount_percent, start_date, end_date, int(sale_id)),
@@ -157,8 +157,8 @@ def sales_add():
                 """
                 INSERT INTO sales (name, description, discount_percent, start_date, end_date, 
                                    created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'), 
-                        datetime('now','+5 hours','+30 minutes'))
+                VALUES (?, ?, ?, ?, ?, now_ist_db(), 
+                        now_ist_db())
                 """,
                 (name, description, discount_percent, start_date, end_date),
             )
@@ -171,7 +171,7 @@ def sales_add():
                     pid = int(product_id)
                     db.execute(
                         "INSERT OR IGNORE INTO sale_products (sale_id, product_id, created_at) "
-                        "VALUES (?, ?, datetime('now','+5 hours','+30 minutes'))",
+                        "VALUES (?, ?, now_ist_db())",
                         (sale_id, pid),
                     )
                 except (TypeError, ValueError):

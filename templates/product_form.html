@@ -9,6 +9,7 @@
 
 <div class="card form-card">
     <form method="POST" enctype="multipart/form-data">
+        {{ csrf_token() }}
         <div class="form-grid">
             <div class="form-group">
                 <label for="sku">SKU <small style="color:#6b7280;">(auto-generated from category)</small></label>
@@ -110,6 +111,7 @@
                 <span style="color:#6b7280;">{{ v.sku or v.name }}</span>
                 <span class="badge {% if v.quantity <= 0 %}badge-danger{% else %}badge-success{% endif %}" style="font-size:0.75rem;">Qty: {{ v.quantity }}</span>
                 <form method="POST" action="{{ url_for('unlink_variant', product_id=v.id) }}" style="display:inline;" onsubmit="return confirm('Remove this product from the variant group?')">
+        {{ csrf_token() }}
                     <button type="submit" class="btn btn-sm btn-danger" style="padding:0.15rem 0.4rem;font-size:0.75rem;" title="Unlink this variant">✕</button>
                 </form>
             </div>
@@ -117,6 +119,7 @@
         </div>
     </div>
     <form method="POST" action="{{ url_for('unlink_variant', product_id=product.id) }}" style="display:inline;" onsubmit="return confirm('Remove this product from its variant group?')">
+        {{ csrf_token() }}
         <button type="submit" class="btn btn-sm btn-outline" style="margin-bottom:1rem;">Remove this product from group</button>
     </form>
     {% else %}
@@ -124,6 +127,7 @@
     {% endif %}
 
     <form method="POST" action="{{ url_for('link_variant', product_id=product.id) }}" style="display:flex;gap:0.5rem;align-items:flex-end;flex-wrap:wrap;">
+        {{ csrf_token() }}
         <div class="form-group" style="margin:0;flex:1;min-width:200px;">
             <label style="font-size:0.85rem;">Link another product as a size variant</label>
             <input type="text" name="link_product_id" class="input" placeholder="Enter SKU or Product ID" required style="margin-top:0.3rem;">

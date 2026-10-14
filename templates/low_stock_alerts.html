@@ -15,6 +15,7 @@
 <div class="card form-card" style="margin-bottom:1.5rem;">
     <h4 style="margin-bottom:0.75rem;">Add Alert</h4>
     <form method="POST" action="{{ url_for('add_low_stock_alert') }}">
+        {{ csrf_token() }}
         <div class="form-grid">
             <div class="form-group">
                 <label for="category_id">Category *</label>
@@ -79,6 +80,7 @@
                             onclick="openAlertEdit({{ a.id }})">Edit</button>
                         <form method="POST" action="{{ url_for('delete_low_stock_alert', alert_id=a.id) }}" style="display:inline;"
                             onsubmit="return confirm('Delete this low stock alert?')">
+        {{ csrf_token() }}
                             <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                         </form>
                     </td>
@@ -86,6 +88,7 @@
                 <tr id="alert-edit-{{ a.id }}" style="display:none;background:#f9fafb;">
                     <td colspan="6">
                         <form method="POST" action="{{ url_for('edit_low_stock_alert', alert_id=a.id) }}">
+        {{ csrf_token() }}
                             <div class="form-grid">
                                 <div class="form-group">
                                     <label>Category *</label>

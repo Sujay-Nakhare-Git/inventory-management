@@ -11,6 +11,7 @@
 <div class="card" style="margin-bottom:2rem;">
     <h3>Add New Store Credit</h3>
     <form method="POST" action="{{ url_for('add_store_credit') }}">
+        {{ csrf_token() }}
         <div class="form-grid">
             <div class="form-group">
                 <label>Customer Name *</label>
@@ -84,9 +85,10 @@
                 <td>
                     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
                         <a href="{{ url_for('credit_transactions', credit_id=credit.id) }}" class="btn btn-small btn-outline" title="View transactions">📊</a>
-                        <button type="button" class="btn btn-small btn-primary" onclick="openAddBalanceModal({{ credit.id }}, '{{ credit.customer_name }}')">➕ Add</button>
-                        <button type="button" class="btn btn-small" style="background:#f39c12;color:#fff;" onclick="openUseBalanceModal({{ credit.id }}, '{{ credit.customer_name }}', {{ credit.balance }})">💸 Use</button>
-                        <form method="POST" action="{{ url_for('delete_store_credit', credit_id=credit.id) }}" style="display:inline;" onsubmit="return confirm('Delete store credit for {{ credit.customer_name }}? This cannot be undone.');">
+                        <button type="button" class="btn btn-small btn-primary" onclick="openAddBalanceModal({{ credit.id }}, {{ credit.customer_name|tojson }})">➕ Add</button>
+                        <button type="button" class="btn btn-small" style="background:#f39c12;color:#fff;" onclick="openUseBalanceModal({{ credit.id }}, {{ credit.customer_name|tojson }}, {{ credit.balance }})">💸 Use</button>
+                        <form method="POST" action="{{ url_for('delete_store_credit', credit_id=credit.id) }}" style="display:inline;" onsubmit="return confirm('Delete store credit for ' + {{ credit.customer_name|tojson }} + '? This cannot be undone.');">
+        {{ csrf_token() }}
                             <button type="submit" class="btn btn-small" style="background:#e74c3c;color:#fff;">🗑️ Delete</button>
                         </form>
                     </div>
@@ -107,6 +109,7 @@
     <div style="background:#fff;border-radius:12px;padding:2rem;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
         <h3 style="margin-bottom:1rem;">➕ Add Balance</h3>
         <form id="addBalanceForm" method="POST" style="display:none;">
+        {{ csrf_token() }}
             <div class="form-group">
                 <label>Customer Name</label>
                 <input type="text" id="modalCustomerName" class="input" readonly style="background:#f8f9fa;cursor:default;">
@@ -132,6 +135,7 @@
     <div style="background:#fff;border-radius:12px;padding:2rem;max-width:430px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
         <h3 style="margin-bottom:1rem;">💸 Use Store Credit</h3>
         <form id="useBalanceForm" method="POST" style="display:none;">
+        {{ csrf_token() }}
             <div class="form-group">
                 <label>Customer Name</label>
                 <input type="text" id="useCustomerName" class="input" readonly style="background:#f8f9fa;cursor:default;">

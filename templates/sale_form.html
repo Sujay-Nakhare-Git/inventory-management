@@ -9,6 +9,7 @@
 
 <div class="card form-card">
     <form method="POST" action="{{ url_for('sales_add') }}">
+        {{ csrf_token() }}
         {% if sale %}
         <input type="hidden" name="sale_id" value="{{ sale.id }}">
         {% endif %}

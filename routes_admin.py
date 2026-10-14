@@ -100,57 +100,64 @@ def admin_sales_summary():
         return redirect(url_for("admin", next=url_for("admin_sales_summary")))
 
     db = get_db()
-    top_selling_category = db.execute(
-        "SELECT COALESCE(c.name, 'Uncategorized') as name, "
-        "COALESCE(SUM(bi.quantity), 0) as sold_qty, "
-        "COALESCE(SUM(bi.total_price), 0) as sold_amount "
-        "FROM bill_items bi "
-        "LEFT JOIN products p ON p.id = bi.product_id "
-        "LEFT JOIN categories c ON c.id = p.category_id "
-        "GROUP BY c.name "
-        "ORDER BY sold_qty DESC, sold_amount DESC "
-        "LIMIT 1"
+    # Get top selling category with cost
+    top_cat = db.execute(
+        """
+        SELECT COALESCE(c.name, 'Uncategorized') as name,
+               COALESCE(SUM(bi.quantity), 0) as sold_qty,
+               COALESCE(SUM(bi.total_price), 0) as sold_amount,
+               COALESCE(SUM(bi.quantity * p.cost_price), 0) as sold_cost
+        FROM bill_items bi
+        LEFT JOIN products p ON p.id = bi.product_id
+        LEFT JOIN categories c ON c.id = p.category_id
+        GROUP BY COALESCE(c.name, 'Uncategorized')
+        ORDER BY sold_qty DESC, sold_amount DESC
+        LIMIT 1
+        """
     ).fetchone()
+    top_selling_category = {
+        "name": top_cat["name"],
+        "sold_qty": top_cat["sold_qty"],
+        "sold_amount": top_cat["sold_amount"]
+    } if top_cat else {"name": "Uncategorized", "sold_qty": 0, "sold_amount": 0}
+    top_selling_category_cost = top_cat["sold_cost"] if top_cat else 0
 
-    top_selling_category_cost = db.execute(
-        "SELECT COALESCE(SUM(bi.quantity * p.cost_price), 0) as sold_cost "
-        "FROM bill_items bi "
-        "LEFT JOIN products p ON p.id = bi.product_id "
-        "LEFT JOIN categories c ON c.id = p.category_id "
-        "WHERE COALESCE(c.name, 'Uncategorized') = ?",
-        (top_selling_category["name"] if top_selling_category else "Uncategorized",),
-    ).fetchone()[0]
-
-    top_selling_size = db.execute(
-        "SELECT COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') as name, "
-        "COALESCE(SUM(bi.quantity), 0) as sold_qty, "
-        "COALESCE(SUM(bi.total_price), 0) as sold_amount "
-        "FROM bill_items bi "
-        "LEFT JOIN products p ON p.id = bi.product_id "
-        "GROUP BY COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') "
-        "ORDER BY sold_qty DESC, sold_amount DESC "
-        "LIMIT 1"
+    # Get top selling size with cost
+    top_size = db.execute(
+        """
+        SELECT COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') as name,
+               COALESCE(SUM(bi.quantity), 0) as sold_qty,
+               COALESCE(SUM(bi.total_price), 0) as sold_amount,
+               COALESCE(SUM(bi.quantity * p.cost_price), 0) as sold_cost
+        FROM bill_items bi
+        LEFT JOIN products p ON p.id = bi.product_id
+        GROUP BY COALESCE(NULLIF(TRIM(p.size), ''), 'No Size')
+        ORDER BY sold_qty DESC, sold_amount DESC
+        LIMIT 1
+        """
     ).fetchone()
+    top_selling_size = {
+        "name": top_size["name"],
+        "sold_qty": top_size["sold_qty"],
+        "sold_amount": top_size["sold_amount"]
+    } if top_size else {"name": "No Size", "sold_qty": 0, "sold_amount": 0}
+    top_selling_size_cost = top_size["sold_cost"] if top_size else 0
 
-    top_selling_size_cost = db.execute(
-        "SELECT COALESCE(SUM(bi.quantity * p.cost_price), 0) as sold_cost "
-        "FROM bill_items bi "
-        "LEFT JOIN products p ON p.id = bi.product_id "
-        "WHERE COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') = ?",
-        (top_selling_size["name"] if top_selling_size else "No Size",),
-    ).fetchone()[0]
-
+    # Get breakdown by category and size
     sales_breakdown = db.execute(
-        "SELECT COALESCE(c.name, 'Uncategorized') as category, "
-        "COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') as size, "
-        "COALESCE(SUM(bi.quantity), 0) as sold_qty, "
-        "COALESCE(SUM(bi.total_price), 0) as sold_amount, "
-        "COUNT(DISTINCT bi.bill_id) as bills_count "
-        "FROM bill_items bi "
-        "LEFT JOIN products p ON p.id = bi.product_id "
-        "LEFT JOIN categories c ON c.id = p.category_id "
-        "GROUP BY COALESCE(c.name, 'Uncategorized'), COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') "
-        "ORDER BY sold_qty DESC, sold_amount DESC, category, size"
+        """
+        SELECT COALESCE(c.name, 'Uncategorized') as category,
+               COALESCE(NULLIF(TRIM(p.size), ''), 'No Size') as size,
+               COALESCE(SUM(bi.quantity), 0) as sold_qty,
+               COALESCE(SUM(bi.total_price), 0) as sold_amount,
+               COALESCE(SUM(bi.quantity * p.cost_price), 0) as sold_cost,
+               COUNT(DISTINCT bi.bill_id) as bills_count
+        FROM bill_items bi
+        LEFT JOIN products p ON p.id = bi.product_id
+        LEFT JOIN categories c ON c.id = p.category_id
+        GROUP BY COALESCE(c.name, 'Uncategorized'), COALESCE(NULLIF(TRIM(p.size), ''), 'No Size')
+        ORDER BY sold_qty DESC, sold_amount DESC, category, size
+        """
     ).fetchall()
 
     return render_template(
@@ -196,37 +203,34 @@ def low_stock_alerts():
         return redirect(url_for("admin", next=url_for("low_stock_alerts")))
 
     db = get_db()
-    alerts = db.execute(
-        "SELECT a.id, a.category_id, a.size, a.threshold, c.name AS category_name "
-        "FROM low_stock_alerts a "
-        "LEFT JOIN categories c ON c.id = a.category_id "
-        "ORDER BY c.name, a.size"
+    # Fetch alert definitions with current stock levels in a single query
+    alert_rows_data = db.execute(
+        """
+        SELECT
+            a.id, a.category_id, a.size, a.threshold, c.name AS category_name,
+            COALESCE(SUM(p.quantity), 0) as current
+        FROM low_stock_alerts a
+        LEFT JOIN categories c ON c.id = a.category_id
+        LEFT JOIN products p ON p.category_id = a.category_id
+            AND (
+                (a.size != '' AND TRIM(p.size) = TRIM(a.size))
+                OR (a.size = '' AND (p.size IS NULL OR TRIM(p.size) = ''))
+            )
+        GROUP BY a.id, a.category_id, a.size, a.threshold, c.name
+        ORDER BY c.name, a.size
+        """
     ).fetchall()
 
-    # Attach current stock so the table can show how close each rule is.
     alert_rows = []
-    for alert in alerts:
-        size = alert["size"] or ""
-        if size:
-            current = db.execute(
-                "SELECT COALESCE(SUM(quantity), 0) FROM products "
-                "WHERE category_id = ? AND size = ?",
-                (alert["category_id"], size),
-            ).fetchone()[0]
-        else:
-            current = db.execute(
-                "SELECT COALESCE(SUM(quantity), 0) FROM products "
-                "WHERE category_id = ? AND (size IS NULL OR TRIM(size) = '')",
-                (alert["category_id"],),
-            ).fetchone()[0]
+    for row in alert_rows_data:
         alert_rows.append({
-            "id": alert["id"],
-            "category_id": alert["category_id"],
-            "category_name": alert["category_name"] or "Uncategorized",
-            "size": size,
-            "threshold": alert["threshold"],
-            "current": current,
-            "triggered": current <= alert["threshold"],
+            "id": row["id"],
+            "category_id": row["category_id"],
+            "category_name": row["category_name"] or "Uncategorized",
+            "size": row["size"] or "",
+            "threshold": row["threshold"],
+            "current": row["current"],
+            "triggered": row["current"] <= row["threshold"],
         })
 
     categories = db.execute("SELECT id, name FROM categories ORDER BY name").fetchall()
@@ -290,7 +294,7 @@ def add_low_stock_alert():
 
     db.execute(
         "INSERT INTO low_stock_alerts (category_id, size, threshold, created_at, updated_at) "
-        "VALUES (?, ?, ?, datetime('now','+5 hours','+30 minutes'), datetime('now','+5 hours','+30 minutes'))",
+        "VALUES (?, ?, ?, now_ist_db(), now_ist_db())",
         (category_id, size, threshold),
     )
     db.commit()
@@ -350,7 +354,7 @@ def edit_low_stock_alert(alert_id):
 
     db.execute(
         "UPDATE low_stock_alerts SET category_id = ?, size = ?, threshold = ?, "
-        "updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+        "updated_at = now_ist_db() WHERE id = ?",
         (category_id, size, threshold, alert_id),
     )
     db.commit()
@@ -419,7 +423,7 @@ def add_vendor():
 
     db.execute(
         "INSERT INTO vendors (name, contact_person, phone, email, address, notes, created_at, updated_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'), datetime('now','+5 hours','+30 minutes'))",
+        "VALUES (?, ?, ?, ?, ?, ?, now_ist_db(), now_ist_db())",
         (name, contact_person or None, phone or None, email or None, address or None, notes or None),
     )
     db.commit()
@@ -453,7 +457,7 @@ def edit_vendor(vendor_id):
 
     db.execute(
         "UPDATE vendors SET name = ?, contact_person = ?, phone = ?, email = ?, "
-        "address = ?, notes = ?, updated_at = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+        "address = ?, notes = ?, updated_at = now_ist_db() WHERE id = ?",
         (name, contact_person or None, phone or None, email or None, address or None, notes or None, vendor_id),
     )
     db.commit()
@@ -572,7 +576,7 @@ def edit_customer(customer_id):
         (name, phone, customer["phone"]),
     )
     db.execute(
-        "UPDATE customers SET name = ?, phone = ?, updated_at = datetime('now','+5 hours','+30 minutes') "
+        "UPDATE customers SET name = ?, phone = ?, updated_at = now_ist_db() "
         "WHERE id = ?",
         (name, phone, customer_id),
     )
@@ -750,7 +754,7 @@ def add_investment():
 
     db.execute(
         "INSERT INTO investments (description, amount, investment_date, created_at) "
-        "VALUES (?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
+        "VALUES (?, ?, ?, now_ist_db())",
         (description, amount, investment_date),
     )
     db.commit()

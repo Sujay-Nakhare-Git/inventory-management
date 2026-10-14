@@ -8,6 +8,7 @@
         <h2>Profit & Loss</h2>
         <p>This section is password protected. Enter the password to continue.</p>
         <form method="POST" action="{{ url_for('profit_loss') }}">
+        {{ csrf_token() }}
             <div class="form-group">
                 <input type="password" name="password" class="input" placeholder="Enter password" required autofocus>
             </div>
