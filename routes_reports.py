@@ -450,7 +450,7 @@ def profit_loss():
     ).fetchone()[0]
 
     gross_profit = revenue - cogs
-    net_profit = gross_profit - total_expenses
+    net_profit = revenue - total_expenses
     sales_minus_expenses = revenue - total_expenses_all
 
     selected_cost_total = round(selected_cost_total, 2)
@@ -681,5 +681,4 @@ def export_sales():
         mimetype="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
-
 
