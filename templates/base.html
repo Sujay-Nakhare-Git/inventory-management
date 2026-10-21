@@ -67,5 +67,129 @@
     </main>
 
     {% block scripts %}{% endblock %}
+    <script>
+    (() => {
+        if (document.body.classList.contains('print-receipt')) return;
+
+        const numericHeaders = /\b(qty|quantity|count|amount|total|value|profit|percent|price|stock|rank|bills|balance|products|discount|tax|rate|subtotal)\b|₹/i;
+        const dateHeaders = /\b(date|time|added|updated|login)\b/i;
+        const sizeHeaders = /\bsize\b/i;
+        const emptyValues = new Set(['', '—', '-', 'n/a', 'none']);
+        const clothingSizes = ['xxs', 'xs', 's', 'm', 'l', 'xl', 'xxl', '2xl', 'xxxl', '3xl', '4xl', '5xl'];
+
+        function valueFor(cell) {
+            const value = (cell.dataset.sortValue ?? cell.textContent).trim();
+            return emptyValues.has(value.toLowerCase()) ? '' : value;
+        }
+
+        function compareValues(a, b, type) {
+            if (!a || !b) return a === b ? 0 : (a ? -1 : 1);
+
+            if (type === 'number') {
+                const aNumericValue = a.replace(/[^\d.-]/g, '');
+                const bNumericValue = b.replace(/[^\d.-]/g, '');
+                const aNumber = aNumericValue ? Number(aNumericValue) : NaN;
+                const bNumber = bNumericValue ? Number(bNumericValue) : NaN;
+                if (Number.isFinite(aNumber) && Number.isFinite(bNumber)) {
+                    return aNumber - bNumber;
+                }
+            } else if (type === 'date') {
+                const aDate = Date.parse(a);
+                const bDate = Date.parse(b);
+                if (!Number.isNaN(aDate) && !Number.isNaN(bDate)) {
+                    return aDate - bDate;
+                }
+            } else if (type === 'size') {
+                const aSize = clothingSizes.indexOf(a.toLowerCase());
+                const bSize = clothingSizes.indexOf(b.toLowerCase());
+                if (aSize !== -1 || bSize !== -1) {
+                    return (aSize === -1 ? Number.MAX_SAFE_INTEGER : aSize)
+                        - (bSize === -1 ? Number.MAX_SAFE_INTEGER : bSize);
+                }
+            }
+
+            return a.localeCompare(b, undefined, {
+                numeric: true,
+                sensitivity: 'base'
+            });
+        }
+
+        document.querySelectorAll('table').forEach(table => {
+            if (table.querySelector('th.sortable')) return;
+            const tbody = table.tBodies[0];
+            const headerRow = table.tHead?.rows[table.tHead.rows.length - 1];
+            if (!tbody || !headerRow) return;
+
+            Array.from(headerRow.cells).forEach((header, column) => {
+                const label = header.textContent.trim();
+                if (!label || /\bactions?\b/i.test(label)
+                    || header.querySelector('input, a')) return;
+
+                header.classList.add('sortable');
+                header.tabIndex = 0;
+                header.setAttribute('role', 'button');
+                header.setAttribute('aria-label', `Sort by ${label}`);
+                header.style.cursor = 'pointer';
+                header.style.userSelect = 'none';
+
+                const icon = document.createElement('span');
+                icon.className = 'sort-icon';
+                icon.setAttribute('aria-hidden', 'true');
+                icon.textContent = ' ⇅';
+                header.appendChild(icon);
+
+                const sort = () => {
+                    const ascending = header.dataset.sortDirection !== 'ascending';
+                    header.dataset.sortDirection = ascending ? 'ascending' : 'descending';
+                    headerRow.querySelectorAll('th.sortable').forEach(item => {
+                        item.dataset.sortDirection = '';
+                        item.querySelector('.sort-icon').textContent = ' ⇅';
+                        item.setAttribute('aria-sort', 'none');
+                    });
+                    header.dataset.sortDirection = ascending ? 'ascending' : 'descending';
+                    icon.textContent = ascending ? ' ↑' : ' ↓';
+                    header.setAttribute('aria-sort', header.dataset.sortDirection);
+
+                    const type = dateHeaders.test(label)
+                        ? 'date'
+                        : sizeHeaders.test(label)
+                            ? 'size'
+                            : numericHeaders.test(label) || /\blife\b/i.test(label)
+                                ? 'number'
+                                : 'string';
+                    Array.from(table.tBodies).forEach(body => {
+                        const rows = Array.from(body.rows);
+                        const sortableRows = rows.filter(row =>
+                            !row.dataset.sortFixed && row.cells.length > column
+                        );
+                        const fixedRows = rows.filter(row =>
+                            row.dataset.sortFixed || row.cells.length <= column
+                        );
+                        sortableRows.sort((a, b) => {
+                            const aValue = valueFor(a.cells[column]);
+                            const bValue = valueFor(b.cells[column]);
+                            if (!aValue || !bValue) {
+                                return aValue === bValue ? 0 : (aValue ? -1 : 1);
+                            }
+                            const comparison = compareValues(aValue, bValue, type);
+                            return comparison === 0 || ascending
+                                ? comparison
+                                : -comparison;
+                        });
+                        [...sortableRows, ...fixedRows].forEach(row => body.appendChild(row));
+                    });
+                };
+
+                header.addEventListener('click', sort);
+                header.addEventListener('keydown', event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        sort();
+                    }
+                });
+            });
+        });
+    })();
+    </script>
 </body>
 </html>

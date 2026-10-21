@@ -67,7 +67,7 @@
             <thead>
                 <tr>
                     <th style="width:36px;"><input type="checkbox" id="selectAllProducts" title="Select all"></th>
-                    <th>Image</th>
+                    <th class="sortable" data-col="1" data-type="number">Image <span class="sort-icon">⇅</span></th>
                     <th class="sortable" data-col="2" data-type="string">SKU <span class="sort-icon">⇅</span></th>
                     <th class="sortable" data-col="3" data-type="string">Category <span class="sort-icon">⇅</span></th>
                     <th class="sortable" data-col="4" data-type="size">Size <span class="sort-icon">⇅</span></th>
@@ -76,7 +76,7 @@
                     <th class="sortable" data-col="7" data-type="number">Qty <span class="sort-icon">⇅</span></th>
                     <th class="sortable" data-col="8" data-type="string">Vendor <span class="sort-icon">⇅</span></th>
                     <th class="sortable" data-col="9" data-type="number">Product Life <span class="sort-icon">⇅</span></th>
-                    <th>Added On</th>
+                    <th class="sortable" data-col="10" data-type="string">Added On <span class="sort-icon">⇅</span></th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -86,7 +86,7 @@
                     <td>
                         <input type="checkbox" class="row-select" value="{{ p.id }}">
                     </td>
-                    <td>
+                    <td data-sort-value="{{ 1 if p.image_filename else 0 }}">
                         {% if p.image_filename %}
                         <button type="button" class="inventory-thumb-button image-preview-trigger" data-image-src="{{ url_for('static', filename='product_images/' ~ p.image_filename) }}" data-image-alt="{{ p.name }}" data-image-title="{{ p.name }}">
                             <img src="{{ url_for('static', filename='product_images/' ~ p.image_filename) }}"
@@ -125,7 +125,7 @@
                         —
                         {% endif %}
                     </td>
-                    <td style="font-size:0.82rem;color:#6b7280;white-space:nowrap;">{{ p.created_at | istdatetime if p.created_at else '—' }}</td>
+                    <td data-sort-value="{{ p.created_at or '' }}" style="font-size:0.82rem;color:#6b7280;white-space:nowrap;">{{ p.created_at | istdatetime if p.created_at else '—' }}</td>
                     <td class="actions">
                         <a href="{{ url_for('edit_product', product_id=p.id) }}" class="btn btn-sm">Edit</a>
                         <button type="button" class="btn btn-sm btn-outline bills-toggle" data-product-id="{{ p.id }}">Bills</button>
