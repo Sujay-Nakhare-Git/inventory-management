@@ -11,6 +11,9 @@
     <form method="POST" action="{{ url_for('sales_add') }}">
         {% if sale %}
         <input type="hidden" name="sale_id" value="{{ sale.id }}">
+        {% for product_id in unavailable_selected_product_ids|default([]) %}
+        <input type="hidden" name="products" value="{{ product_id }}">
+        {% endfor %}
         {% endif %}
 
         <div class="form-grid">
@@ -52,12 +55,12 @@
         <div style="margin-top:2rem;margin-bottom:1rem;">
             <h4>Select Products for this Sale</h4>
             <p style="font-size:0.875rem;color:#666;margin-bottom:1rem;">
-                Choose individual products or use category filters to select all products in a category.
+                Filter products by their details, then select them individually or add all visible products.
             </p>
         </div>
 
         <div class="card" style="background:#f8f9fa;margin-bottom:1.5rem;">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1rem;">
                 <div>
                     <label for="filter_category">Filter by Category</label>
                     <select id="filter_category" class="input">
@@ -67,28 +70,65 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div style="display:flex;align-items:flex-end;gap:0.5rem;">
-                    <button type="button" class="btn btn-sm btn-primary" onclick="selectByCategory()">
-                        Add All in Category
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline" onclick="clearAllProducts()">
-                        Clear All
-                    </button>
+                <div>
+                    <label for="filter_vendor">Filter by Vendor</label>
+                    <select id="filter_vendor" class="input">
+                        <option value="">All Vendors</option>
+                        <option value="none">No Vendor</option>
+                        {% for vendor in vendors %}
+                        <option value="{{ vendor.id }}">{{ vendor.name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
+                <div>
+                    <label for="filter_size">Filter by Size</label>
+                    <select id="filter_size" class="input">
+                        <option value="">All Sizes</option>
+                        {% for size in sizes %}
+                        <option value="{{ size }}">{{ size }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="filter_product_life">Filter by Product Life</label>
+                    <select id="filter_product_life" class="input">
+                        <option value="">All Product Life</option>
+                        {% for days in product_life_days %}
+                        <option value="{{ days }}">{{ days }} day{% if days != 1 %}s{% endif %}</option>
+                        {% endfor %}
+                        {% if products|selectattr('product_life_days', 'none')|list %}
+                        <option value="unknown">Unknown</option>
+                        {% endif %}
+                    </select>
+                </div>
+            </div>
+            <div style="display:flex;align-items:flex-end;gap:0.5rem;margin-bottom:1rem;">
+                <button type="button" class="btn btn-sm btn-primary" onclick="selectVisibleProducts()">
+                    Add All Visible Products
+                </button>
+                <button type="button" class="btn btn-sm btn-outline" onclick="clearAllProducts()">
+                    Clear All
+                </button>
             </div>
 
             <div style="max-height:400px;overflow-y:auto;border:1px solid #ddd;border-radius:4px;padding:1rem;">
                 <div id="products-list">
                     {% for product in products %}
-                    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;padding:0.75rem;background:white;border-radius:4px;border:1px solid #e0e0e0;">
+                    <div class="exhibition-product" data-category="{{ product.category_id or '' }}"
+                         data-vendor="{{ product.vendor_id or 'none' }}"
+                         data-size="{{ product.size.strip() if product.size else 'No Size' }}"
+                         data-life="{{ product.product_life_days if product.product_life_days is not none else 'unknown' }}"
+                         style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;padding:0.75rem;background:white;border-radius:4px;border:1px solid #e0e0e0;">
                         <input type="checkbox" name="products" value="{{ product.id }}" 
                                class="product-checkbox"
-                               data-category="{{ product.category_id or '' }}"
                                {% if selected_product_ids and product.id in selected_product_ids %}checked{% endif %}>
                         <div style="flex:1;">
                             <div><strong>{{ product.name }}</strong></div>
                             <div style="font-size:0.875rem;color:#666;">
-                                SKU: {{ product.sku or '—' }} | Size: {{ product.size or '—' }} | Stock: {{ product.quantity }}
+                                SKU: {{ product.sku or '—' }} | Size: {{ product.size or '—' }} |
+                                Vendor: {{ product.vendor_name or 'None' }} |
+                                Product Life: {% if product.product_life_days is not none %}{{ product.product_life_days }} day{% if product.product_life_days != 1 %}s{% endif %}{% else %}Unknown{% endif %} |
+                                Stock: {{ product.quantity }}
                             </div>
                         </div>
                     </div>
@@ -111,15 +151,26 @@
 </div>
 
 <script>
-function selectByCategory() {
-    const categoryId = document.getElementById('filter_category').value;
-    if (!categoryId) {
-        alert('Please select a category');
-        return;
-    }
-    
-    document.querySelectorAll('.product-checkbox[data-category="' + categoryId + '"]').forEach(cb => {
-        cb.checked = true;
+function applyProductFilters() {
+    const filters = {
+        category: document.getElementById('filter_category').value,
+        vendor: document.getElementById('filter_vendor').value,
+        size: document.getElementById('filter_size').value,
+        life: document.getElementById('filter_product_life').value
+    };
+    document.querySelectorAll('.exhibition-product').forEach(product => {
+        const matches = Object.entries(filters).every(([key, value]) =>
+            !value || product.dataset[key] === value
+        );
+        product.style.display = matches ? 'flex' : 'none';
+    });
+}
+
+function selectVisibleProducts() {
+    document.querySelectorAll('.exhibition-product').forEach(product => {
+        if (product.style.display !== 'none') {
+            product.querySelector('.product-checkbox').checked = true;
+        }
     });
     updateSelectedCount();
 }
@@ -132,7 +183,8 @@ function clearAllProducts() {
 }
 
 function updateSelectedCount() {
-    const count = document.querySelectorAll('.product-checkbox:checked').length;
+    const count = document.querySelectorAll('.product-checkbox:checked').length
+        + document.querySelectorAll('input[type="hidden"][name="products"]').length;
     document.getElementById('selected-count').textContent = count;
 }
 
@@ -140,6 +192,10 @@ function updateSelectedCount() {
 document.querySelectorAll('.product-checkbox').forEach(cb => {
     cb.addEventListener('change', updateSelectedCount);
 });
+['filter_category', 'filter_vendor', 'filter_size', 'filter_product_life'].forEach(id => {
+    document.getElementById(id).addEventListener('change', applyProductFilters);
+});
+applyProductFilters();
 updateSelectedCount();
 </script>
 

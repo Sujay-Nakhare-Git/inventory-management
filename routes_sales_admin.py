@@ -3,6 +3,32 @@
 from core import *  # noqa: F401,F403
 
 
+def _get_exhibition_product_options(db):
+    products = db.execute(
+        "SELECT p.id, p.name, p.category_id, p.vendor_id, p.sku, p.size, p.quantity, "
+        "c.name AS category_name, v.name AS vendor_name, "
+        "CASE WHEN p.created_at IS NOT NULL AND TRIM(p.created_at) != '' "
+        "THEN MAX(CAST(julianday('now','+5 hours','+30 minutes') - "
+        "julianday(p.created_at) AS INTEGER), 0) ELSE NULL END AS product_life_days "
+        "FROM products p "
+        "LEFT JOIN categories c ON p.category_id = c.id "
+        "LEFT JOIN vendors v ON p.vendor_id = v.id "
+        "WHERE COALESCE(p.quantity, 0) >= 1 ORDER BY p.name"
+    ).fetchall()
+    categories = db.execute("SELECT id, name FROM categories ORDER BY name").fetchall()
+    vendors = db.execute("SELECT id, name FROM vendors ORDER BY name").fetchall()
+    sizes = sorted({
+        (product["size"] or "").strip() or "No Size"
+        for product in products
+    }, key=str.casefold)
+    product_life_days = sorted({
+        product["product_life_days"]
+        for product in products
+        if product["product_life_days"] is not None
+    })
+    return products, categories, vendors, sizes, product_life_days
+
+
 # ── Sales/Exhibition ─────────────────────────────────────────────────────────
 @app.route("/admin/sales", methods=["GET"])
 def sales_list():
@@ -46,15 +72,17 @@ def sales_create_form():
         return redirect(url_for("admin", next=url_for("sales_create_form")))
 
     db = get_db()
-    categories = db.execute("SELECT id, name FROM categories ORDER BY name").fetchall()
-    products = db.execute(
-        "SELECT id, name, category_id, sku, size, quantity FROM products ORDER BY name"
-    ).fetchall()
+    products, categories, vendors, sizes, product_life_days = (
+        _get_exhibition_product_options(db)
+    )
 
     return render_template(
         "sale_form.html",
         sale=None,
         categories=categories,
+        vendors=vendors,
+        sizes=sizes,
+        product_life_days=product_life_days,
         products=products,
     )
 
@@ -78,17 +106,29 @@ def sales_edit_form(sale_id):
             "SELECT product_id FROM sale_products WHERE sale_id = ?", (sale_id,)
         ).fetchall()
     ]
+    unavailable_selected_product_ids = [
+        row["product_id"]
+        for row in db.execute(
+            "SELECT sp.product_id FROM sale_products sp "
+            "JOIN products p ON p.id = sp.product_id "
+            "WHERE sp.sale_id = ? AND COALESCE(p.quantity, 0) < 1",
+            (sale_id,),
+        ).fetchall()
+    ]
 
-    categories = db.execute("SELECT id, name FROM categories ORDER BY name").fetchall()
-    products = db.execute(
-        "SELECT id, name, category_id, sku, size, quantity FROM products ORDER BY name"
-    ).fetchall()
+    products, categories, vendors, sizes, product_life_days = (
+        _get_exhibition_product_options(db)
+    )
 
     return render_template(
         "sale_form.html",
         sale=sale,
         selected_product_ids=sale_product_ids,
+        unavailable_selected_product_ids=unavailable_selected_product_ids,
         categories=categories,
+        vendors=vendors,
+        sizes=sizes,
+        product_life_days=product_life_days,
         products=products,
     )
 
