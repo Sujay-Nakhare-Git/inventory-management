@@ -1233,6 +1233,19 @@ textarea.input { resize: vertical; }
 
 .exchange-select { min-width: 280px !important; }
 
+.exchange-discount {
+    flex: 1 1 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    background: #fff;
+    border: 1px dashed var(--gray-300, #ccc);
+}
+
+.exchange-discount-inputs { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+
+.exchange-summary { margin-top: 0.75rem; font-size: 0.9rem; line-height: 1.6; }
+.exchange-summary strong { display: block; margin-top: 0.25rem; font-size: 1rem; }
+
 @media (max-width: 768px) {
     .refund-item-row { flex-direction: column; }
     .refund-item-controls { flex-direction: column; }

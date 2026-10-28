@@ -23,7 +23,7 @@
         <h3 class="card-title">Select Items for Refund / Exchange</h3>
         <div class="refund-items">
             {% for item in items %}
-            <div class="refund-item-row" id="row_{{ item.id }}">
+            <div class="refund-item-row" id="row_{{ item.id }}" data-unit-price="{{ item.unit_price }}" data-max-qty="{{ item.quantity }}">
                 <div class="refund-item-info">
                     <strong>{{ item.product_name }}</strong>
                     <span class="product-meta">Qty: {{ item.quantity }} × ₹{{ "%.2f"|format(item.unit_price) }} = ₹{{ "%.2f"|format(item.total_price) }}</span>
@@ -42,18 +42,35 @@
 
                     <div class="form-group">
                         <label>Qty to Return</label>
-                        <input type="number" name="qty_{{ item.id }}" class="input input-sm" value="{{ item.quantity }}" min="1" max="{{ item.quantity }}">
+                        <input type="number" name="qty_{{ item.id }}" class="input input-sm" value="{{ item.quantity }}" min="1" max="{{ item.quantity }}" oninput="updateAllExchangeSummaries()">
                     </div>
 
                     <div class="form-group exchange-select" id="exchange_{{ item.id }}" style="display:none;">
                         <label>Exchange For</label>
-                        <select name="exchange_{{ item.id }}" class="input">
-                            <option value="">Select product...</option>
+                        <select name="exchange_{{ item.id }}" class="input" onchange="updateExchangeSummary({{ item.id }})">
+                            <option value="" data-price="0">Select product...</option>
                             {% for p in products %}
-                            <option value="{{ p.id }}">{{ p.name }} — ₹{{ "%.2f"|format(p.selling_price) }} (Stock: {{ p.quantity }})</option>
+                            <option value="{{ p.id }}" data-price="{{ p.selling_price }}">{{ p.name }} — ₹{{ "%.2f"|format(p.selling_price) }} (Stock: {{ p.quantity }})</option>
                             {% endfor %}
                         </select>
                     </div>
+                </div>
+
+                <div class="exchange-discount" id="exchange_discount_{{ item.id }}" style="display:none;">
+                    <div class="exchange-discount-inputs">
+                        <div class="form-group">
+                            <label>Extra Discount</label>
+                            <select name="exchange_discount_type_{{ item.id }}" class="input" onchange="updateExchangeSummary({{ item.id }})">
+                                <option value="percent">Percent (%)</option>
+                                <option value="amount">Amount (₹)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Discount Value</label>
+                            <input type="number" name="exchange_discount_{{ item.id }}" class="input input-sm" value="0" min="0" step="0.01" oninput="updateExchangeSummary({{ item.id }})">
+                        </div>
+                    </div>
+                    <div class="exchange-summary" id="exchange_summary_{{ item.id }}"></div>
                 </div>
             </div>
             {% endfor %}
@@ -92,7 +109,61 @@
 function toggleExchange(itemId, action) {
     const el = document.getElementById('exchange_' + itemId);
     el.style.display = action === 'exchange' ? 'flex' : 'none';
+    document.getElementById('exchange_discount_' + itemId).style.display = action === 'exchange' ? 'block' : 'none';
     updateStoreCreditSection();
+    updateAllExchangeSummaries();
+}
+
+const BILL_DISCOUNT_RATIO = {{ (bill.discount_amount / bill.subtotal) if bill.subtotal else 0 }};
+const fmt = n => '₹' + n.toFixed(2);
+
+function isFullReturn() {
+    let full = true;
+    document.querySelectorAll('.refund-item-row').forEach(row => {
+        const id = row.id.replace('row_', '');
+        const action = document.querySelector(`[name="action_${id}"]`).value;
+        const qty = parseInt(document.querySelector(`[name="qty_${id}"]`).value || 0, 10);
+        if (action === 'keep' || qty !== parseInt(row.dataset.maxQty, 10)) full = false;
+    });
+    return full;
+}
+
+function updateExchangeSummary(itemId, fullReturn) {
+    if (fullReturn === undefined) fullReturn = isFullReturn();
+    const row = document.getElementById('row_' + itemId);
+    const box = document.getElementById('exchange_summary_' + itemId);
+    const select = document.querySelector(`[name="exchange_${itemId}"]`);
+    const price = parseFloat(select.selectedOptions[0].dataset.price || 0);
+    if (!select.value) { box.innerHTML = ''; return; }
+
+    const qty = Math.min(Math.max(parseInt(document.querySelector(`[name="qty_${itemId}"]`).value || 0, 10), 0), parseInt(row.dataset.maxQty, 10));
+    const type = document.querySelector(`[name="exchange_discount_type_${itemId}"]`).value;
+    const value = Math.max(parseFloat(document.querySelector(`[name="exchange_discount_${itemId}"]`).value || 0), 0);
+
+    const unit = parseFloat(row.dataset.unitPrice);
+    const returned = Math.round(unit * (fullReturn ? 1 - BILL_DISCOUNT_RATIO : 1) * qty * 100) / 100;
+    const line = Math.round(price * qty * 100) / 100;
+    const discount = Math.round(Math.min(type === 'amount' ? value : line * Math.min(value, 100) / 100, line) * 100) / 100;
+    const net = Math.round((line - discount) * 100) / 100;
+    const diff = Math.round((net - returned) * 100) / 100;
+
+    let result;
+    if (diff > 0) result = `<strong>Customer pays: ${fmt(diff)}</strong>`;
+    else if (diff < 0) result = `<strong>Store credit to customer: ${fmt(-diff)}</strong>`;
+    else result = '<strong>Even exchange — nothing to pay</strong>';
+
+    box.innerHTML =
+        `<div>New product (${qty} × ${fmt(price)}): ${fmt(line)}</div>` +
+        `<div>Discount: −${fmt(discount)}</div>` +
+        `<div>Net exchange value: ${fmt(net)}</div>` +
+        `<div>Returned item value: −${fmt(returned)}</div>` + result;
+}
+
+function updateAllExchangeSummaries() {
+    const full = isFullReturn();
+    document.querySelectorAll('.exchange-discount').forEach(el => {
+        if (el.style.display !== 'none') updateExchangeSummary(el.id.replace('exchange_discount_', ''), full);
+    });
 }
 
 function updateStoreCreditSection() {

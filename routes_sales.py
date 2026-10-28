@@ -847,17 +847,30 @@ def process_refund():
             exchange_unit_price = exchange_product["selling_price"]
             exchange_line_total = round(exchange_unit_price * qty, 2)
 
-            # Cheaper exchanges become store credit; the replacement bill is created below.
-            # For full returns, use effective (discounted) price; for partial returns, use full unit price
-            if is_full_return:
-                effective_unit_price = bi["unit_price"] * (1 - discount_per_unit)
-                price_diff = effective_unit_price - exchange_unit_price
+            # Optional extra discount on the new product (percent or flat rupees)
+            discount_type = request.form.get(f"exchange_discount_type_{bi['id']}", "percent")
+            try:
+                discount_value = float(request.form.get(f"exchange_discount_{bi['id']}") or 0)
+            except ValueError:
+                discount_value = 0.0
+            if discount_value < 0:
+                discount_value = 0.0
+            if discount_type == "amount":
+                extra_discount = discount_value
             else:
-                price_diff = bi["unit_price"] - exchange_unit_price
-            if price_diff > 0:
-                store_credit_refund += round(price_diff * qty, 2)
-            elif exchange_line_total > item_refund:
-                replacement_discount_amount = round(item_refund, 2)
+                extra_discount = exchange_line_total * min(discount_value, 100) / 100
+            extra_discount = round(min(extra_discount, exchange_line_total), 2)
+            net_exchange_total = round(exchange_line_total - extra_discount, 2)
+
+            # Cheaper exchanges become store credit; the replacement bill is created below.
+            # Returned item value (item_refund) already reflects the full-return bill discount.
+            if net_exchange_total < item_refund:
+                store_credit_refund += round(item_refund - net_exchange_total, 2)
+                replacement_discount_amount = extra_discount
+            elif net_exchange_total > item_refund:
+                replacement_discount_amount = round(item_refund + extra_discount, 2)
+            else:
+                replacement_discount_amount = extra_discount
 
         processed_items.append({
             "product_id": bi["product_id"],
