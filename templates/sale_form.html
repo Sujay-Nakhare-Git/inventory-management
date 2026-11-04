@@ -101,6 +101,14 @@
                         {% endif %}
                     </select>
                 </div>
+                <div>
+                    <label for="filter_status">Filter by Product Status</label>
+                    <select id="filter_status" class="input">
+                        <option value="">All Products</option>
+                        <option value="in-stock">In Stock</option>
+                        <option value="sold">Sold Out</option>
+                    </select>
+                </div>
             </div>
             <div style="display:flex;align-items:flex-end;gap:0.5rem;margin-bottom:1rem;">
                 <button type="button" class="btn btn-sm btn-primary" onclick="selectVisibleProducts()">
@@ -118,6 +126,7 @@
                          data-vendor="{{ product.vendor_id or 'none' }}"
                          data-size="{{ product.size.strip() if product.size else 'No Size' }}"
                          data-life="{{ product.product_life_days if product.product_life_days is not none else 'unknown' }}"
+                        data-status="{{ 'sold' if product.is_sold_out else 'in-stock' }}"
                          style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;padding:0.75rem;background:white;border-radius:4px;border:1px solid #e0e0e0;">
                         <input type="checkbox" name="products" value="{{ product.id }}" 
                                class="product-checkbox"
@@ -128,7 +137,7 @@
                                 SKU: {{ product.sku or '—' }} | Size: {{ product.size or '—' }} |
                                 Vendor: {{ product.vendor_name or 'None' }} |
                                 Product Life: {% if product.product_life_days is not none %}{{ product.product_life_days }} day{% if product.product_life_days != 1 %}s{% endif %}{% else %}Unknown{% endif %} |
-                                Stock: {{ product.quantity }}
+                                Stock: {{ product.quantity }}{% if product.is_sold_out %} (Sold Out){% endif %}
                             </div>
                         </div>
                     </div>
@@ -156,7 +165,8 @@ function applyProductFilters() {
         category: document.getElementById('filter_category').value,
         vendor: document.getElementById('filter_vendor').value,
         size: document.getElementById('filter_size').value,
-        life: document.getElementById('filter_product_life').value
+        life: document.getElementById('filter_product_life').value,
+        status: document.getElementById('filter_status').value
     };
     document.querySelectorAll('.exhibition-product').forEach(product => {
         const matches = Object.entries(filters).every(([key, value]) =>
@@ -192,7 +202,7 @@ function updateSelectedCount() {
 document.querySelectorAll('.product-checkbox').forEach(cb => {
     cb.addEventListener('change', updateSelectedCount);
 });
-['filter_category', 'filter_vendor', 'filter_size', 'filter_product_life'].forEach(id => {
+['filter_category', 'filter_vendor', 'filter_size', 'filter_product_life', 'filter_status'].forEach(id => {
     document.getElementById(id).addEventListener('change', applyProductFilters);
 });
 applyProductFilters();
