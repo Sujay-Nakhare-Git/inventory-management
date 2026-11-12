@@ -63,7 +63,7 @@
                     <td>{{ b.customer_name }}</td>
                     <td>{{ b.customer_phone }}</td>
                     <td>₹{{ "%.2f"|format(b.subtotal) }}</td>
-                    <td>{% if b.total_discount_amount > 0 %}-₹{{ "%.2f"|format(b.total_discount_amount) }}{% else %}—{% endif %}</td>
+                    <td>{% if b.total_discount_amount > 0 %}₹{{ "%.2f"|format(b.total_discount_amount) }}{% else %}—{% endif %}</td>
                     <td>{% if b.tax_amount > 0 %}+₹{{ "%.2f"|format(b.tax_amount) }}{% else %}—{% endif %}</td>
                     <td><strong>₹{{ "%.2f"|format(b.total) }}</strong></td>
                     <td><span class="badge badge-info">{{ b.payment_method }}</span></td>
