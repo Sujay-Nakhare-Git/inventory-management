@@ -71,6 +71,73 @@
     {% block scripts %}{% endblock %}
     <script>
     (() => {
+        const currencyPattern = /((?:₹|Rs\.?\s*))(-?\d[\d,]*(?:\.\d+)?)/g;
+
+        function formatIndianNumber(value) {
+            const numericValue = Number(value.replace(/,/g, ''));
+            if (!Number.isFinite(numericValue)) return null;
+
+            const fractionDigits = value.split('.')[1]?.length ?? 0;
+            return new Intl.NumberFormat('en-IN', {
+                minimumFractionDigits: fractionDigits,
+                maximumFractionDigits: fractionDigits
+            }).format(numericValue);
+        }
+
+        function isMonetaryCell(node) {
+            const cell = node.parentElement.closest('td');
+            const table = cell?.closest('table');
+            const headerRow = table?.tHead?.rows[table.tHead.rows.length - 1];
+            const header = headerRow?.cells[cell?.cellIndex]?.textContent ?? '';
+            return /₹|\b(price|cost|amt|amount|subtotal|balance|revenue|profit|discount|tax|deposit|rent|credit|paid)\b/i.test(header);
+        }
+
+        function formatCurrencyText(node) {
+            const parent = node.parentElement;
+            if (!parent || parent.closest('script, style, textarea, [contenteditable]')) return;
+
+            const formatted = node.nodeValue.replace(currencyPattern, (match, prefix, value) => {
+                const number = formatIndianNumber(value);
+                return number === null ? match : `${prefix}${number}`;
+            });
+
+            if (formatted !== node.nodeValue) {
+                node.nodeValue = formatted;
+                return;
+            }
+
+            if (isMonetaryCell(node)) {
+                const match = formatted.match(/^(\s*)(-?\d[\d,]*(?:\.\d+)?)(\s*)$/);
+                const number = match ? formatIndianNumber(match[2]) : null;
+                if (match && number !== null && number !== match[2]) {
+                    node.nodeValue = `${match[1]}${number}${match[3]}`;
+                }
+            }
+        }
+
+        function formatNode(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                formatCurrencyText(node);
+                return;
+            }
+            if (node.nodeType !== Node.ELEMENT_NODE
+                || node.matches('script, style, textarea, [contenteditable]')) return;
+
+            const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+            while (walker.nextNode()) formatCurrencyText(walker.currentNode);
+        }
+
+        formatNode(document.body);
+        new MutationObserver(mutations => {
+            mutations.forEach(mutation => {
+                if (mutation.type === 'characterData') formatNode(mutation.target);
+                mutation.addedNodes.forEach(formatNode);
+            });
+        }).observe(document.body, { childList: true, characterData: true, subtree: true });
+    })();
+    </script>
+    <script>
+    (() => {
         if (document.body.classList.contains('print-receipt')) return;
 
         const numericHeaders = /\b(qty|quantity|count|amount|total|value|profit|percent|price|stock|rank|bills|balance|products|discount|tax|rate|subtotal)\b|₹/i;

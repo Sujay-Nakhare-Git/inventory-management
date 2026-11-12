@@ -361,6 +361,8 @@ function calculateTotals() {
     const taxPct = parseFloat(document.getElementById('taxPercent').value) || 0;
 
     const discountAmt = round2(Math.min(Math.max(0, discountInput), subtotal));
+    const itemDiscountAmt = round2(cartItems.reduce((sum, item) => sum + item.discount_amount, 0));
+    const totalDiscountAmt = round2(discountAmt + itemDiscountAmt);
     const afterDiscount = subtotal - discountAmt;
     const taxAmt = round2(afterDiscount * taxPct / 100);
 
@@ -371,7 +373,7 @@ function calculateTotals() {
     }
 
     const total = Math.max(0, round2(afterDiscount + taxAmt - storeCreditAmt));
-    return { subtotal, discountAmt, taxPct, taxAmt, storeCreditAmt, total };
+    return { subtotal, discountAmt, totalDiscountAmt, taxPct, taxAmt, storeCreditAmt, total };
 }
 
 function getPaymentBreakdownPayload(totalAmount) {
@@ -417,12 +419,12 @@ function recalculate() {
     const totals = calculateTotals();
 
     document.getElementById('subtotal').textContent = `₹${totals.subtotal.toFixed(2)}`;
-    document.getElementById('discountAmount').textContent = `-₹${totals.discountAmt.toFixed(2)}`;
+    document.getElementById('discountAmount').textContent = `-₹${totals.totalDiscountAmt.toFixed(2)}`;
     document.getElementById('taxAmount').textContent = `+₹${totals.taxAmt.toFixed(2)}`;
     document.getElementById('totalAmount').textContent = `₹${totals.total.toFixed(2)}`;
     document.getElementById('storeCreditUsed').textContent = `-₹${totals.storeCreditAmt.toFixed(2)}`;
 
-    document.getElementById('discountRow').style.display = totals.discountAmt > 0 ? 'flex' : 'none';
+    document.getElementById('discountRow').style.display = totals.totalDiscountAmt > 0 ? 'flex' : 'none';
     document.getElementById('taxRow').style.display = totals.taxPct > 0 ? 'flex' : 'none';
     document.getElementById('storeCreditRow').style.display = totals.storeCreditAmt > 0 ? 'flex' : 'none';
 

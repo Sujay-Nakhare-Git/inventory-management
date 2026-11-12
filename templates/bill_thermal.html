@@ -133,7 +133,7 @@
         <div class="row"><span>Pay</span><span>{{ bill.payment_method }}</span></div>
         {% if payment_breakdown and payment_breakdown|length > 1 %}
         {% for part in payment_breakdown %}
-        <div class="row"><span>{{ part.method }}</span><span>{{ "%.2f"|format(part.amount) }}</span></div>
+        <div class="row"><span>{{ part.method }}</span><span>Rs.{{ "%.2f"|format(part.amount) }}</span></div>
         {% endfor %}
         {% endif %}
 
@@ -151,11 +151,11 @@
         <div class="left">Rental Details</div>
         <div class="line"></div>
             <div class="row"><span>Days</span><span>{{ bill.rental_days }}</span></div>
-            <div class="row"><span>Rent/Day</span><span>{{ "%.2f"|format(bill.rent_amount) }}</span></div>
-            <div class="row"><span>Total Rental Charges</span><span>{{ "%.2f"|format(bill.total - bill.deposit_amount) }}</span></div>
-        <div class="row"><span>Deposit Amount</span><span>{{ "%.2f"|format(bill.deposit_amount) }}</span></div>
+            <div class="row"><span>Rent/Day</span><span>Rs.{{ "%.2f"|format(bill.rent_amount) }}</span></div>
+            <div class="row"><span>Total Rental Charges</span><span>Rs.{{ "%.2f"|format(bill.total - bill.deposit_amount) }}</span></div>
+        <div class="row"><span>Deposit Amount</span><span>Rs.{{ "%.2f"|format(bill.deposit_amount) }}</span></div>
         {% if bill.deposit_returned and bill.deposit_returned > 0 %}
-        <div class="row"><span>Deposit Returned</span><span>-{{ "%.2f"|format(bill.deposit_returned) }}</span></div>
+        <div class="row"><span>Deposit Returned</span><span>-Rs.{{ "%.2f"|format(bill.deposit_returned) }}</span></div>
         {% endif %}
         {% else %}
         <table>
@@ -178,7 +178,7 @@
                     </td>
                     <td class="right">{{ item.item_size or '-' }}</td>
                     <td class="right">{{ item.quantity }}</td>
-                    <td class="right">{{ "%.2f"|format(item.total_price) }}</td>
+                    <td class="right">Rs.{{ "%.2f"|format(item.total_price) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -193,13 +193,13 @@
         <div class="t-row"><span>Rental Charges</span><span>Rs.{{ "%.2f"|format(bill.total - bill.deposit_amount) }}</span></div>
         {% else %}
         {% if bill.discount_amount > 0 %}
-        <div class="row"><span>{% if bill.payment_method == 'Exchange' %}Replacement value/Store Credit discount{% else %}Disc (₹){% endif %}</span><span>-{{ "%.2f"|format(bill.discount_amount) }}</span></div>
+        <div class="row"><span>{% if bill.payment_method == 'Exchange' %}Replacement value/Store Credit discount{% else %}Disc (₹){% endif %}</span><span>-Rs.{{ "%.2f"|format(bill.discount_amount) }}</span></div>
         {% endif %}
         {% if bill.tax_amount > 0 %}
-        <div class="row"><span>Tax {{ bill.tax_percent }}%</span><span>+{{ "%.2f"|format(bill.tax_amount) }}</span></div>
+        <div class="row"><span>Tax {{ bill.tax_percent }}%</span><span>+Rs.{{ "%.2f"|format(bill.tax_amount) }}</span></div>
         {% endif %}
         {% if bill.store_credit_used and bill.store_credit_used > 0 %}
-        <div class="row"><span>Store Credit</span><span>-{{ "%.2f"|format(bill.store_credit_used) }}</span></div>
+        <div class="row"><span>Store Credit</span><span>-Rs.{{ "%.2f"|format(bill.store_credit_used) }}</span></div>
         {% endif %}
         {% endif %}
 
