@@ -19,7 +19,11 @@ def bills_list():
         except ValueError:
             selected_month = ""
     
-    query = "SELECT * FROM bills WHERE 1=1"
+    query = (
+        "SELECT b.*, COALESCE(b.discount_amount, 0) + COALESCE(("
+        "SELECT SUM(bi.discount_amount) FROM bill_items bi WHERE bi.bill_id = b.id"
+        "), 0) AS total_discount_amount FROM bills b WHERE 1=1"
+    )
     params = []
     
     if search:

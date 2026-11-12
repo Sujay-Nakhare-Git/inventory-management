@@ -92,11 +92,11 @@
                 <span id="subtotal">₹0.00</span>
             </div>
             <div class="summary-row">
-                <label>Discount (₹)</label>
+                <label>Additional Bill Discount (₹)</label>
                 <input type="number" id="discountAmountInput" class="input input-sm" value="0" min="0" step="0.01" onchange="onDiscountAmountChange()">
             </div>
             <div class="summary-row">
-                <label>Discount (%)</label>
+                <label>Additional Bill Discount (%)</label>
                 <input type="number" id="discountPercentInput" class="input input-sm" value="0" min="0" max="100" step="0.01" onchange="onDiscountPercentChange()">
             </div>
             <div class="summary-row">
@@ -104,7 +104,7 @@
                 <input type="number" id="taxPercent" class="input input-sm" value="0" min="0" max="100" onchange="recalculate()">
             </div>
             <div class="summary-row summary-discount" id="discountRow" style="display:none;">
-                <span>Discount</span>
+                <span>Total Discount</span>
                 <span id="discountAmount">-₹0.00</span>
             </div>
             <div class="summary-row summary-tax" id="taxRow" style="display:none;">
