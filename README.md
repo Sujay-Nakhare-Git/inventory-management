@@ -5,6 +5,7 @@ A modern, lightweight **boutique management web application** built with **Pytho
 ## Key Features
 
 * 📦 **Inventory Management** — Add, edit, delete, categorize, and filter products by category, size, vendor, and availability.
+* **Item Price Lookup** — Under Admin, enter an item code (SKU) to see cost, selling price, and their difference. View profit-on-cost prices at 40%, 50%, 60%, and further 10% steps below the selling price, followed by the exact selling price. Superadmins can grant staff access through the Item Price Lookup permission in Manage Users.
 * 🧾 **Sales & Billing** — Generate bills with discounts, taxes, payment methods, automatic bill numbering, and thermal receipt printing.
 * 👗 **Rental Management** — Create rental bills with rental duration, daily rent, refundable deposits, rental charges, and deposit-return receipts.
 * 🔄 **Refunds & Exchanges** — Process returns, refunds, and exchanges while automatically restoring inventory.

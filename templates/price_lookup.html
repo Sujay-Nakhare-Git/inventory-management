@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Item Price Lookup - Gulmohar by Ankita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2>Item Price Lookup</h2>
+        <p class="page-desc">Find an item's cost and selling prices using its code (SKU).</p>
+    </div>
+    <a href="{{ url_for('admin') }}" class="btn btn-outline">Back to Admin</a>
+</div>
+
+<div class="card">
+    <form method="GET" action="{{ url_for('admin_price_lookup') }}" class="filter-bar">
+        <label for="sku">Item Code (SKU)</label>
+        <input type="text" id="sku" name="sku" value="{{ sku }}" class="input" placeholder="e.g. KUR-001" required autofocus>
+        <button type="submit" class="btn btn-primary">Check Prices</button>
+    </form>
+</div>
+
+{% if sku and not product %}
+<div class="card">
+    <p class="empty-state">No item found for code <strong>{{ sku }}</strong>.</p>
+</div>
+{% elif product %}
+<div class="card">
+    <h3 class="card-title">{{ product.name or product.sku }}</h3>
+    <p class="page-desc">Code: <strong>{{ product.sku }}</strong> | Size: {{ product.size or '-' }} | Color: {{ product.color or '-' }}</p>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr><th>Cost Price (Rs.)</th><th>Selling Price (Rs.)</th><th>Difference (Rs.)</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ "%.2f"|format(product.cost_price) }}</td>
+                    <td>{{ "%.2f"|format(product.selling_price) }}</td>
+                    <td>{{ "%.2f"|format(difference) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <h3 class="card-title">Prices by Profit on Cost</h3>
+    <p class="page-desc">Price = Cost Price &times; (1 + Profit % / 100). Steps start at 40% and increase by 10% without exceeding the selling price.</p>
+    {% if product.cost_price <= 0 %}
+    <p class="page-desc">Profit percentages cannot be calculated because the cost price is zero or negative. Update the item's cost in Inventory to see price steps.</p>
+    {% elif not price_steps %}
+    <p class="page-desc">The selling price is at or below the 40% profit price, so no lower price steps are shown.</p>
+    {% endif %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr><th>Profit on Cost (%)</th><th>Price (Rs.)</th><th>Profit / Difference (Rs.)</th></tr>
+            </thead>
+            <tbody>
+                {% for step in price_steps %}
+                <tr>
+                    <td>{{ step.percent }}%</td>
+                    <td>{{ "%.2f"|format(step.price) }}</td>
+                    <td>{{ "%.2f"|format(step.profit) }}</td>
+                </tr>
+                {% endfor %}
+                <tr>
+                    <td>{% if selling_profit_percent is not none %}{{ "%.2f"|format(selling_profit_percent) }}%{% else %}Not applicable{% endif %} (Selling Price)</td>
+                    <td><strong>{{ "%.2f"|format(product.selling_price) }}</strong></td>
+                    <td>{{ "%.2f"|format(difference) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,3 +1,5 @@
+from decimal import Decimal, ROUND_HALF_UP
+
 from core import *  # noqa: F401,F403
 
 
@@ -5,6 +7,49 @@ from core import *  # noqa: F401,F403
 @app.route("/admin")
 def admin():
     return render_template("admin.html")
+
+
+@app.route("/admin/price-lookup")
+def admin_price_lookup():
+    if not admin_authenticated():
+        flash("Please log in to view Item Price Lookup.", "error")
+        return redirect(url_for("admin", next=url_for("admin_price_lookup")))
+
+    sku = request.args.get("sku", "").strip().upper()
+    product = None
+    price_steps = []
+    difference = None
+    selling_profit_percent = None
+
+    if sku:
+        product = get_db().execute(
+            "SELECT name, sku, size, color, cost_price, selling_price "
+            "FROM products WHERE UPPER(sku) = ? LIMIT 1",
+            (sku,),
+        ).fetchone()
+        if product:
+            cost = Decimal(str(product["cost_price"]))
+            selling = Decimal(str(product["selling_price"]))
+            difference = selling - cost
+            if cost > 0:
+                selling_profit_percent = profit_percent_on_cost(difference, cost)
+                percent = 40
+                while True:
+                    price = (cost * (100 + percent) / 100).quantize(
+                        Decimal("0.01"), rounding=ROUND_HALF_UP
+                    )
+                    if price >= selling:
+                        break
+                    price_steps.append({
+                        "percent": percent, "price": price, "profit": price - cost,
+                    })
+                    percent += 10
+
+    return render_template(
+        "price_lookup.html", sku=sku, product=product,
+        difference=difference, price_steps=price_steps,
+        selling_profit_percent=selling_profit_percent,
+    )
 
 
 @app.route("/admin/inventory-overview")

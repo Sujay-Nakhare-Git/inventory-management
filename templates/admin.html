@@ -78,6 +78,16 @@
     </div>
     {% endif %}
 
+    {% if can('price_lookup') %}
+    <div class="card stat-card stat-gold" style="text-align:left;">
+        <div class="card-title">Item Price Lookup</div>
+        <p class="page-desc">Look up cost, selling price, and profit-based prices by item code.</p>
+        <div style="margin-top:1rem;">
+            <a href="{{ url_for('admin_price_lookup') }}" class="btn btn-primary">Open Price Lookup</a>
+        </div>
+    </div>
+    {% endif %}
+
     {% if can('dead_stock') %}
     <div class="card stat-card stat-gold" style="text-align:left;">
         <div class="card-title">📦 Backlog / Dead Stock</div>
