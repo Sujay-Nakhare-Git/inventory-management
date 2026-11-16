@@ -255,6 +255,12 @@ def add_expense():
     description = request.form.get("description", "").strip()
     category = request.form.get("category", "General")
     amount = float(request.form.get("amount", 0))
+    expense_date = request.form.get("expense_date", "").strip() or now_ist().strftime("%Y-%m-%d")
+    try:
+        expense_date = datetime.strptime(expense_date, "%Y-%m-%d").strftime("%Y-%m-%d")
+    except ValueError:
+        flash("Please provide a valid expense date.", "error")
+        return redirect(url_for("expenses"))
     payment_mode = request.form.get("payment_mode", "Cash").strip()
     if payment_mode not in ALLOWED_PAYMENT_METHODS:
         payment_mode = "Cash"
@@ -270,8 +276,12 @@ def add_expense():
 
         db.execute(
             "INSERT INTO expenses (title, vendor, description, category, amount, payment_mode, bill_image_path, include_in_pl, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now','+5 hours','+30 minutes'))",
-            (title, vendor or None, description, category, amount, payment_mode, bill_image_path, include_in_pl),
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                title, vendor or None, description, category, amount, payment_mode,
+                bill_image_path, include_in_pl,
+                f"{expense_date} {now_ist().strftime('%H:%M:%S')}",
+            ),
         )
         db.commit()
         log_update("Expense Added", f"{title} — ₹{amount} ({category})", "expense")
@@ -299,6 +309,12 @@ def edit_expense(expense_id):
         description = request.form.get("description", "").strip()
         category = request.form.get("category", "General")
         amount = float(request.form.get("amount", 0))
+        expense_date = request.form.get("expense_date", "").strip() or expense["created_at"][:10]
+        try:
+            expense_date = datetime.strptime(expense_date, "%Y-%m-%d").strftime("%Y-%m-%d")
+        except ValueError:
+            flash("Please provide a valid expense date.", "error")
+            return redirect(url_for("edit_expense", expense_id=expense_id))
         payment_mode = request.form.get("payment_mode", "Cash").strip()
         if payment_mode not in ALLOWED_PAYMENT_METHODS:
             payment_mode = "Cash"
@@ -328,15 +344,21 @@ def edit_expense(expense_id):
             bill_image_path = save_expense_bill_image(bill_image, title)
 
         db.execute(
-            "UPDATE expenses SET title = ?, vendor = ?, description = ?, category = ?, amount = ?, payment_mode = ?, bill_image_path = ?, include_in_pl = ? WHERE id = ?",
-            (title, vendor or None, description, category, amount, payment_mode, bill_image_path, include_in_pl, expense_id),
+            "UPDATE expenses SET title = ?, vendor = ?, description = ?, category = ?, amount = ?, payment_mode = ?, bill_image_path = ?, include_in_pl = ?, created_at = ? WHERE id = ?",
+            (
+                title, vendor or None, description, category, amount, payment_mode,
+                bill_image_path, include_in_pl,
+                f"{expense_date} {now_ist().strftime('%H:%M:%S')}", expense_id,
+            ),
         )
         db.commit()
         log_update("Expense Updated", f"{title} — ₹{amount} ({category})", "expense")
         flash("Expense updated.", "success")
         return redirect(url_for("expenses"))
 
-    return render_template("expense_form.html", expense=expense)
+    return render_template(
+        "expense_form.html", expense=expense, expense_date=expense["created_at"][:10]
+    )
 
 
 @app.route("/expenses/delete/<int:expense_id>", methods=["POST"])
