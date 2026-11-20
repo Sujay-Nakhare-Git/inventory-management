@@ -14,10 +14,10 @@
 <div class="billing-layout" id="salesBillingPanel" role="tabpanel" aria-labelledby="salesTab">
     <div class="card billing-products">
         <h3 class="card-title">Select Products</h3>
-        <input type="text" id="productSearch" class="input" placeholder="Search products..." style="margin-bottom: 1rem;">
+        <input type="search" id="productSearch" class="input" placeholder="Search by code, name, category, size, or color..." aria-label="Search products" aria-controls="productList" autocomplete="off" style="margin-bottom: 1rem;">
         <div class="product-list" id="productList">
             {% for p in products %}
-            <div class="product-item" data-id="{{ p.id }}" data-name="{{ p.name }}" data-price="{{ p.selling_price }}" data-stock="{{ p.quantity }}" data-search="{{ p.name|lower }} {{ p.sku|lower if p.sku else '' }} {{ p.category_name|lower if p.category_name else '' }}">
+            <div class="product-item" data-id="{{ p.id }}" data-name="{{ p.name }}" data-price="{{ p.selling_price }}" data-stock="{{ p.quantity }}" data-search="{{ p.name|lower }} {{ p.sku|lower if p.sku else '' }} {{ p.category_name|lower if p.category_name else '' }} {{ p.size|lower if p.size else '' }} {{ p.color|lower if p.color else '' }}">
                 <div class="product-info">
                     <strong>{{ p.sku }}</strong>
                     <span class="product-meta">{{ p.category_name or '' }} {% if p.size %}| {{ p.size }}{% endif %} {% if p.color %}| {{ p.color }}{% endif %}</span>
@@ -32,13 +32,14 @@
             <p class="empty-state">No products in stock.</p>
             {% endfor %}
         </div>
+        <p id="noMatchingProducts" class="empty-state" role="status" hidden>No matching products found.</p>
     </div>
 
     <div class="card billing-cart">
         <h3 class="card-title">Current Bill</h3>
         <div class="customer-fields" style="position: relative;">
             <input type="text" id="customerName" class="input" placeholder="Customer Name" autocomplete="off" required aria-required="true">
-            <input type="text" id="customerPhone" class="input" placeholder="Phone Number" autocomplete="off" required aria-required="true">
+            <input type="tel" id="customerPhone" class="input" placeholder="10-digit Phone Number" inputmode="numeric" pattern="[0-9]{10}" minlength="10" maxlength="10" autocomplete="off" required aria-required="true">
             <div id="customerSuggestions" class="customer-suggestions" style="display:none;"></div>
         </div>
         <div id="customerCreditBanner" style="display:none; margin-top:0.5rem; padding:0.6rem 0.8rem; background:#f3e8ff; border-left:4px solid #9b59b6; border-radius:6px; font-size:0.9rem;">
@@ -177,7 +178,7 @@
         </div>
         <div class="form-group">
             <label for="rentalPhone">Phone Number</label>
-            <input type="tel" id="rentalPhone" class="input" placeholder="Phone Number" autocomplete="tel" required>
+            <input type="tel" id="rentalPhone" class="input" placeholder="10-digit Phone Number" inputmode="numeric" pattern="[0-9]{10}" minlength="10" maxlength="10" autocomplete="tel" required>
         </div>
         <div class="form-group">
             <label for="rentalDays">Number of Days</label>
@@ -226,5 +227,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='billing.js') }}"></script>
+<script src="{{ url_for('static', filename='billing.js') }}?v=20261120-2"></script>
 {% endblock %}

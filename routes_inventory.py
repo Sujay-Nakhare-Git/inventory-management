@@ -708,9 +708,14 @@ def create_bill():
         return jsonify({"error": "No items provided"}), 400
 
     customer_name = data.get("customer_name", "").strip()
-    customer_phone = data.get("customer_phone", "").strip()
+    customer_phone = data.get("customer_phone", "")
+    if not isinstance(customer_phone, str):
+        return jsonify({"error": "Phone number must contain exactly 10 digits."}), 400
+    customer_phone = customer_phone.strip()
     if not customer_name or not customer_phone:
         return jsonify({"error": "Customer name and phone number are required."}), 400
+    if len(customer_phone) != 10 or not customer_phone.isascii() or not customer_phone.isdigit():
+        return jsonify({"error": "Phone number must contain exactly 10 digits."}), 400
 
     db = get_db()
 

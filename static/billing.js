@@ -40,11 +40,15 @@ function togglePaymentMode() {
 
 // Product search filter
 document.getElementById('productSearch').addEventListener('input', function() {
-    const query = this.value.toLowerCase();
-    document.querySelectorAll('.product-item').forEach(item => {
-        const searchText = item.dataset.search;
-        item.style.display = searchText.includes(query) ? 'flex' : 'none';
+    const terms = this.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    let matches = 0;
+    document.querySelectorAll('#productList .product-item').forEach(item => {
+        const searchText = item.dataset.search.toLowerCase();
+        const visible = terms.every(term => searchText.includes(term));
+        item.style.display = visible ? 'flex' : 'none';
+        if (visible) matches++;
     });
+    document.getElementById('noMatchingProducts').hidden = terms.length === 0 || matches > 0;
 });
 
 // ---------- Customer autocomplete ----------
@@ -442,6 +446,15 @@ function recalculate() {
     }
 }
 
+function validateBillingPhone(phoneElement) {
+    if (!/^[0-9]{10}$/.test(phoneElement.value.trim())) {
+        alert('Phone number must contain exactly 10 digits.');
+        phoneElement.focus();
+        return false;
+    }
+    return true;
+}
+
 async function submitBill() {
     if (cartItems.length === 0) {
         alert('Add at least one product to the bill.');
@@ -462,6 +475,8 @@ async function submitBill() {
         }
         return;
     }
+
+    if (!validateBillingPhone(customerPhoneEl)) return;
 
     // Open early so browsers treat it as a direct user-initiated popup.
     const printWindow = window.open('', '_blank');
@@ -567,6 +582,7 @@ async function submitRentalBill() {
         (!customerName ? nameEl : phoneEl).focus();
         return;
     }
+    if (!validateBillingPhone(phoneEl)) return;
     if (!Number.isInteger(rentalDays) || rentalDays <= 0) {
         alert('Please enter at least 1 rental day.');
         daysEl.focus();
