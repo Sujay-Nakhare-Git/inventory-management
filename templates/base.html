@@ -71,6 +71,8 @@
     {% block scripts %}{% endblock %}
     <script>
     (() => {
+        if (document.body.classList.contains('print-labels')) return;
+
         const currencyPattern = /((?:₹|Rs\.?\s*))(-?\d[\d,]*(?:\.\d+)?)/g;
 
         function formatIndianNumber(value) {

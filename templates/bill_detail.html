@@ -95,12 +95,12 @@
         <div class="summary-row"><span>Deposit Returned</span><span style="color:#b91c1c;">-₹{{ "%.2f"|format(bill.deposit_returned) }}</span></div>
         {% endif %}
         {% else %}
-        <div class="summary-row"><span>Subtotal</span><span>₹{{ "%.2f"|format(bill.subtotal) }}</span></div>
+        <div class="summary-row"><span>Subtotal</span><span>₹{{ "%.2f"|format(gross_subtotal) }}</span></div>
         {% if bill.store_credit_used and bill.store_credit_used > 0 %}
         <div class="summary-row"><span>Store Credit</span><span>-₹{{ "%.2f"|format(bill.store_credit_used) }}</span></div>
         {% endif %}
-        {% if bill.discount_amount > 0 %}
-        <div class="summary-row"><span>{% if bill.payment_method == 'Exchange' %}Exchange Amount{% else %}Discount (₹){% endif %}</span><span>-₹{{ "%.2f"|format(bill.discount_amount) }}</span></div>
+        {% if total_discount > 0 %}
+        <div class="summary-row"><span>{% if bill.payment_method == 'Exchange' %}Exchange Amount{% else %}Discount (₹){% endif %}</span><span>-₹{{ "%.2f"|format(total_discount) }}</span></div>
         {% endif %}
         {% if bill.tax_amount > 0 %}
         <div class="summary-row"><span>Tax/GST ({{ bill.tax_percent }}%)</span><span>+₹{{ "%.2f"|format(bill.tax_amount) }}</span></div>
@@ -143,8 +143,8 @@
     <div class="t-row"><span>Bill #</span><span>{{ display_bill_ref(bill) }}</span></div>
     <div class="t-row"><span>Date</span><span>{{ bill.created_at | istdatetime }}</span></div>
     <div class="t-row"><span>Pay</span><span>{{ bill.payment_method }}</span></div>
-    {% if bill.discount_amount > 0 %}
-    <div class="t-row"><span>Disc</span><span>-₹{{ "%.2f"|format(bill.discount_amount) }}</span></div>
+    {% if total_discount > 0 %}
+    <div class="t-row"><span>Disc</span><span>-₹{{ "%.2f"|format(total_discount) }}</span></div>
     {% endif %}
     {% if payment_breakdown and payment_breakdown|length > 1 %}
     {% for part in payment_breakdown %}
@@ -179,12 +179,12 @@
     {% endif %}
     <div class="t-sep"></div>
     {% if bill.bill_type != 'rental' %}
-    <div class="t-row"><span>Subtotal</span><span>Rs.{{ "%.2f"|format(bill.subtotal) }}</span></div>
+    <div class="t-row"><span>Subtotal</span><span>Rs.{{ "%.2f"|format(gross_subtotal) }}</span></div>
     {% if bill.store_credit_used and bill.store_credit_used > 0 %}
     <div class="t-row"><span>Store Credit</span><span>-Rs.{{ "%.2f"|format(bill.store_credit_used) }}</span></div>
     {% endif %}
-    {% if bill.discount_amount > 0 %}
-            <div class="t-row"><span>{% if bill.payment_method == 'Exchange' %}Exchange Amount{% else %}Disc (₹){% endif %}</span><span>-Rs.{{ "%.2f"|format(bill.discount_amount) }}</span></div>
+    {% if total_discount > 0 %}
+            <div class="t-row"><span>{% if bill.payment_method == 'Exchange' %}Exchange Amount{% else %}Disc (₹){% endif %}</span><span>-Rs.{{ "%.2f"|format(total_discount) }}</span></div>
     {% endif %}
     {% if bill.tax_amount > 0 %}
     <div class="t-row"><span>Tax ({{ bill.tax_percent }}%)</span><span>+Rs.{{ "%.2f"|format(bill.tax_amount) }}</span></div>

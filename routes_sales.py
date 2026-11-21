@@ -75,9 +75,14 @@ def bill_detail(bill_id):
         "SELECT * FROM refunds WHERE bill_id = ? ORDER BY created_at DESC", (bill_id,)
     ).fetchall()
     payment_breakdown = parse_bill_payment_breakdown(bill)
+    item_discount_total = round(sum(float(i["discount_amount"] or 0) for i in items), 2)
+    gross_subtotal = round(float(bill["subtotal"] or 0) + item_discount_total, 2)
+    total_discount = round(float(bill["discount_amount"] or 0) + item_discount_total, 2)
     return render_template(
         "bill_detail.html",
         bill=bill,
+        gross_subtotal=gross_subtotal,
+        total_discount=total_discount,
         items=items,
         refunds=refunds,
         payment_breakdown=payment_breakdown,
